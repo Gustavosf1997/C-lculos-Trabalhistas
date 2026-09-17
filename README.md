@@ -75,7 +75,10 @@ sai a indenização dos arts. 479/480).
 
 Verbas e descontos:
 
-- saldo de salário pelos dias trabalhados no mês;
+- saldo de salário pelos dias efetivamente trabalhados no último mês —
+  contados a partir da admissão quando ela cai nesse mesmo mês, e pagos como
+  mês cheio (30/30) quando o mês foi trabalhado por inteiro, inclusive em
+  fevereiro — sobre o salário base e os adicionais, sem as médias de variáveis;
 - aviso prévio proporcional (30 dias + 3 por ano, máx. 90 — Lei 12.506/2011),
   indenizado, trabalhado, pela metade (comum acordo) ou descontado (pedido de
   demissão não cumprido), com projeção do contrato quando indenizado;
@@ -162,6 +165,10 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
   não apenas o período aquisitivo em que ocorreram.
 - A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
   coletiva que fixe outra base precisa ser ajustada em `src/adicionais.js`.
+- As médias de horas extras e de comissões integram aviso, 13º e férias, mas
+  não o saldo de salário: elas são médias para indenização, não o que o último
+  mês pagou. Variável efetivamente ganha nos dias finais ainda não tem campo
+  próprio e precisa ser somada à parte.
 - O adicional noturno não aplica a hora noturna reduzida de 52min30s
   (art. 73, §1º).
 - O salário-hora, usado nas horas negativas e no adicional noturno, sai do

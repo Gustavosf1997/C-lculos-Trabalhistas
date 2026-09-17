@@ -234,8 +234,12 @@ export function calcularRescisao(dados) {
     horasNoturnas: num(dados.horasNoturnas),
     divisor,
   });
-  const medias = num(dados.mediaHorasExtras) + adicionais.total + num(dados.mediaComissoes);
-  const remuneracao = arredondar(salarioBase + medias);
+  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
+  // que o saldo de salário é rateado. As médias de variáveis servem para
+  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
+  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
+  const medias = num(dados.mediaHorasExtras) + num(dados.mediaComissoes);
+  const remuneracao = arredondar(remuneracaoFixa + medias);
 
   /* --- aviso prévio --- */
   const anos = anosCompletos(admissao, dataAviso);
@@ -269,13 +273,22 @@ export function calcularRescisao(dados) {
   /* --- proventos --- */
   const proventos = [];
   const descontosAntecipados = [];
-  // Mês de 31 dias não gera 31/30 de salário: o teto é o mês cheio.
-  const diasSaldo = Math.min(ultimoDiaTrabalhado.getUTCDate(), 30);
-  const saldoSalario = arredondar((remuneracao / 30) * diasSaldo);
+  // Dias do último mês: conta a partir da admissão quando ela cai nesse mesmo
+  // mês, e paga o mês cheio (30/30) quando ele foi trabalhado por inteiro —
+  // inclusive em fevereiro, que tem menos de 30 dias.
+  const anoSaldo = ultimoDiaTrabalhado.getUTCFullYear();
+  const mesSaldo = ultimoDiaTrabalhado.getUTCMonth();
+  const primeiroDoMes = new Date(Date.UTC(anoSaldo, mesSaldo, 1));
+  const ultimoDoMes = new Date(Date.UTC(anoSaldo, mesSaldo + 1, 0));
+  const inicioNoMes = admissao > primeiroDoMes ? admissao : primeiroDoMes;
+  const mesInteiro = admissao <= primeiroDoMes && ultimoDiaTrabalhado >= ultimoDoMes;
+  const diasSaldo = mesInteiro ? 30 : Math.min(diffDias(inicioNoMes, ultimoDiaTrabalhado) + 1, 30);
+
+  const saldoSalario = arredondar((remuneracaoFixa / 30) * diasSaldo);
   proventos.push({
     chave: 'saldo_salario',
     label: 'Saldo de salário',
-    detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)}`,
+    detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)} · salário e adicionais`,
     valor: saldoSalario,
   });
 
@@ -349,7 +362,14 @@ export function calcularRescisao(dados) {
   const diasFerias = diasDeFeriasPorFaltas(num(dados.faltasInjustificadas));
   const fatorFaltas = diasFerias / 30;
   const { completos, inicioPeriodoAtual } = periodosAquisitivos(admissao, dataProjetada);
-  const periodosVencidos = Math.min(num(dados.periodosFeriasVencidas), completos);
+  const periodosInformados = num(dados.periodosFeriasVencidas);
+  const periodosVencidos = Math.min(periodosInformados, completos);
+  if (periodosInformados > completos) {
+    alertas.push(
+      `Foram informados ${periodosInformados} períodos de férias vencidas, mas o contrato completou `
+        + `${completos}. O cálculo usou ${completos}.`,
+    );
+  }
   const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
@@ -492,6 +512,7 @@ export function calcularRescisao(dados) {
     alertas,
     contexto: {
       remuneracao,
+      remuneracaoFixa,
       medias: arredondar(medias),
       adicionais: adicionais.itens,
       totalAdicionais: adicionais.total,

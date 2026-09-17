@@ -378,3 +378,67 @@ test('contrato que começa no dia 1º dá o mesmo resultado nas duas contagens',
   assert.equal(avosFeriasDe('2019-03-01', '2026-11-05'), 8);
   assert.equal(contarAvos(parseData('2026-03-01'), parseData('2026-11-05')), 8);
 });
+
+/* --------------------------------- saldo de salário e bases de cálculo ---- */
+
+test('médias de variáveis integram as indenizações, não o saldo de salário', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    mediaHorasExtras: 600,
+  });
+  assert.equal(r.contexto.remuneracaoFixa, 3000);
+  assert.equal(r.contexto.remuneracao, 3600);
+  assert.equal(verba(r, 'saldo_salario'), 1500); // 3.000 / 30 x 15, e não 3.600
+  assert.equal(verba(r, 'aviso_previo'), 6120); // aviso sobre a remuneração integrada
+  assert.equal(verba(r, 'decimo_terceiro'), 3000); // 3.600 / 12 x 10
+});
+
+test('mês trabalhado por inteiro paga 30/30, inclusive em fevereiro', () => {
+  const fevereiro = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-02-28',
+    salarioBase: 3000,
+  });
+  assert.equal(fevereiro.contexto.diasSaldo, 30);
+  assert.equal(verba(fevereiro, 'saldo_salario'), 3000);
+
+  const janeiro = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-01-31',
+    salarioBase: 3000,
+  });
+  assert.equal(janeiro.contexto.diasSaldo, 30);
+  assert.equal(verba(janeiro, 'saldo_salario'), 3000);
+});
+
+test('admissão no mesmo mês da saída conta só os dias do contrato', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2026-09-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+  });
+  assert.equal(r.contexto.diasSaldo, 11); // de 10 a 20, e não os 20 dias do mês
+  assert.equal(verba(r, 'saldo_salario'), 1100);
+});
+
+test('períodos de férias vencidas além dos completos geram alerta', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2024-01-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 5,
+  });
+  assert.equal(r.contexto.periodosVencidos, 2);
+  assert.ok(r.alertas.some((a) => a.includes('completou 2')));
+});
