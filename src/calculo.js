@@ -136,6 +136,15 @@ export function periodosAquisitivos(admissao, fim) {
   return { completos, inicioPeriodoAtual: inicio };
 }
 
+/**
+ * Valor das horas extras do mês: hora normal — salário e adicionais divididos
+ * pelo divisor da jornada (Súmula 264 do TST) — acrescida do adicional.
+ */
+export function valorHorasExtras(remuneracaoFixa, divisor, horas, percentual = 50) {
+  if (!divisor || divisor <= 0 || !horas || horas <= 0) return 0;
+  return arredondar((remuneracaoFixa / divisor) * (1 + percentual / 100) * horas);
+}
+
 /** Dias de férias a que o empregado faz jus conforme faltas (art. 130 da CLT). */
 export function diasDeFeriasPorFaltas(faltas = 0) {
   if (faltas <= 5) return 30;
@@ -238,7 +247,7 @@ export function calcularRescisao(dados) {
   // que o saldo de salário é rateado. As médias de variáveis servem para
   // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
   const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
-  const medias = num(dados.mediaHorasExtras) + num(dados.mediaComissoes);
+  const medias = num(dados.mediaComissoes);
   const remuneracao = arredondar(remuneracaoFixa + medias);
 
   /* --- aviso prévio --- */
@@ -291,6 +300,22 @@ export function calcularRescisao(dados) {
     detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)} · salário e adicionais`,
     valor: saldoSalario,
   });
+
+  // Horas extras efetivamente prestadas no mês da rescisão: verba do mês, e
+  // não média de integração.
+  const horasExtras = num(dados.horasExtras);
+  const percentualHoraExtra = num(dados.adicionalHoraExtra) || 50;
+  const valorHoras = valorHorasExtras(remuneracaoFixa, divisor, horasExtras, percentualHoraExtra);
+  if (valorHoras > 0) {
+    proventos.push({
+      chave: 'horas_extras',
+      label: 'Horas extras',
+      detalhe: `${formatarQuantidade(horasExtras)} h x ${moeda.format(
+        arredondar((remuneracaoFixa / divisor) * (1 + percentualHoraExtra / 100)),
+      )} (hora + ${formatarQuantidade(percentualHoraExtra)}%)`,
+      valor: valorHoras,
+    });
+  }
 
   let valorAviso = 0;
   if (avisoIndenizado && diasAvisoDevidos > 0) {
@@ -412,9 +437,14 @@ export function calcularRescisao(dados) {
 
   /* --- descontos --- */
   const descontos = [...descontosAntecipados];
-  const inssSalario = calcularINSS(saldoSalario);
+
+  // O mês é tributado por inteiro: saldo somado às horas extras nele pagas.
+  const baseMensal = arredondar(saldoSalario + valorHoras);
+  const rotuloMensal = valorHoras > 0 ? 'saldo de salário e horas extras' : 'saldo de salário';
+
+  const inssSalario = calcularINSS(baseMensal);
   if (inssSalario > 0) {
-    descontos.push({ chave: 'inss_salario', label: 'INSS sobre saldo de salário', detalhe: 'tabela progressiva', valor: inssSalario });
+    descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
   }
   const inss13 = decimoTerceiro > 0 ? calcularINSS(decimoTerceiro) : 0;
   if (inss13 > 0) {
@@ -439,13 +469,13 @@ export function calcularRescisao(dados) {
   const dependentes = num(dados.dependentes);
   const pensaoPercentual = aplica('pensao') ? num(dados.pensaoPercentual) : 0;
   const fatorPensao = pensaoPercentual / 100;
-  const irrfSalario = calcularIRRF(saldoSalario, {
+  const irrfSalario = calcularIRRF(baseMensal, {
     inss: inssSalario,
     dependentes,
-    pensao: saldoSalario * fatorPensao,
+    pensao: baseMensal * fatorPensao,
   });
   if (irrfSalario > 0) {
-    descontos.push({ chave: 'irrf_salario', label: 'IRRF sobre saldo de salário', detalhe: 'tabela progressiva', valor: irrfSalario });
+    descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
   }
   const irrf13 = decimoTerceiro > 0
     ? calcularIRRF(decimoTerceiro, { inss: inss13, dependentes, pensao: decimoTerceiro * fatorPensao })
@@ -498,7 +528,7 @@ export function calcularRescisao(dados) {
 
   /* --- FGTS --- */
   const saldoFgtsInformado = num(dados.saldoFgts);
-  const baseFgtsRescisao = saldoSalario + decimoTerceiro + valorAviso;
+  const baseFgtsRescisao = saldoSalario + valorHoras + decimoTerceiro + valorAviso;
   const fgtsRescisao = arredondar(baseFgtsRescisao * FGTS.aliquotaDeposito);
   const baseMulta = arredondar(saldoFgtsInformado + fgtsRescisao);
   const percentualMulta = tipo.fgts.multa;
@@ -513,6 +543,8 @@ export function calcularRescisao(dados) {
     contexto: {
       remuneracao,
       remuneracaoFixa,
+      horasExtras,
+      valorHorasExtras: valorHoras,
       medias: arredondar(medias),
       adicionais: adicionais.itens,
       totalAdicionais: adicionais.total,

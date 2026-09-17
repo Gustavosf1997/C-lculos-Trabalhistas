@@ -82,6 +82,10 @@ Verbas e descontos:
 - aviso prévio proporcional (30 dias + 3 por ano, máx. 90 — Lei 12.506/2011),
   indenizado, trabalhado, pela metade (comum acordo) ou descontado (pedido de
   demissão não cumprido), com projeção do contrato quando indenizado;
+- horas extras do mês da rescisão informadas em quantidade, não em média:
+  viram verba própria, calculadas pela hora normal (salário e adicionais
+  divididos pelo divisor, Súmula 264 do TST) acrescida do adicional — 50% por
+  padrão, editável;
 - adicionais legais escolhidos por marcação, cada um com percentual e base
   próprios: insalubridade de 10%, 20% ou 40% sobre o salário mínimo,
   periculosidade de 30% e transferência de 25% sobre o salário base, e
@@ -165,10 +169,12 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
   não apenas o período aquisitivo em que ocorreram.
 - A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
   coletiva que fixe outra base precisa ser ajustada em `src/adicionais.js`.
-- As médias de horas extras e de comissões integram aviso, 13º e férias, mas
-  não o saldo de salário: elas são médias para indenização, não o que o último
-  mês pagou. Variável efetivamente ganha nos dias finais ainda não tem campo
-  próprio e precisa ser somada à parte.
+- A média de comissões, gorjetas e prêmios integra aviso, 13º e férias, mas não
+  o saldo de salário: é média para indenização, não o que o último mês pagou.
+- As horas extras informadas são as do mês da rescisão e formam verba própria;
+  elas entram nas bases de INSS, IRRF e FGTS do mês, mas não integram aviso,
+  13º e férias. Horas extras habituais que devam repercutir nessas verbas ainda
+  não têm campo próprio — o módulo de pedidos calcula esses reflexos.
 - O adicional noturno não aplica a hora noturna reduzida de 52min30s
   (art. 73, §1º).
 - O salário-hora, usado nas horas negativas e no adicional noturno, sai do

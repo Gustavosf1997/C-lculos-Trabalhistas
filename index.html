@@ -80,13 +80,19 @@
                 <span class="campo__dica">220 para 44h semanais, 200 para 40h (Súmula 431 do TST). Usado no salário-hora.</span>
               </label>
               <label class="campo">
-                <span class="campo__rotulo">Média de horas extras</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaHorasExtras" placeholder="0,00" /></span>
-                <span class="campo__dica">Média dos últimos 12 meses.</span>
+                <span class="campo__rotulo">Horas extras</span>
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="horasExtras" placeholder="0" />
+                <span class="campo__dica">Horas prestadas no mês da rescisão e ainda não pagas.</span>
               </label>
               <label class="campo">
-                <span class="campo__rotulo">Comissões, gorjetas e prêmios</span>
+                <span class="campo__rotulo">Adicional de hora extra</span>
+                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="adicionalHoraExtra" placeholder="50" value="50" /><i>%</i></span>
+                <span class="campo__dica">Mínimo de 50% (art. 7º, XVI, da CF). A hora sai do divisor informado.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Média de comissões, gorjetas e prêmios</span>
                 <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaComissoes" placeholder="0,00" /></span>
+                <span class="campo__dica">Média que integra aviso, 13º e férias.</span>
               </label>
             </div>
             <div class="campos">

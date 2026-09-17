@@ -202,7 +202,6 @@ test('saldo de salário não passa do mês cheio em meses de 31 dias', () => {
     tipoAviso: 'indenizado',
     dataAviso: '2026-01-31',
     salarioBase: 3000,
-    mediaHorasExtras: 0,
   });
   assert.equal(r.contexto.diasSaldo, 30);
   assert.equal(verba(r, 'saldo_salario'), 3000); // e não 3.100,00
@@ -387,7 +386,7 @@ test('médias de variáveis integram as indenizações, não o saldo de salário
     tipo: 'sem_justa_causa',
     tipoAviso: 'indenizado',
     salarioBase: 3000,
-    mediaHorasExtras: 600,
+    mediaComissoes: 600,
   });
   assert.equal(r.contexto.remuneracaoFixa, 3000);
   assert.equal(r.contexto.remuneracao, 3600);
@@ -441,4 +440,47 @@ test('períodos de férias vencidas além dos completos geram alerta', () => {
   });
   assert.equal(r.contexto.periodosVencidos, 2);
   assert.ok(r.alertas.some((a) => a.includes('completou 2')));
+});
+
+/* ------------------------------------------ horas extras do mês ----------- */
+
+const comHorasExtras = {
+  tipo: 'sem_justa_causa',
+  tipoAviso: 'indenizado',
+  dataAdmissao: '2019-03-01',
+  dataAviso: '2026-09-15',
+  salarioBase: 3300,
+  divisor: 220,
+  horasExtras: 20,
+};
+
+test('horas extras do mês viram verba própria pelo salário-hora', () => {
+  const r = calcularRescisao(comHorasExtras);
+  assert.equal(verba(r, 'horas_extras'), 450); // (3.300 / 220) x 1,5 x 20
+  assert.equal(r.contexto.valorHorasExtras, 450);
+});
+
+test('o adicional de hora extra pode ser diferente de 50%', () => {
+  const r = calcularRescisao({ ...comHorasExtras, adicionalHoraExtra: 100 });
+  assert.equal(verba(r, 'horas_extras'), 600); // 15,00 x 2 x 20
+});
+
+test('o adicional entra na hora extra pela base integrada (Súmula 264)', () => {
+  const r = calcularRescisao({ ...comHorasExtras, adicionais: ['periculosidade_30'] });
+  // hora normal: (3.300 + 990) / 220 = 19,50; com 50% = 29,25
+  assert.equal(verba(r, 'horas_extras'), 585);
+});
+
+test('horas extras do mês não integram aviso, 13º nem férias', () => {
+  const r = calcularRescisao(comHorasExtras);
+  assert.equal(r.contexto.remuneracao, 3300); // base das indenizações sem as horas
+  assert.equal(verba(r, 'aviso_previo'), 5610); // 3.300 / 30 x 51
+  assert.equal(verba(r, 'decimo_terceiro'), 2750); // 3.300 / 12 x 10
+});
+
+test('INSS, IRRF e FGTS do mês alcançam as horas extras', () => {
+  const sem = calcularRescisao({ ...comHorasExtras, horasExtras: 0 });
+  const com = calcularRescisao(comHorasExtras);
+  assert.ok(desconto(com, 'inss_salario') > desconto(sem, 'inss_salario'));
+  assert.equal(com.fgts.rescisao, Math.round((1650 + 450 + 2750 + 5610) * 0.08 * 100) / 100);
 });
