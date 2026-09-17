@@ -70,6 +70,32 @@ await page.waitForTimeout(250);
 const erroMax = await page.locator('.campo:has(#pensaoPercentual) .campo__erro').textContent().catch(() => null);
 checar('limite máximo do percentual', (erroMax ?? '').includes('máximo'), erroMax);
 
+// adicionais: exclusão entre insalubridade e periculosidade
+await page.check('input[name="adicionais"][value="insalubridade_20"]');
+await page.check('input[name="adicionais"][value="periculosidade_30"]');
+await page.waitForTimeout(250);
+checar(
+  'periculosidade desmarca insalubridade',
+  !(await page.isChecked('input[name="adicionais"][value="insalubridade_20"]')),
+  await page.isChecked('input[name="adicionais"][value="insalubridade_20"]'),
+);
+checar(
+  '"não recebia adicionais" se desmarca sozinho',
+  !(await page.isChecked('input[name="adicionais"][value="nenhum"]')),
+  await page.isChecked('input[name="adicionais"][value="nenhum"]'),
+);
+
+// o adicional noturno revela o campo de horas
+checar('campo de horas noturnas escondido', await page.locator('#campo-horas-noturnas').isHidden(), null);
+await page.check('input[name="adicionais"][value="noturno_20"]');
+await page.waitForTimeout(250);
+checar('campo de horas noturnas revelado', await page.locator('#campo-horas-noturnas').isVisible(), null);
+checar(
+  'periculosidade e noturno convivem',
+  await page.isChecked('input[name="adicionais"][value="periculosidade_30"]'),
+  false,
+);
+
 /* ------------------------------------------------------------- pedidos */
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');

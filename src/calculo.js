@@ -8,6 +8,7 @@
 
 import { INSS, IRRF, FGTS } from './tabelas.js';
 import { TIPOS } from './tipos.js';
+import { calcularAdicionais } from './adicionais.js';
 
 /* ------------------------------------------------------------------ datas */
 
@@ -185,8 +186,13 @@ export function calcularRescisao(dados) {
   }
   const alertas = [];
 
-  const medias =
-    num(dados.mediaHorasExtras) + num(dados.mediaAdicionais) + num(dados.mediaComissoes);
+  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual.
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais ?? [],
+    salarioBase,
+    horasNoturnas: num(dados.horasNoturnas),
+  });
+  const medias = num(dados.mediaHorasExtras) + adicionais.total + num(dados.mediaComissoes);
   const remuneracao = arredondar(salarioBase + medias);
 
   /* --- aviso prévio --- */
@@ -430,6 +436,8 @@ export function calcularRescisao(dados) {
     contexto: {
       remuneracao,
       medias: arredondar(medias),
+      adicionais: adicionais.itens,
+      totalAdicionais: adicionais.total,
       anos,
       meses: mesesCompletos(admissao, ultimoDiaTrabalhado),
       diasContrato: diffDias(admissao, ultimoDiaTrabalhado) + 1,

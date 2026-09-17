@@ -8,13 +8,14 @@ import { calcularRescisao, formatarData } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
 import { moeda } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
+import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
   'dataAdmissao', 'dataAviso', 'dataTermoFinal',
-  'salarioBase', 'mediaHorasExtras', 'mediaAdicionais', 'mediaComissoes',
+  'salarioBase', 'mediaHorasExtras', 'mediaComissoes', 'horasNoturnas',
   'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts',
   'dependentes', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
 ];
@@ -31,8 +32,50 @@ function coletarDados() {
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
     feriasDobro: $('#feriasDobro').checked,
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
+    adicionais: adicionaisMarcados(),
     errosDeCampo: erros,
   };
+}
+
+/* -------------------------------------------------------------- adicionais */
+
+const adicionaisMarcados = () =>
+  [...document.querySelectorAll('input[name="adicionais"]:checked')]
+    .map((input) => input.value)
+    .filter((id) => id !== SEM_ADICIONAIS);
+
+function montarAdicionais() {
+  const opcoes = [
+    { id: SEM_ADICIONAIS, label: 'Não recebia adicionais' },
+    ...ADICIONAIS.map((a) => ({ id: a.id, label: a.label })),
+  ];
+  $('#opcoes-adicionais').innerHTML = opcoes
+    .map(
+      (o) => `
+      <label class="opcao">
+        <input type="checkbox" name="adicionais" value="${o.id}" ${o.id === SEM_ADICIONAIS ? 'checked' : ''} />
+        ${o.label}
+      </label>`,
+    )
+    .join('');
+
+  for (const input of document.querySelectorAll('input[name="adicionais"]')) {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        const permitidos = aplicarExclusoes(adicionaisMarcados(), input.value);
+        for (const outro of document.querySelectorAll('input[name="adicionais"]')) {
+          if (outro !== input) outro.checked = permitidos.includes(outro.value);
+        }
+      } else if (adicionaisMarcados().length === 0) {
+        // Desmarcar o último equivale a dizer que não havia adicionais.
+        document.querySelector(`input[name="adicionais"][value="${SEM_ADICIONAIS}"]`).checked = true;
+      }
+      if (input.value !== SEM_ADICIONAIS && input.checked) {
+        document.querySelector(`input[name="adicionais"][value="${SEM_ADICIONAIS}"]`).checked = false;
+      }
+      atualizar();
+    });
+  }
 }
 
 /* ------------------------------------------------------- tipos e formulário */
@@ -218,9 +261,25 @@ function renderResultado(resultado) {
 /* ------------------------------------------------------------- atualização */
 
 function atualizarDicas(dados) {
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais,
+    salarioBase: dados.salarioBase,
+    horasNoturnas: dados.horasNoturnas,
+  });
   const remuneracao =
-    dados.salarioBase + dados.mediaHorasExtras + dados.mediaAdicionais + dados.mediaComissoes;
-  $('#nota-remuneracao').innerHTML = `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>`;
+    dados.salarioBase + dados.mediaHorasExtras + adicionais.total + dados.mediaComissoes;
+
+  const detalhe = adicionais.itens.length
+    ? ` — inclui ${adicionais.itens.map((i) => `${i.label} (${moeda.format(i.valor)})`).join(' e ')}`
+    : '';
+  $('#nota-remuneracao').innerHTML =
+    `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>${detalhe}`;
+
+}
+
+/** O adicional noturno depende das horas trabalhadas à noite. */
+function aplicarVisibilidadeAdicionais() {
+  $('#campo-horas-noturnas').hidden = !adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
 }
 
 /** A contagem de períodos vem do cálculo, para não divergir dele. */
@@ -231,6 +290,7 @@ function atualizarDicaPeriodos(contexto) {
 }
 
 function atualizar() {
+  aplicarVisibilidadeAdicionais();
   const dados = coletarDados();
   atualizarDicas(dados);
   if (!tipoSelecionado) return;
@@ -249,6 +309,7 @@ function atualizar() {
 /* -------------------------------------------------------------- inicializa */
 
 montarTipos();
+montarAdicionais();
 $('#badge-vigencia').textContent = VIGENCIA;
 $('#rodape-vigencia').textContent = VIGENCIA + ' · INSS e IRRF conforme tabelas progressivas vigentes.';
 $('#formulario').addEventListener('input', atualizar);

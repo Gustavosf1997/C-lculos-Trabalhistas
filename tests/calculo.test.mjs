@@ -234,3 +234,46 @@ test('pensão alimentícia reduz a base do IRRF', () => {
   assert.ok(comPensao < semPensao);
   assert.equal(comPensao, 129.4);
 });
+
+/* ------------------------------------------------- adicionais legais ------ */
+
+test('adicionais marcados integram a remuneração', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    adicionais: ['insalubridade_20'],
+  });
+  assert.equal(r.contexto.totalAdicionais, 303.6); // 20% do salário mínimo
+  assert.equal(r.contexto.remuneracao, 3303.6);
+});
+
+test('periculosidade incide sobre o salário base', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    adicionais: ['periculosidade_30'],
+  });
+  assert.equal(r.contexto.totalAdicionais, 900);
+});
+
+test('adicional noturno usa as horas informadas', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    adicionais: ['noturno_20'],
+    horasNoturnas: 20,
+  });
+  assert.equal(r.contexto.totalAdicionais, 54.55); // (3000/220) x 20 x 20%
+});
+
+test('sem adicionais marcados a remuneração é só o salário', () => {
+  const r = calcularRescisao({ ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', salarioBase: 3000 });
+  assert.equal(r.contexto.totalAdicionais, 0);
+  assert.equal(r.contexto.remuneracao, 3000);
+});

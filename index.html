@@ -80,12 +80,20 @@
                 <span class="campo__dica">Média dos últimos 12 meses.</span>
               </label>
               <label class="campo">
-                <span class="campo__rotulo">Adicionais (insalubridade, periculosidade, noturno)</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaAdicionais" placeholder="0,00" /></span>
-              </label>
-              <label class="campo">
                 <span class="campo__rotulo">Comissões, gorjetas e prêmios</span>
                 <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaComissoes" placeholder="0,00" /></span>
+              </label>
+            </div>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">Adicionais recebidos</legend>
+                <div class="opcoes__lista" id="opcoes-adicionais"></div>
+                <span class="campo__dica">Insalubridade e periculosidade não se acumulam (art. 193, §2º). A insalubridade incide sobre o salário mínimo (art. 192 da CLT).</span>
+              </fieldset>
+              <label class="campo" id="campo-horas-noturnas" hidden>
+                <span class="campo__rotulo">Horas noturnas por mês</span>
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="horasNoturnas" placeholder="0" />
+                <span class="campo__dica">Hora calculada pelo divisor 220. Não considera a hora noturna reduzida (art. 73, §1º).</span>
               </label>
             </div>
             <p class="nota-remuneracao" id="nota-remuneracao">Remuneração para cálculo: <b>R$ 0,00</b></p>
