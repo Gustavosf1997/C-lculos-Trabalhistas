@@ -2,10 +2,10 @@
   /* Amarelo da marca. Sobre branco ele não tem contraste para texto, então
      serve de fundo e de borda, sempre com tinta escura por cima; para texto
      em fundo claro usamos --destaque-texto. */
-  --destaque: #ffcd00;
-  --destaque-escuro: #d9ad00;
-  --destaque-claro: #fff8dd;
-  --destaque-texto: #7a5e00;
+  --destaque: #ffc600;
+  --destaque-escuro: #c9a227;   /* dourado acinzentado, para bordas */
+  --destaque-claro: #fdf6e0;    /* creme fosco, para fundos */
+  --destaque-texto: #6b5400;
 
   --tinta: #1c1a17;
   --tinta-media: #57534e;
@@ -17,7 +17,7 @@
   --verde-claro: #ecfdf5;
   --vermelho: #b91c1c;
   --raio: 12px;
-  --sombra: 0 1px 2px rgba(28, 26, 23, .06), 0 8px 24px -12px rgba(28, 26, 23, .22);
+  --sombra: 0 1px 2px rgba(28, 26, 23, .05), 0 6px 18px -14px rgba(28, 26, 23, .18);
 }
 
 * { box-sizing: border-box; }
@@ -34,7 +34,8 @@ body {
 
 /* ------------------------------------------------------------------ topo */
 .topo {
-  background: linear-gradient(135deg, var(--destaque), #ffdd57);
+  background: var(--destaque);
+  border-bottom: 1px solid rgba(28,26,23,.12);
   color: var(--tinta);
   padding: 20px 24px;
 }
@@ -57,11 +58,11 @@ body {
   color: rgba(28,26,23,.6); text-decoration: none; font-size: 13.5px; font-weight: 600;
   padding: 9px 16px; border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none;
 }
-.aba:hover { background: rgba(255,255,255,.45); color: var(--tinta); }
+.aba:hover { background: rgba(28,26,23,.07); color: var(--tinta); }
 .aba--ativa { background: var(--fundo); color: var(--tinta); border-color: var(--linha); }
 
 .badge {
-  background: rgba(255,255,255,.55); border: 1px solid rgba(28,26,23,.14);
+  background: rgba(28,26,23,.06); border: 1px solid rgba(28,26,23,.16);
   color: var(--destaque-texto); padding: 6px 12px; border-radius: 999px; font-size: 12px; white-space: nowrap;
 }
 
@@ -93,8 +94,8 @@ body {
   border: 1.5px solid var(--linha); border-radius: var(--raio); padding: 14px;
   font: inherit; color: inherit; transition: .15s;
 }
-.tipo:hover { border-color: var(--destaque); background: #fffdf4; }
-.tipo[aria-checked="true"] { border-color: var(--destaque-escuro); background: var(--destaque-claro); box-shadow: 0 0 0 3px rgba(255,205,0,.35); }
+.tipo:hover { border-color: var(--destaque-escuro); background: #fdfbf5; }
+.tipo[aria-checked="true"] { border-color: var(--destaque-escuro); background: var(--destaque-claro); box-shadow: 0 0 0 3px rgba(201,162,39,.22); }
 .tipo:disabled { cursor: default; }
 .tipo--breve { background: #fbfaf8; border-style: dashed; opacity: .65; }
 .tipo--breve:hover { border-color: var(--linha); background: #fbfaf8; }
@@ -105,7 +106,7 @@ body {
 
 .resumo-tipo {
   margin-top: 16px; border: 1px solid var(--linha); border-left: 3px solid var(--destaque);
-  background: #fffdf6; border-radius: 10px; padding: 14px 16px;
+  background: #fdfbf3; border-radius: 10px; padding: 14px 16px;
 }
 .resumo-tipo p { margin: 0 0 10px; font-size: 13.5px; color: var(--tinta-media); }
 .verbas { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -140,7 +141,7 @@ body {
   font: inherit; padding: 9px 11px; border: 1px solid #d6d3d1; border-radius: 9px;
   background: #fff; color: var(--tinta); width: 100%;
 }
-.campo select:focus, .campo input:focus { outline: none; border-color: var(--destaque-escuro); box-shadow: 0 0 0 3px rgba(255,205,0,.35); }
+.campo select:focus, .campo input:focus { outline: none; border-color: var(--destaque-escuro); box-shadow: 0 0 0 3px rgba(201,162,39,.22); }
 .campo--erro input { border-color: #dc2626; background: #fff7f7; }
 .campo--erro input:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.14); border-color: #dc2626; }
 .campo__erro { font-size: 11.5px; color: var(--vermelho); font-weight: 600; }
@@ -195,7 +196,7 @@ body {
   padding: 3px 9px; border-radius: 999px;
 }
 .alerta {
-  background: #fffdf4; border: 1px solid var(--linha); border-left: 3px solid var(--destaque-escuro);
+  background: #fdfbf3; border: 1px solid var(--linha); border-left: 3px solid var(--destaque-escuro);
   color: var(--tinta-media); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-top: 12px;
 }
 
