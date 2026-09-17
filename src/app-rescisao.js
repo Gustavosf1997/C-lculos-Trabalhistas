@@ -6,9 +6,9 @@
 import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
 import { calcularRescisao, formatarData, parseData, periodosAquisitivos } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
+import { moeda, parseMoeda, formatarCampoMoeda } from './formato.js';
 
 const $ = (seletor) => document.querySelector(seletor);
-const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const CAMPOS_MOEDA = [
   'salarioBase', 'mediaHorasExtras', 'mediaAdicionais', 'mediaComissoes',
@@ -19,14 +19,6 @@ const CAMPOS_SIMPLES = ['periodosFeriasVencidas', 'faltasInjustificadas', 'depen
 let tipoSelecionado = null;
 
 /* ------------------------------------------------------------ utilitários */
-
-function parseMoeda(texto) {
-  if (texto == null) return 0;
-  let limpo = String(texto).replace(/[^\d.,-]/g, '');
-  if (limpo.includes(',')) limpo = limpo.replace(/\./g, '').replace(',', '.');
-  const valor = Number(limpo);
-  return Number.isFinite(valor) ? valor : 0;
-}
 
 function coletarDados() {
   const dados = {
@@ -263,8 +255,5 @@ $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 
 for (const id of CAMPOS_MOEDA) {
   const campo = $(`#${id}`);
-  campo.addEventListener('blur', () => {
-    const valor = parseMoeda(campo.value);
-    campo.value = valor ? valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-  });
+  campo.addEventListener('blur', () => formatarCampoMoeda(campo));
 }

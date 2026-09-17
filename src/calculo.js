@@ -54,20 +54,25 @@ export function mesesCompletos(inicio, fim) {
   return Math.max(0, meses);
 }
 
-/** Conta os avos (frações de 1/12) considerando mês com 15 dias ou mais. */
-export function contarAvos(inicio, fim) {
+/** Conta os meses de competência com 15 dias ou mais trabalhados. */
+export function contarMeses(inicio, fim) {
   if (!inicio || !fim || fim < inicio) return 0;
-  let avos = 0;
+  let meses = 0;
   let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
   while (cursor <= fim) {
     const primeiro = cursor;
     const ultimo = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
     const de = inicio > primeiro ? inicio : primeiro;
     const ate = fim < ultimo ? fim : ultimo;
-    if (diffDias(de, ate) + 1 >= 15) avos += 1;
+    if (diffDias(de, ate) + 1 >= 15) meses += 1;
     cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
   }
-  return Math.min(avos, 12);
+  return meses;
+}
+
+/** Avos de 13º e de férias: os meses do período, limitados a 12. */
+export function contarAvos(inicio, fim) {
+  return Math.min(contarMeses(inicio, fim), 12);
 }
 
 /** Períodos aquisitivos de férias já completados e início do período em curso. */
