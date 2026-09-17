@@ -211,6 +211,8 @@ montarSelects();
 $('#badge-vigencia').textContent = VIGENCIA;
 $('#rodape-vigencia').textContent = VIGENCIA;
 $('#formulario').addEventListener('input', atualizar);
+// Não há botão de calcular: o resultado acompanha a digitação. O submit por
+// Enter é neutralizado para que a página nunca recarregue e perca os dados.
 $('#formulario').addEventListener('submit', (evento) => {
   evento.preventDefault();
   atualizar();
