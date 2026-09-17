@@ -75,6 +75,11 @@
                 <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="salarioBase" placeholder="0,00" /></span>
               </label>
               <label class="campo">
+                <span class="campo__rotulo">Divisor da jornada</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="999" id="divisor" placeholder="220" value="220" />
+                <span class="campo__dica">220 para 44h semanais, 200 para 40h (Súmula 431 do TST). Usado no salário-hora.</span>
+              </label>
+              <label class="campo">
                 <span class="campo__rotulo">Média de horas extras</span>
                 <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaHorasExtras" placeholder="0,00" /></span>
                 <span class="campo__dica">Média dos últimos 12 meses.</span>
@@ -93,7 +98,7 @@
               <label class="campo" id="campo-horas-noturnas" hidden>
                 <span class="campo__rotulo">Horas noturnas por mês</span>
                 <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="horasNoturnas" placeholder="0" />
-                <span class="campo__dica">Hora calculada pelo divisor 220. Não considera a hora noturna reduzida (art. 73, §1º).</span>
+                <span class="campo__dica">Hora calculada pelo divisor informado acima. Não considera a hora noturna reduzida (art. 73, §1º).</span>
               </label>
             </div>
             <p class="nota-remuneracao" id="nota-remuneracao">Remuneração para cálculo: <b>R$ 0,00</b></p>
@@ -131,28 +136,24 @@
           </fieldset>
 
           <fieldset class="grupo">
-            <legend>Descontos e dados fiscais</legend>
+            <legend>Descontos</legend>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">Descontos aplicáveis</legend>
+                <div class="opcoes__lista" id="opcoes-descontos"></div>
+                <span class="campo__dica">INSS, IRRF e aviso prévio não cumprido entram sozinhos, conforme o caso.</span>
+              </fieldset>
+            </div>
+            <div class="campos" id="campos-descontos"></div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Dados fiscais</legend>
             <div class="campos">
               <label class="campo">
                 <span class="campo__rotulo">Dependentes para IRRF</span>
                 <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="30" id="dependentes" placeholder="0" />
-              </label>
-              <label class="campo">
-                <span class="campo__rotulo">Pensão alimentícia</span>
-                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="pensaoPercentual" placeholder="0" /><i>%</i></span>
-                <span class="campo__dica">Percentual incidente sobre as verbas rescisórias.</span>
-              </label>
-              <label class="campo">
-                <span class="campo__rotulo">Adiantamento de salário</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="adiantamentoSalario" placeholder="0,00" /></span>
-              </label>
-              <label class="campo">
-                <span class="campo__rotulo">Adiantamento do 13º</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="adiantamento13" placeholder="0,00" /></span>
-              </label>
-              <label class="campo">
-                <span class="campo__rotulo">Outros descontos (VT, VR, empréstimos)</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="outrosDescontos" placeholder="0,00" /></span>
+                <span class="campo__dica">Cada dependente reduz a base do imposto.</span>
               </label>
             </div>
           </fieldset>

@@ -41,6 +41,7 @@ node tests/interface.mjs
 | `src/tipos.js` | Catálogo dos tipos de rescisão: verbas devidas, opções de aviso, campos exibidos e regras de FGTS |
 | `src/calculo.js` | Motor das verbas rescisórias (módulo puro, sem DOM) |
 | `src/adicionais.js` | Catálogo dos adicionais legais, com percentual, base e exclusões |
+| `src/descontos.js` | Catálogo dos descontos escolhíveis e o salário-hora |
 | `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
@@ -80,6 +81,10 @@ Verbas e descontos:
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
   com redução por faltas injustificadas (art. 130);
+- descontos marcados na tela, cada um com o seu campo: horas negativas
+  (salário base ÷ divisor, multiplicado pelas horas), adiantamento de salário,
+  adiantamento do 13º, pensão alimentícia e outros descontos — ou "não há
+  descontos", que limpa a seleção;
 - INSS progressivo, com cálculo em separado sobre o 13º;
 - IRRF pelo modelo mais favorável (deduções legais x desconto simplificado);
 - pensão alimentícia, adiantamentos e outros descontos;
@@ -145,8 +150,11 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
   não apenas o período aquisitivo em que ocorreram.
 - A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
   coletiva que fixe outra base precisa ser ajustada em `src/adicionais.js`.
-- O adicional noturno usa o divisor 220 e não aplica a hora noturna reduzida
-  de 52min30s (art. 73, §1º).
+- O adicional noturno não aplica a hora noturna reduzida de 52min30s
+  (art. 73, §1º).
+- O salário-hora, usado nas horas negativas e no adicional noturno, sai do
+  salário base dividido pelo divisor informado — não inclui adicionais nem
+  médias de variáveis.
 - Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
   doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
 - Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e

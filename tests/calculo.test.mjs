@@ -277,3 +277,64 @@ test('sem adicionais marcados a remuneração é só o salário', () => {
   assert.equal(r.contexto.totalAdicionais, 0);
   assert.equal(r.contexto.remuneracao, 3000);
 });
+
+/* ----------------------------------------------- descontos escolhidos ----- */
+
+test('horas negativas seguem o salário-hora', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    descontos: ['horas_negativas'],
+    horasNegativas: 8,
+  });
+  assert.equal(r.contexto.valorHora, 10); // 2200 / 220
+  assert.equal(desconto(r, 'horas_negativas'), 80);
+});
+
+test('o divisor informado muda o salário-hora', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    divisor: 200,
+    descontos: ['horas_negativas'],
+    horasNegativas: 8,
+  });
+  assert.equal(r.contexto.valorHora, 11);
+  assert.equal(desconto(r, 'horas_negativas'), 88);
+});
+
+test('desconto não marcado não entra no acerto', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    horasNegativas: 8,
+    outrosDescontos: 500,
+    pensaoPercentual: 30,
+    descontos: [],
+  });
+  assert.equal(desconto(r, 'horas_negativas'), 0);
+  assert.equal(desconto(r, 'outrosDescontos'), 0);
+  assert.equal(desconto(r, 'pensao'), 0);
+});
+
+test('descontos marcados entram todos', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    horasNegativas: 4,
+    adiantamentoSalario: 300,
+    outrosDescontos: 150,
+    descontos: ['horas_negativas', 'adiantamento_salario', 'outros'],
+  });
+  assert.equal(desconto(r, 'horas_negativas'), 40);
+  assert.equal(desconto(r, 'adiantamentoSalario'), 300);
+  assert.equal(desconto(r, 'outrosDescontos'), 150);
+});

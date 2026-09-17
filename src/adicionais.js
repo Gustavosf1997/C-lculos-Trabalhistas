@@ -7,7 +7,7 @@
 
 import { SALARIO_MINIMO } from './tabelas.js';
 
-/** Divisor usado para achar o valor da hora no adicional noturno. */
+/** Divisor mensal padrão (44h semanais). Cada tela pode informar o seu. */
 export const DIVISOR_PADRAO = 220;
 
 export const SEM_ADICIONAIS = 'nenhum';
@@ -77,7 +77,12 @@ function arredondar(valor) {
  * @param {number} [dados.horasNoturnas] usadas apenas pelo adicional noturno
  * @returns {{itens: object[], total: number}}
  */
-export function calcularAdicionais({ selecionados = [], salarioBase = 0, horasNoturnas = 0 } = {}) {
+export function calcularAdicionais({
+  selecionados = [],
+  salarioBase = 0,
+  horasNoturnas = 0,
+  divisor = DIVISOR_PADRAO,
+} = {}) {
   const itens = [];
 
   for (const id of selecionados) {
@@ -88,7 +93,7 @@ export function calcularAdicionais({ selecionados = [], salarioBase = 0, horasNo
     if (adicional.base === 'salario_minimo') valor = SALARIO_MINIMO * adicional.percentual;
     else if (adicional.base === 'salario_base') valor = salarioBase * adicional.percentual;
     else if (adicional.base === 'horas_noturnas') {
-      valor = (salarioBase / DIVISOR_PADRAO) * horasNoturnas * adicional.percentual;
+      valor = (salarioBase / divisor) * horasNoturnas * adicional.percentual;
     }
 
     itens.push({

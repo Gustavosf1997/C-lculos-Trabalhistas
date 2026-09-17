@@ -8,7 +8,9 @@
 
 import { INSS, IRRF, FGTS } from './tabelas.js';
 import { TIPOS } from './tipos.js';
-import { calcularAdicionais } from './adicionais.js';
+import { calcularAdicionais, DIVISOR_PADRAO } from './adicionais.js';
+import { salarioHora } from './descontos.js';
+import { moeda, formatarQuantidade } from './formato.js';
 
 /* ------------------------------------------------------------------ datas */
 
@@ -186,11 +188,14 @@ export function calcularRescisao(dados) {
   }
   const alertas = [];
 
+  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
+
   // Os adicionais legais vêm marcados na tela, cada um com o seu percentual.
   const adicionais = calcularAdicionais({
     selecionados: dados.adicionais ?? [],
     salarioBase,
     horasNoturnas: num(dados.horasNoturnas),
+    divisor,
   });
   const medias = num(dados.mediaHorasExtras) + adicionais.total + num(dados.mediaComissoes);
   const remuneracao = arredondar(salarioBase + medias);
@@ -359,8 +364,23 @@ export function calcularRescisao(dados) {
     descontos.push({ chave: 'inss_13', label: 'INSS sobre 13º salário', detalhe: 'cálculo em separado', valor: inss13 });
   }
 
+  // Só desconta o que foi marcado na tela; o resto decorre da lei.
+  const marcados = dados.descontos ?? [];
+  const aplica = (id) => marcados.includes(id);
+
+  const valorHora = salarioHora(salarioBase, divisor);
+  const horasNegativas = aplica('horas_negativas') ? num(dados.horasNegativas) : 0;
+  if (horasNegativas > 0) {
+    descontos.push({
+      chave: 'horas_negativas',
+      label: 'Horas negativas',
+      detalhe: `${formatarQuantidade(horasNegativas)} h x ${moeda.format(arredondar(valorHora))} (salário-hora)`,
+      valor: arredondar(valorHora * horasNegativas),
+    });
+  }
+
   const dependentes = num(dados.dependentes);
-  const pensaoPercentual = num(dados.pensaoPercentual);
+  const pensaoPercentual = aplica('pensao') ? num(dados.pensaoPercentual) : 0;
   const fatorPensao = pensaoPercentual / 100;
   const irrfSalario = calcularIRRF(saldoSalario, {
     inss: inssSalario,
@@ -396,12 +416,12 @@ export function calcularRescisao(dados) {
     });
   }
 
-  for (const [chave, label] of [
-    ['adiantamentoSalario', 'Adiantamento de salário'],
-    ['adiantamento13', 'Adiantamento do 13º salário'],
-    ['outrosDescontos', 'Outros descontos'],
+  for (const [id, chave, label] of [
+    ['adiantamento_salario', 'adiantamentoSalario', 'Adiantamento de salário'],
+    ['adiantamento_13', 'adiantamento13', 'Adiantamento do 13º salário'],
+    ['outros', 'outrosDescontos', 'Outros descontos'],
   ]) {
-    const valor = num(dados[chave]);
+    const valor = aplica(id) ? num(dados[chave]) : 0;
     if (valor > 0) descontos.push({ chave, label, detalhe: 'informado', valor: arredondar(valor) });
   }
 
@@ -438,6 +458,8 @@ export function calcularRescisao(dados) {
       medias: arredondar(medias),
       adicionais: adicionais.itens,
       totalAdicionais: adicionais.total,
+      divisor,
+      valorHora: arredondar(valorHora),
       anos,
       meses: mesesCompletos(admissao, ultimoDiaTrabalhado),
       diasContrato: diffDias(admissao, ultimoDiaTrabalhado) + 1,
