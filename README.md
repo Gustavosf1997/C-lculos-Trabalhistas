@@ -37,7 +37,7 @@ node tests/interface.mjs
 | --- | --- |
 | `index.html` | Aba de verbas rescisórias: tipo de rescisão + formulário + resultado |
 | `pedidos.html` | Aba de pedidos da reclamatória |
-| `assets/estilos.css` | Estilos das duas páginas |
+| `assets/estilos.css` | Estilos das duas páginas (paleta em `:root`, marca `#ffc600`) |
 | `src/tipos.js` | Catálogo dos tipos de rescisão: verbas devidas, opções de aviso, campos exibidos e regras de FGTS |
 | `src/calculo.js` | Motor das verbas rescisórias (módulo puro, sem DOM) |
 | `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
@@ -98,6 +98,7 @@ data ou número — assim o formato não depende do idioma do navegador:
 - **limites** por campo (`data-min` / `data-max` no HTML): percentual de pensão
   até 100, dias úteis até 31, divisor até 999 e assim por diante.
 
+Não há botão de calcular: o resultado acompanha a digitação, campo a campo.
 Campo inválido fica destacado em vermelho, com a mensagem abaixo dele, e o
 cálculo é interrompido enquanto durar o erro — em vez de seguir com zero.
 Campo escondido pela modalidade escolhida não bloqueia nem entra na conta.
