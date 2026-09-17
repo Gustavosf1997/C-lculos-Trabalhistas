@@ -15,6 +15,12 @@ npx http-server -p 8080 -c-1 .     # ou: python3 -m http.server 8080
 
 Depois abra <http://localhost:8080>.
 
+O `-c-1` desliga o cache do servidor. Sem ele, o navegador pode guardar uma
+versão antiga do JavaScript e a tela aparece incompleta — nesse caso, recarregue
+com `Ctrl+Shift+R` (`Cmd+Shift+R` no Mac). As páginas avisam quando isso
+acontece: se um grupo montado por JavaScript ficar vazio, aparece um alerta
+pedindo a recarga.
+
 Os cálculos rodam no navegador — nenhum dado é enviado para servidor.
 
 ## Testes

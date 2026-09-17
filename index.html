@@ -28,7 +28,7 @@
     <section class="etapa">
       <h2><span class="etapa__num">1</span> Tipo de rescisão</h2>
       <p class="etapa__ajuda">Selecione a modalidade: os campos e as verbas devidas mudam conforme a escolha.</p>
-      <div class="tipos-grupos" id="tipos" role="radiogroup" aria-label="Tipo de rescisão"></div>
+      <div class="tipos-grupos" id="tipos" data-dinamico role="radiogroup" aria-label="Tipo de rescisão"></div>
       <div class="resumo-tipo" id="resumo-tipo" hidden></div>
     </section>
 
@@ -92,7 +92,7 @@
             <div class="campos">
               <fieldset class="campo campo--largo opcoes">
                 <legend class="campo__rotulo">Adicionais recebidos</legend>
-                <div class="opcoes__lista" id="opcoes-adicionais"></div>
+                <div class="opcoes__lista" id="opcoes-adicionais" data-dinamico></div>
                 <span class="campo__dica">Insalubridade e periculosidade não se acumulam (art. 193, §2º). A insalubridade incide sobre o salário mínimo (art. 192 da CLT).</span>
               </fieldset>
               <label class="campo" id="campo-horas-noturnas" hidden>
@@ -140,11 +140,11 @@
             <div class="campos">
               <fieldset class="campo campo--largo opcoes">
                 <legend class="campo__rotulo">Descontos aplicáveis</legend>
-                <div class="opcoes__lista" id="opcoes-descontos"></div>
+                <div class="opcoes__lista" id="opcoes-descontos" data-dinamico></div>
                 <span class="campo__dica">INSS, IRRF e aviso prévio não cumprido entram sozinhos, conforme o caso.</span>
               </fieldset>
             </div>
-            <div class="campos" id="campos-descontos"></div>
+            <div class="campos" id="campos-descontos" data-dinamico></div>
           </fieldset>
 
           <fieldset class="grupo">
@@ -181,5 +181,20 @@
   </footer>
 
   <script type="module" src="src/app-rescisao.js"></script>
+  <script>
+    /* Os grupos de marcação são montados pelo módulo. Se algum ficar vazio, o
+       navegador está servindo um JavaScript antigo de cache: avisa, em vez de
+       deixar a seção sumir sem explicação. */
+    addEventListener('load', () => setTimeout(() => {
+      const vazios = [...document.querySelectorAll('[data-dinamico]')].filter((el) => !el.children.length);
+      if (!vazios.length) return;
+      const aviso = document.createElement('p');
+      aviso.className = 'aviso-cache';
+      aviso.innerHTML = 'Esta página carregou uma versão antiga guardada em cache. '
+        + 'Recarregue com <b>Ctrl+Shift+R</b> (ou <b>Cmd+Shift+R</b> no Mac).';
+      document.querySelector('.pagina').prepend(aviso);
+    }, 700));
+  </script>
+
 </body>
 </html>
