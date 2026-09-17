@@ -8,15 +8,17 @@ import { calcularRescisao, formatarData } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
 import { moeda } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
+import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
+import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
   'dataAdmissao', 'dataAviso', 'dataTermoFinal',
-  'salarioBase', 'mediaHorasExtras', 'mediaAdicionais', 'mediaComissoes',
-  'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts',
-  'dependentes', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
+  'salarioBase', 'divisor', 'mediaHorasExtras', 'mediaComissoes', 'horasNoturnas',
+  'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
+  'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
 ];
 
 let tipoSelecionado = null;
@@ -31,8 +33,89 @@ function coletarDados() {
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
     feriasDobro: $('#feriasDobro').checked,
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
+    adicionais: adicionaisMarcados(),
+    descontos: descontosMarcados(),
     errosDeCampo: erros,
   };
+}
+
+/* ------------------------------------------------- marcações em grupo ----- */
+
+let adicionaisMarcados = () => [];
+let descontosMarcados = () => [];
+
+/**
+ * Liga um grupo de marcações que tem uma opção "nenhum" e regras de exclusão
+ * entre as demais. Devolve a função que lê o que está marcado.
+ */
+function ligarGrupo(nome, nenhumId, resolverExclusoes) {
+  const inputs = () => [...document.querySelectorAll(`input[name="${nome}"]`)];
+  const opcaoNenhum = () => inputs().find((i) => i.value === nenhumId);
+  const marcados = () =>
+    inputs().filter((i) => i.checked).map((i) => i.value).filter((v) => v !== nenhumId);
+
+  for (const input of inputs()) {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        const permitidos = resolverExclusoes(marcados(), input.value);
+        for (const outro of inputs()) {
+          if (outro !== input) outro.checked = permitidos.includes(outro.value);
+        }
+        if (input.value !== nenhumId) opcaoNenhum().checked = false;
+      } else if (marcados().length === 0) {
+        // Desmarcar o último equivale a dizer que não havia nenhum.
+        opcaoNenhum().checked = true;
+      }
+      atualizar();
+    });
+  }
+  return marcados;
+}
+
+function montarMarcacoes(container, nome, nenhumRotulo, itens) {
+  const opcoes = [{ id: nenhumRotulo.id, label: nenhumRotulo.label }, ...itens];
+  $(container).innerHTML = opcoes
+    .map(
+      (o, i) => `
+      <label class="opcao">
+        <input type="checkbox" name="${nome}" value="${o.id}" ${i === 0 ? 'checked' : ''} />
+        ${o.label}
+      </label>`,
+    )
+    .join('');
+}
+
+const montarAdicionais = () =>
+  montarMarcacoes(
+    '#opcoes-adicionais',
+    'adicionais',
+    { id: SEM_ADICIONAIS, label: 'Não recebia adicionais' },
+    ADICIONAIS.map((a) => ({ id: a.id, label: a.label })),
+  );
+
+function montarDescontos() {
+  montarMarcacoes(
+    '#opcoes-descontos',
+    'descontos',
+    { id: SEM_DESCONTOS, label: 'Não há descontos' },
+    DESCONTOS.map((d) => ({ id: d.id, label: d.label })),
+  );
+
+  // Cada desconto marcado revela o seu próprio campo.
+  $('#campos-descontos').innerHTML = DESCONTOS.map((d) => {
+    const entrada =
+      d.tipo === 'valor'
+        ? `<span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="${d.campo}" placeholder="0,00" /></span>`
+        : d.tipo === 'percentual'
+          ? `<span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="${d.campo}" placeholder="0" /><i>%</i></span>`
+          : `<input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="${d.campo}" placeholder="0" />`;
+    return `
+      <label class="campo" id="campo-${d.id}" hidden>
+        <span class="campo__rotulo">${d.rotulo}</span>
+        ${entrada}
+        ${d.dica ? `<span class="campo__dica">${d.dica}</span>` : ''}
+      </label>`;
+  }).join('');
 }
 
 /* ------------------------------------------------------- tipos e formulário */
@@ -218,9 +301,30 @@ function renderResultado(resultado) {
 /* ------------------------------------------------------------- atualização */
 
 function atualizarDicas(dados) {
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais,
+    salarioBase: dados.salarioBase,
+    horasNoturnas: dados.horasNoturnas,
+  });
   const remuneracao =
-    dados.salarioBase + dados.mediaHorasExtras + dados.mediaAdicionais + dados.mediaComissoes;
-  $('#nota-remuneracao').innerHTML = `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>`;
+    dados.salarioBase + dados.mediaHorasExtras + adicionais.total + dados.mediaComissoes;
+
+  const detalhe = adicionais.itens.length
+    ? ` — inclui ${adicionais.itens.map((i) => `${i.label} (${moeda.format(i.valor)})`).join(' e ')}`
+    : '';
+  $('#nota-remuneracao').innerHTML =
+    `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>${detalhe}`;
+
+}
+
+/** Campos que só existem quando a marcação correspondente está ligada. */
+function aplicarVisibilidadeMarcacoes() {
+  $('#campo-horas-noturnas').hidden = !adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+
+  const marcados = descontosMarcados();
+  for (const desconto of DESCONTOS) {
+    $(`#campo-${desconto.id}`).hidden = !marcados.includes(desconto.id);
+  }
 }
 
 /** A contagem de períodos vem do cálculo, para não divergir dele. */
@@ -231,6 +335,7 @@ function atualizarDicaPeriodos(contexto) {
 }
 
 function atualizar() {
+  aplicarVisibilidadeMarcacoes();
   const dados = coletarDados();
   atualizarDicas(dados);
   if (!tipoSelecionado) return;
@@ -249,6 +354,10 @@ function atualizar() {
 /* -------------------------------------------------------------- inicializa */
 
 montarTipos();
+montarAdicionais();
+montarDescontos();
+adicionaisMarcados = ligarGrupo('adicionais', SEM_ADICIONAIS, aplicarExclusoes);
+descontosMarcados = ligarGrupo('descontos', SEM_DESCONTOS, aplicarExclusoesDesconto);
 $('#badge-vigencia').textContent = VIGENCIA;
 $('#rodape-vigencia').textContent = VIGENCIA + ' · INSS e IRRF conforme tabelas progressivas vigentes.';
 $('#formulario').addEventListener('input', atualizar);

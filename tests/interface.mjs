@@ -58,6 +58,9 @@ checar('cálculo bloqueado com campo inválido', painelErro.includes('Corrija os
 await page.fill('#dataAviso', '');
 await page.locator('#dataAviso').pressSequentially('15092026');
 await page.fill('#periodosFeriasVencidas', '1');
+// a pensão agora é um desconto que precisa ser marcado para aparecer
+checar('campo de pensão escondido', await page.locator('#campo-pensao').isHidden(), null);
+await page.check('input[name="descontos"][value="pensao"]');
 await page.locator('#pensaoPercentual').pressSequentially('12,5');
 await page.waitForTimeout(300);
 const liquido = await page.locator('.liquido b').textContent();
@@ -69,6 +72,58 @@ await page.fill('#pensaoPercentual', '150');
 await page.waitForTimeout(250);
 const erroMax = await page.locator('.campo:has(#pensaoPercentual) .campo__erro').textContent().catch(() => null);
 checar('limite máximo do percentual', (erroMax ?? '').includes('máximo'), erroMax);
+await page.fill('#pensaoPercentual', '10'); // volta a um valor válido
+
+// adicionais: exclusão entre insalubridade e periculosidade
+await page.check('input[name="adicionais"][value="insalubridade_20"]');
+await page.check('input[name="adicionais"][value="periculosidade_30"]');
+await page.waitForTimeout(250);
+checar(
+  'periculosidade desmarca insalubridade',
+  !(await page.isChecked('input[name="adicionais"][value="insalubridade_20"]')),
+  await page.isChecked('input[name="adicionais"][value="insalubridade_20"]'),
+);
+checar(
+  '"não recebia adicionais" se desmarca sozinho',
+  !(await page.isChecked('input[name="adicionais"][value="nenhum"]')),
+  await page.isChecked('input[name="adicionais"][value="nenhum"]'),
+);
+
+// o adicional noturno revela o campo de horas
+checar('campo de horas noturnas escondido', await page.locator('#campo-horas-noturnas').isHidden(), null);
+await page.check('input[name="adicionais"][value="noturno_20"]');
+await page.waitForTimeout(250);
+checar('campo de horas noturnas revelado', await page.locator('#campo-horas-noturnas').isVisible(), null);
+checar(
+  'periculosidade e noturno convivem',
+  await page.isChecked('input[name="adicionais"][value="periculosidade_30"]'),
+  false,
+);
+
+// descontos: campo só aparece quando o desconto é marcado
+checar('campo de horas negativas escondido', await page.locator('#campo-horas_negativas').isHidden(), null);
+await page.check('input[name="descontos"][value="horas_negativas"]');
+await page.waitForTimeout(250);
+checar('campo de horas negativas revelado', await page.locator('#campo-horas_negativas').isVisible(), null);
+checar(
+  '"não há descontos" se desmarca sozinho',
+  !(await page.isChecked('input[name="descontos"][value="nenhum"]')),
+  await page.isChecked('input[name="descontos"][value="nenhum"]'),
+);
+
+await page.fill('#horasNegativas', '8');
+await page.waitForTimeout(300);
+const linhaHoras = await page.locator('.linhas tr', { hasText: 'Horas negativas' }).textContent();
+checar('horas negativas descontadas pelo salário-hora', linhaHoras.includes('salário-hora'), linhaHoras);
+
+await page.check('input[name="descontos"][value="nenhum"]');
+await page.waitForTimeout(250);
+checar(
+  '"não há descontos" limpa a seleção',
+  !(await page.isChecked('input[name="descontos"][value="horas_negativas"]')),
+  null,
+);
+checar('campo some junto com a marcação', await page.locator('#campo-horas_negativas').isHidden(), null);
 
 /* ------------------------------------------------------------- pedidos */
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
