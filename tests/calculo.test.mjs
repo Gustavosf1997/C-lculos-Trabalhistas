@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularRescisao, calcularINSS, calcularIRRF, contarAvos, parseData } from '../src/calculo.js';
+import {
+  calcularRescisao, calcularINSS, calcularIRRF, contarAvos, contarAvosFerias,
+  periodosAquisitivos, parseData,
+} from '../src/calculo.js';
 
 const base = {
   dataAdmissao: '2019-03-01',
@@ -337,4 +340,41 @@ test('descontos marcados entram todos', () => {
   assert.equal(desconto(r, 'horas_negativas'), 40);
   assert.equal(desconto(r, 'adiantamentoSalario'), 300);
   assert.equal(desconto(r, 'outrosDescontos'), 150);
+});
+
+/* ------------------------------------- avos de férias por ciclo ----------- */
+
+const avosFeriasDe = (admissao, saida) => {
+  const { inicioPeriodoAtual } = periodosAquisitivos(parseData(admissao), parseData(saida));
+  return contarAvosFerias(inicioPeriodoAtual, parseData(saida));
+};
+
+test('férias contam ciclos a partir do dia da admissão, não meses do calendário', () => {
+  // Período aquisitivo em curso desde 10/03/2026; o ciclo aberto vai de 10/09 a 09/10.
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-20'), 6); // 11 dias no ciclo: não conta
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-23'), 6); // 14 dias: ainda não conta
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-24'), 7); // 15 dias: conta
+});
+
+test('o mês do calendário não decide o avo de férias', () => {
+  // Saída em 20/09: 20 dias no mês de setembro, mas só 11 dias no ciclo.
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-03-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+  });
+  assert.equal(r.contexto.avosFerias, 6);
+  assert.equal(r.contexto.avos13, 9); // o 13º, esse sim, conta por competência mensal
+});
+
+test('ciclo de férias respeita admissão em dia que não existe em todo mês', () => {
+  // Admissão em 31/01: o ciclo seguinte encosta no último dia de fevereiro.
+  assert.equal(avosFeriasDe('2024-01-31', '2026-03-20'), 2);
+});
+
+test('contrato que começa no dia 1º dá o mesmo resultado nas duas contagens', () => {
+  assert.equal(avosFeriasDe('2019-03-01', '2026-11-05'), 8);
+  assert.equal(contarAvos(parseData('2026-03-01'), parseData('2026-11-05')), 8);
 });

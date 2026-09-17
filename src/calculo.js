@@ -32,6 +32,14 @@ function addDias(data, dias) {
   return new Date(data.getTime() + dias * DIA_MS);
 }
 
+/** Soma meses mantendo o dia; dia inexistente no mês de destino encosta no último. */
+function addMeses(data, meses) {
+  const ano = data.getUTCFullYear();
+  const mes = data.getUTCMonth() + meses;
+  const ultimoDia = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(ano, mes, Math.min(data.getUTCDate(), ultimoDia)));
+}
+
 function addAnos(data, anos) {
   return new Date(Date.UTC(data.getUTCFullYear() + anos, data.getUTCMonth(), data.getUTCDate()));
 }
@@ -78,9 +86,38 @@ export function contarMeses(inicio, fim) {
   return meses;
 }
 
-/** Avos de 13º e de férias: os meses do período, limitados a 12. */
+/** Avos do 13º: meses de competência do ano, limitados a 12. */
 export function contarAvos(inicio, fim) {
   return Math.min(contarMeses(inicio, fim), 12);
+}
+
+/**
+ * Avos de férias: contados em ciclos mensais a partir do dia da admissão, e
+ * não por mês de calendário (art. 130 c/c art. 146, parágrafo único, da CLT).
+ *
+ * O ciclo em curso na saída só vira avo se tiver 15 dias ou mais trabalhados
+ * dentro dele — a fração superior a 14 dias —, pouco importando quantos dias
+ * do mês de calendário foram cumpridos.
+ *
+ * @param {Date} inicioPeriodo início do período aquisitivo em curso
+ * @param {Date} fim último dia do contrato, já projetado quando há aviso
+ */
+export function contarAvosFerias(inicioPeriodo, fim) {
+  if (!inicioPeriodo || !fim || fim < inicioPeriodo) return 0;
+
+  let avos = 0;
+  for (let ciclo = 0; ciclo < 12; ciclo += 1) {
+    const inicioCiclo = addMeses(inicioPeriodo, ciclo);
+    const fimCiclo = addDias(addMeses(inicioPeriodo, ciclo + 1), -1);
+
+    if (fim >= fimCiclo) {
+      avos += 1; // ciclo mensal completo
+      continue;
+    }
+    if (diffDias(inicioCiclo, fim) + 1 >= 15) avos += 1; // fração superior a 14 dias
+    break;
+  }
+  return Math.min(avos, 12);
 }
 
 /** Períodos aquisitivos de férias já completados e início do período em curso. */
@@ -335,7 +372,7 @@ export function calcularRescisao(dados) {
   let feriasProporcionais = 0;
   let avosFerias = 0;
   if (tipo.campos.feriasProporcionais) {
-    avosFerias = contarAvos(inicioPeriodoAtual, dataProjetada);
+    avosFerias = contarAvosFerias(inicioPeriodoAtual, dataProjetada);
     feriasProporcionais = arredondar((remuneracao / 12) * avosFerias * fatorFaltas);
     if (feriasProporcionais > 0) {
       proventos.push({

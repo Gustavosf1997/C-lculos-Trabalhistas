@@ -87,6 +87,12 @@ Verbas e descontos:
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
   com redução por faltas injustificadas (art. 130);
+- as duas contagens de avos seguem regras diferentes, como na lei: os avos de
+  **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
+  aberto na saída só vira avo com fração superior a 14 dias *dentro dele*
+  (art. 146, parágrafo único); os avos do **13º** seguem o mês de competência
+  do calendário, com fração igual ou superior a 15 dias no mês
+  (Lei 4.090/62, art. 1º, §2º);
 - descontos marcados na tela, cada um com o seu campo: horas negativas
   (salário base ÷ divisor, multiplicado pelas horas), adiantamento de salário,
   adiantamento do 13º, pensão alimentícia e outros descontos — ou "não há
