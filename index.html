@@ -24,7 +24,7 @@
     <section class="etapa">
       <h2><span class="etapa__num">1</span> Tipo de rescisão</h2>
       <p class="etapa__ajuda">Selecione a modalidade: os campos e as verbas devidas mudam conforme a escolha.</p>
-      <div class="tipos" id="tipos" role="radiogroup" aria-label="Tipo de rescisão"></div>
+      <div class="tipos-grupos" id="tipos" role="radiogroup" aria-label="Tipo de rescisão"></div>
       <div class="resumo-tipo" id="resumo-tipo" hidden></div>
     </section>
 
@@ -39,10 +39,19 @@
                 <span class="campo__rotulo">Data de admissão <b>*</b></span>
                 <input type="date" id="dataAdmissao" required />
               </label>
-              <label class="campo">
-                <span class="campo__rotulo">Data do aviso prévio / desligamento <b>*</b></span>
-                <input type="date" id="dataAviso" required />
-                <span class="campo__dica">Data da comunicação da rescisão.</span>
+              <label class="campo" id="campo-termo-final" hidden>
+                <span class="campo__rotulo">Data do termo final previsto <b>*</b></span>
+                <input type="date" id="dataTermoFinal" />
+                <span class="campo__dica">Data combinada para o fim do contrato (experiência: até 90 dias).</span>
+              </label>
+              <label class="campo" id="campo-data-aviso">
+                <span class="campo__rotulo" id="rotulo-data-aviso">Data do aviso prévio / desligamento <b>*</b></span>
+                <input type="date" id="dataAviso" />
+                <span class="campo__dica" id="dica-data-aviso">Data da comunicação da rescisão.</span>
+              </label>
+              <label class="campo campo--largo checkbox" id="campo-clausula" hidden>
+                <input type="checkbox" id="clausulaAssecuratoria" />
+                <span>Contrato com <b>cláusula assecuratória</b> do direito recíproco de rescisão antecipada (art. 481 da CLT)</span>
               </label>
             </div>
             <div class="campos" id="grupo-aviso" hidden>

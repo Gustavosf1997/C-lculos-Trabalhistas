@@ -32,14 +32,21 @@ node --test tests/calculo.test.mjs
 | `src/app.js` | Interface: monta os campos conforme o tipo e apresenta a memória de cálculo |
 | `tests/calculo.test.mjs` | Testes do motor de cálculo |
 
-Para acrescentar um tipo de rescisão (contrato de experiência, rescisão indireta,
-morte do empregado, término de contrato por prazo determinado), basta adicionar
-uma entrada em `src/tipos.js`.
+Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
+culpa recíproca, encerramento da empresa), basta adicionar uma entrada em
+`src/tipos.js`: os cards, os campos exibidos e as regras de FGTS saem de lá.
 
 ## O que já está implementado
 
-Tipos de rescisão: **iniciativa do empregador**, **pedido de demissão**,
-**comum acordo (art. 484-A)** e **justa causa**.
+Contrato por prazo **indeterminado**: iniciativa do empregador, pedido de
+demissão, comum acordo (art. 484-A) e justa causa.
+
+Contrato por prazo **determinado (inclusive experiência)**: término no prazo,
+rescisão antecipada pelo empregador (art. 479) e rescisão antecipada pelo
+empregado (art. 480). Nesses casos o formulário pede a data do termo final e
+oferece a cláusula assecuratória do art. 481 — ao marcá-la, o cálculo passa a
+seguir as regras do contrato por prazo indeterminado (entra o aviso prévio,
+sai a indenização dos arts. 479/480).
 
 Verbas e descontos:
 
@@ -53,6 +60,9 @@ Verbas e descontos:
 - INSS progressivo, com cálculo em separado sobre o 13º;
 - IRRF pelo modelo mais favorável (deduções legais x desconto simplificado);
 - pensão alimentícia, adiantamentos e outros descontos;
+- indenização da rescisão antecipada: metade da remuneração dos dias que
+  faltavam até o termo final, paga pelo empregador (art. 479) ou descontada do
+  empregado (art. 480);
 - FGTS: depósito de 8% sobre as verbas salariais, multa de 40% ou 20%, saque e
   seguro-desemprego.
 
@@ -60,8 +70,11 @@ Verbas e descontos:
 
 - **As tabelas de INSS e IRRF em `src/tabelas.js` são de referência (2025) e
   precisam ser conferidas e atualizadas antes de qualquer uso oficial.**
-- Não trata contrato por prazo determinado/experiência, rescisão indireta,
-  empregado doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
+- Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
+  doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
+- Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e
+  não calcula a redução do art. 480 por prejuízo comprovado — usa sempre o teto
+  do art. 479.
 - Não aplica convenção coletiva (multa normativa, pisos, adicionais próprios).
 - Não gera TRCT nem guias (GRRF, DARF, GPS) e não persiste os cálculos.
 - A pensão alimentícia é aplicada como percentual único sobre o total das

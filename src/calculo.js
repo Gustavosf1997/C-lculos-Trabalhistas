@@ -46,6 +46,14 @@ export function anosCompletos(admissao, fim) {
   return Math.max(0, anos);
 }
 
+/** Meses completos entre duas datas (para contratos com menos de um ano). */
+export function mesesCompletos(inicio, fim) {
+  let meses =
+    (fim.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (fim.getUTCMonth() - inicio.getUTCMonth());
+  if (fim.getUTCDate() < inicio.getUTCDate()) meses -= 1;
+  return Math.max(0, meses);
+}
+
 /** Conta os avos (frações de 1/12) considerando mês com 15 dias ou mais. */
 export function contarAvos(inicio, fim) {
   if (!inicio || !fim || fim < inicio) return 0;
@@ -139,18 +147,32 @@ export function calcularRescisao(dados) {
   const erros = [];
   if (!tipo) erros.push('Selecione o tipo de rescisão.');
 
+  const campos = tipo?.campos ?? {};
   const admissao = parseData(dados.dataAdmissao);
-  const dataAviso = parseData(dados.dataAviso);
+  const termoFinal = parseData(dados.dataTermoFinal);
+  // No término no prazo, o próprio termo final encerra o contrato.
+  const dataAviso = campos.termoEncerraContrato ? termoFinal : parseData(dados.dataAviso);
+
   if (!admissao) erros.push('Informe a data de admissão.');
-  if (!dataAviso) erros.push('Informe a data do aviso prévio / desligamento.');
+  if (campos.termoFinal && !termoFinal) erros.push('Informe a data do termo final previsto.');
+  if (!dataAviso && !campos.termoEncerraContrato) erros.push('Informe a data do aviso prévio / desligamento.');
   if (admissao && dataAviso && dataAviso < admissao) {
     erros.push('A data do desligamento não pode ser anterior à admissão.');
+  }
+  if (admissao && termoFinal && termoFinal <= admissao) {
+    erros.push('O termo final deve ser posterior à data de admissão.');
+  }
+  if (campos.termoFinal && !campos.termoEncerraContrato && dataAviso && termoFinal && dataAviso >= termoFinal) {
+    erros.push('A rescisão antecipada deve ocorrer antes do termo final previsto.');
   }
 
   const salarioBase = num(dados.salarioBase);
   if (salarioBase <= 0) erros.push('Informe o último salário base.');
 
-  if (erros.length) return { erros, proventos: [], descontos: [], totais: null, contexto: null, fgts: null };
+  if (erros.length) {
+    return { erros, alertas: [], proventos: [], descontos: [], totais: null, contexto: null, fgts: null };
+  }
+  const alertas = [];
 
   const medias =
     num(dados.mediaHorasExtras) + num(dados.mediaAdicionais) + num(dados.mediaComissoes);
@@ -158,11 +180,20 @@ export function calcularRescisao(dados) {
 
   /* --- aviso prévio --- */
   const anos = anosCompletos(admissao, dataAviso);
-  const tipoAviso = tipo.aviso ? dados.tipoAviso || tipo.aviso.opcoes[0].valor : 'nenhum';
 
-  let diasAvisoLegais = 0;
-  if (tipo.id === 'pedido_demissao') diasAvisoLegais = 30;
-  else if (tipo.aviso) diasAvisoLegais = Math.min(30 + 3 * anos, 90);
+  // A cláusula assecuratória (art. 481) faz o contrato a termo seguir as regras
+  // do contrato por prazo indeterminado: há aviso prévio e não incidem os
+  // arts. 479/480.
+  const clausulaAtiva = Boolean(campos.clausulaAssecuratoria && dados.clausulaAssecuratoria);
+  const avisoAplicavel = Boolean(tipo.aviso && (!tipo.aviso.somenteComClausula || clausulaAtiva));
+  const opcoesAviso = avisoAplicavel ? tipo.aviso.opcoes.map((o) => o.valor) : [];
+  const tipoAviso = avisoAplicavel
+    ? (opcoesAviso.includes(dados.tipoAviso) ? dados.tipoAviso : opcoesAviso[0])
+    : 'nenhum';
+
+  const diasAvisoLegais = avisoAplicavel
+    ? (tipo.aviso.diasFixos ?? Math.min(30 + 3 * anos, 90))
+    : 0;
 
   let diasAvisoDevidos = diasAvisoLegais;
   if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = Math.round(diasAvisoLegais / 2);
@@ -178,6 +209,7 @@ export function calcularRescisao(dados) {
 
   /* --- proventos --- */
   const proventos = [];
+  const descontosAntecipados = [];
   const diasSaldo = ultimoDiaTrabalhado.getUTCDate();
   const saldoSalario = arredondar((remuneracao / 30) * diasSaldo);
   proventos.push({
@@ -196,6 +228,24 @@ export function calcularRescisao(dados) {
       detalhe: `${diasAvisoDevidos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`,
       valor: valorAviso,
     });
+  }
+
+  /* --- rescisão antecipada do contrato a termo (arts. 479 e 480) --- */
+  const diasRestantes = termoFinal ? Math.max(0, diffDias(ultimoDiaTrabalhado, termoFinal)) : 0;
+  const regraIndenizacao = tipo.indenizacaoAntecipada;
+  let indenizacaoAntecipada = 0;
+  if (regraIndenizacao && !clausulaAtiva && diasRestantes > 0) {
+    indenizacaoAntecipada = arredondar(((remuneracao / 30) * diasRestantes) / 2);
+    const lancamento = {
+      chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+      label: regraIndenizacao.label,
+      detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}${
+        regraIndenizacao.detalhe ? ` — ${regraIndenizacao.detalhe}` : ''
+      }`,
+      valor: indenizacaoAntecipada,
+    };
+    if (regraIndenizacao.natureza === 'provento') proventos.push(lancamento);
+    else descontosAntecipados.push(lancamento);
   }
 
   /* --- 13º proporcional --- */
@@ -260,7 +310,7 @@ export function calcularRescisao(dados) {
   }
 
   /* --- descontos --- */
-  const descontos = [];
+  const descontos = [...descontosAntecipados];
   const inssSalario = calcularINSS(saldoSalario);
   if (inssSalario > 0) {
     descontos.push({ chave: 'inss_salario', label: 'INSS sobre saldo de salário', detalhe: 'tabela progressiva', valor: inssSalario });
@@ -309,6 +359,20 @@ export function calcularRescisao(dados) {
     if (valor > 0) descontos.push({ chave, label, detalhe: 'informado', valor: arredondar(valor) });
   }
 
+  /* --- alertas (não bloqueiam o cálculo) --- */
+  if (clausulaAtiva) {
+    alertas.push(
+      'Com a cláusula assecuratória (art. 481), valem as regras do contrato por prazo indeterminado: '
+        + 'há aviso prévio e não incide a indenização dos arts. 479/480.',
+    );
+  }
+  if (campos.termoFinal && termoFinal && diffDias(admissao, termoFinal) + 1 > 90) {
+    alertas.push(
+      'O contrato dura mais de 90 dias: não pode ser de experiência (art. 445, parágrafo único). '
+        + 'Confirme se é contrato por prazo determinado comum.',
+    );
+  }
+
   /* --- FGTS --- */
   const saldoFgtsInformado = num(dados.saldoFgts);
   const baseFgtsRescisao = saldoSalario + decimoTerceiro + valorAviso;
@@ -322,11 +386,18 @@ export function calcularRescisao(dados) {
 
   return {
     erros: [],
+    alertas,
     contexto: {
       remuneracao,
       medias: arredondar(medias),
       anos,
+      meses: mesesCompletos(admissao, ultimoDiaTrabalhado),
+      diasContrato: diffDias(admissao, ultimoDiaTrabalhado) + 1,
       tipoAviso,
+      avisoAplicavel,
+      clausulaAtiva,
+      termoFinal,
+      diasRestantes,
       diasAvisoLegais,
       diasAvisoDevidos,
       ultimoDiaTrabalhado,
@@ -349,7 +420,10 @@ export function calcularRescisao(dados) {
       multa,
       rotuloMulta: tipo.fgts.rotuloMulta,
       saque: tipo.fgts.saque,
-      seguroDesemprego: tipo.fgts.seguroDesemprego,
+      seguroDesemprego:
+        clausulaAtiva && tipo.fgts.seguroDesempregoComClausula
+          ? tipo.fgts.seguroDesempregoComClausula
+          : tipo.fgts.seguroDesemprego,
     },
     totais: {
       proventos: totalProventos,

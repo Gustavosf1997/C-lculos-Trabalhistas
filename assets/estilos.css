@@ -66,6 +66,12 @@ body {
 .etapa__ajuda { margin: 0 0 16px; color: var(--tinta-media); font-size: 13.5px; }
 
 /* --------------------------------------------------------- cards de tipo */
+.tipos-grupos { display: flex; flex-direction: column; gap: 18px; }
+.grupo-tipos__titulo {
+  margin: 0 0 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--tinta-fraca);
+}
+.grupo-tipos__ajuda { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .tipos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .tipo {
   text-align: left; cursor: pointer; background: var(--papel);
@@ -160,6 +166,11 @@ body {
   background: var(--ambar-claro); color: var(--ambar); border: 1px solid #fde68a;
   padding: 3px 9px; border-radius: 999px;
 }
+.alerta {
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+  border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-top: 12px;
+}
+
 .aviso-erro {
   background: var(--ambar-claro); border: 1px solid #fde68a; color: #92400e;
   border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-top: 12px;

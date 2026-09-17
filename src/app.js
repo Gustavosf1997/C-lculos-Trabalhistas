@@ -3,7 +3,7 @@
  * pertinentes a cada um e apresenta a memória de cálculo.
  */
 
-import { TIPOS, ORDEM_TIPOS } from './tipos.js';
+import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
 import { calcularRescisao, formatarData, parseData, periodosAquisitivos } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
 
@@ -29,7 +29,13 @@ function parseMoeda(texto) {
 }
 
 function coletarDados() {
-  const dados = { tipo: tipoSelecionado, dataAdmissao: $('#dataAdmissao').value, dataAviso: $('#dataAviso').value };
+  const dados = {
+    tipo: tipoSelecionado,
+    dataAdmissao: $('#dataAdmissao').value,
+    dataAviso: $('#dataAviso').value,
+    dataTermoFinal: $('#dataTermoFinal').value,
+    clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
+  };
   for (const id of CAMPOS_MOEDA) dados[id] = parseMoeda($(`#${id}`).value);
   for (const id of CAMPOS_SIMPLES) dados[id] = $(`#${id}`).value;
   dados.tipoAviso = document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null;
@@ -42,20 +48,31 @@ function coletarDados() {
 function montarTipos() {
   const container = $('#tipos');
   container.innerHTML = '';
-  for (const id of ORDEM_TIPOS) {
-    const tipo = TIPOS[id];
-    const botao = document.createElement('button');
-    botao.type = 'button';
-    botao.className = 'tipo';
-    botao.role = 'radio';
-    botao.setAttribute('aria-checked', 'false');
-    botao.dataset.tipo = id;
-    botao.innerHTML = `
-      <span class="tipo__icone">${tipo.icone}</span>
-      <strong class="tipo__nome">${tipo.nome}</strong>
-      <span class="tipo__tag">${tipo.tag}</span>`;
-    botao.addEventListener('click', () => selecionarTipo(id));
-    container.append(botao);
+  for (const idGrupo of ORDEM_GRUPOS) {
+    const grupo = GRUPOS[idGrupo];
+    const bloco = document.createElement('div');
+    bloco.className = 'grupo-tipos';
+    bloco.innerHTML = `<p class="grupo-tipos__titulo">${grupo.titulo}${
+      grupo.ajuda ? ` <span class="grupo-tipos__ajuda">— ${grupo.ajuda}</span>` : ''
+    }</p><div class="tipos"></div>`;
+    const cartoes = bloco.querySelector('.tipos');
+
+    for (const id of tiposDoGrupo(idGrupo)) {
+      const tipo = TIPOS[id];
+      const botao = document.createElement('button');
+      botao.type = 'button';
+      botao.className = 'tipo';
+      botao.role = 'radio';
+      botao.setAttribute('aria-checked', 'false');
+      botao.dataset.tipo = id;
+      botao.innerHTML = `
+        <span class="tipo__icone">${tipo.icone}</span>
+        <strong class="tipo__nome">${tipo.nome}</strong>
+        <span class="tipo__tag">${tipo.tag}</span>`;
+      botao.addEventListener('click', () => selecionarTipo(id));
+      cartoes.append(botao);
+    }
+    container.append(bloco);
   }
 }
 
@@ -66,30 +83,49 @@ function selecionarTipo(id) {
   }
 
   const tipo = TIPOS[id];
-  $('#resumo-tipo').hidden = false;
-  $('#resumo-tipo').innerHTML = `
-    <p>${tipo.descricao}</p>
-    <div class="verbas">${tipo.verbas
-      .map((v) => `<span class="verba ${v.devida ? '' : 'verba--nao'}">${v.devida ? '✓' : '✕'} ${v.label}${
-        v.nota ? ` <small>(${v.nota})</small>` : ''
-      }</span>`)
-      .join('')}</div>`;
-
+  renderResumoTipo(tipo);
   montarOpcoesAviso(tipo);
-  $('#grupo-fgts').hidden = !tipo.campos.fgts;
+  aplicarVisibilidade(tipo);
   $('#etapa-dados').hidden = false;
   $('#painel').hidden = false;
   atualizar();
 }
 
+/** Resumo das verbas devidas — muda quando há cláusula assecuratória. */
+function renderResumoTipo(tipo) {
+  const clausula = tipo.campos.clausulaAssecuratoria && $('#clausulaAssecuratoria').checked;
+  const verbas = (clausula && tipo.verbasComClausula) || tipo.verbas;
+  $('#resumo-tipo').hidden = false;
+  $('#resumo-tipo').innerHTML = `
+    <p>${tipo.descricao}</p>
+    <div class="verbas">${verbas
+      .map((v) => `<span class="verba ${v.devida ? '' : 'verba--nao'}">${v.devida ? '✓' : '✕'} ${v.label}${
+        v.nota ? ` <small>(${v.nota})</small>` : ''
+      }</span>`)
+      .join('')}</div>`;
+}
+
+/** Mostra apenas os campos que o tipo de rescisão selecionado exige. */
+function aplicarVisibilidade(tipo) {
+  const campos = tipo.campos;
+  $('#grupo-fgts').hidden = !campos.fgts;
+  $('#campo-termo-final').hidden = !campos.termoFinal;
+  $('#campo-clausula').hidden = !campos.clausulaAssecuratoria;
+  // No término no prazo é o próprio termo final que encerra o contrato.
+  $('#campo-data-aviso').hidden = Boolean(campos.termoEncerraContrato);
+  $('#rotulo-data-aviso').innerHTML = `${tipo.rotuloDataAviso ?? 'Data do aviso prévio / desligamento'} <b>*</b>`;
+  $('#dica-data-aviso').textContent = tipo.dicaDataAviso ?? 'Data da comunicação da rescisão.';
+
+  // O aviso prévio do contrato a termo só existe com a cláusula do art. 481.
+  const clausula = $('#clausulaAssecuratoria').checked && campos.clausulaAssecuratoria;
+  $('#grupo-aviso').hidden = !tipo.aviso || (tipo.aviso.somenteComClausula && !clausula);
+}
+
 function montarOpcoesAviso(tipo) {
-  const grupo = $('#grupo-aviso');
   if (!tipo.aviso) {
-    grupo.hidden = true;
     $('#opcoes-aviso').innerHTML = '';
     return;
   }
-  grupo.hidden = false;
   $('#rotulo-aviso').textContent = tipo.aviso.rotulo;
   $('#dica-aviso').textContent = tipo.aviso.ajuda;
   $('#opcoes-aviso').innerHTML = tipo.aviso.opcoes
@@ -127,16 +163,29 @@ function renderResultado(resultado) {
   const { contexto: c, proventos, descontos, totais, fgts } = resultado;
   const tipo = TIPOS[tipoSelecionado];
 
+  const tempoDeServico =
+    c.anos >= 1 ? `${c.anos} ano(s)` : c.meses >= 1 ? `${c.meses} mês(es)` : `${c.diasContrato} dia(s)`;
+
   const contexto = [
-    ['Tempo de serviço', `${c.anos} ano(s)`],
+    ['Tempo de serviço', tempoDeServico],
     ['Último dia do contrato', formatarData(c.ultimoDiaTrabalhado)],
-    ['Aviso prévio', c.diasAvisoDevidos ? `${c.diasAvisoDevidos} dias` : 'não indenizado'],
+  ];
+  if (tipo.campos.termoFinal) {
+    contexto.push(['Termo final previsto', formatarData(c.termoFinal)]);
+    // Só faz sentido no encerramento antecipado.
+    if (tipo.indenizacaoAntecipada) {
+      contexto.push(['Dias até o termo final', `${c.diasRestantes} dia(s)`]);
+    }
+  }
+  contexto.push(
+    ['Aviso prévio', c.avisoAplicavel && c.diasAvisoDevidos ? `${c.diasAvisoDevidos} dias` : 'não indenizado'],
     ['Data projetada', formatarData(c.dataProjetada)],
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
-  ];
+  );
 
   alvo.innerHTML = `
+    ${resultado.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
     <dl class="contexto">
       ${contexto.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
     </dl>
@@ -180,7 +229,8 @@ function atualizarDicas(dados) {
   $('#nota-remuneracao').innerHTML = `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>`;
 
   const admissao = parseData(dados.dataAdmissao);
-  const desligamento = parseData(dados.dataAviso);
+  // No término no prazo não há data de desligamento: vale o termo final.
+  const desligamento = parseData(dados.dataAviso || dados.dataTermoFinal);
   const dica = $('#dica-periodos');
   if (admissao && desligamento && desligamento >= admissao) {
     const { completos } = periodosAquisitivos(admissao, desligamento);
@@ -194,6 +244,8 @@ function atualizar() {
   const dados = coletarDados();
   atualizarDicas(dados);
   if (!tipoSelecionado) return;
+  aplicarVisibilidade(TIPOS[tipoSelecionado]);
+  renderResumoTipo(TIPOS[tipoSelecionado]);
   renderResultado(calcularRescisao(dados));
 }
 
