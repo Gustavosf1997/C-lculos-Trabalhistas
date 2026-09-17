@@ -37,6 +37,11 @@ function diffDias(inicio, fim) {
   return Math.round((fim - inicio) / DIA_MS);
 }
 
+/** Dias entre duas datas, contando as duas pontas. */
+export function diasEntre(inicio, fim) {
+  return diffDias(inicio, fim) + 1;
+}
+
 export function anosCompletos(admissao, fim) {
   let anos = fim.getUTCFullYear() - admissao.getUTCFullYear();
   const aniversario = new Date(
@@ -127,7 +132,8 @@ function impostoPelaTabela(base) {
 export function calcularIRRF(rendimento, { inss = 0, dependentes = 0, pensao = 0 } = {}) {
   if (rendimento <= 0) return 0;
   const baseLegal = rendimento - inss - dependentes * IRRF.deducaoPorDependente - pensao;
-  const baseSimplificada = rendimento - Math.min(IRRF.descontoSimplificado, rendimento * 0.25) - pensao;
+  // O desconto simplificado é valor fixo e substitui todas as deduções legais.
+  const baseSimplificada = rendimento - IRRF.descontoSimplificado;
   const imposto = Math.min(impostoPelaTabela(baseLegal), impostoPelaTabela(baseSimplificada));
   return arredondar(Math.max(0, imposto));
 }
@@ -215,7 +221,8 @@ export function calcularRescisao(dados) {
   /* --- proventos --- */
   const proventos = [];
   const descontosAntecipados = [];
-  const diasSaldo = ultimoDiaTrabalhado.getUTCDate();
+  // Mês de 31 dias não gera 31/30 de salário: o teto é o mês cheio.
+  const diasSaldo = Math.min(ultimoDiaTrabalhado.getUTCDate(), 30);
   const saldoSalario = arredondar((remuneracao / 30) * diasSaldo);
   proventos.push({
     chave: 'saldo_salario',
@@ -256,17 +263,38 @@ export function calcularRescisao(dados) {
   /* --- 13º proporcional --- */
   let decimoTerceiro = 0;
   let avos13 = 0;
+  let avos13AnoSeguinte = 0;
   if (tipo.campos.decimoTerceiro) {
-    const inicioAno = new Date(Date.UTC(ultimoDiaTrabalhado.getUTCFullYear(), 0, 1));
+    const ano = ultimoDiaTrabalhado.getUTCFullYear();
+    const inicioAno = new Date(Date.UTC(ano, 0, 1));
+    const fimAno = new Date(Date.UTC(ano, 11, 31));
     const inicio13 = admissao > inicioAno ? admissao : inicioAno;
-    avos13 = contarAvos(inicio13, dataProjetada);
+    const fim13 = dataProjetada < fimAno ? dataProjetada : fimAno;
+
+    avos13 = contarAvos(inicio13, fim13);
     decimoTerceiro = arredondar((remuneracao / 12) * avos13);
     proventos.push({
       chave: 'decimo_terceiro',
-      label: '13º salário proporcional',
+      label: `13º salário proporcional (${ano})`,
       detalhe: `${avos13}/12 avos`,
       valor: decimoTerceiro,
     });
+
+    // Aviso indenizado no fim do ano projeta o contrato para o ano seguinte,
+    // que rende avos próprios de 13º.
+    if (dataProjetada > fimAno) {
+      avos13AnoSeguinte = contarAvos(new Date(Date.UTC(ano + 1, 0, 1)), dataProjetada);
+      if (avos13AnoSeguinte > 0) {
+        const valor = arredondar((remuneracao / 12) * avos13AnoSeguinte);
+        decimoTerceiro = arredondar(decimoTerceiro + valor);
+        proventos.push({
+          chave: 'decimo_terceiro_ano_seguinte',
+          label: `13º salário proporcional (${ano + 1})`,
+          detalhe: `${avos13AnoSeguinte}/12 avos`,
+          valor,
+        });
+      }
+    }
   }
 
   /* --- férias --- */
@@ -327,11 +355,18 @@ export function calcularRescisao(dados) {
 
   const dependentes = num(dados.dependentes);
   const pensaoPercentual = num(dados.pensaoPercentual);
-  const irrfSalario = calcularIRRF(saldoSalario, { inss: inssSalario, dependentes });
+  const fatorPensao = pensaoPercentual / 100;
+  const irrfSalario = calcularIRRF(saldoSalario, {
+    inss: inssSalario,
+    dependentes,
+    pensao: saldoSalario * fatorPensao,
+  });
   if (irrfSalario > 0) {
     descontos.push({ chave: 'irrf_salario', label: 'IRRF sobre saldo de salário', detalhe: 'tabela progressiva', valor: irrfSalario });
   }
-  const irrf13 = decimoTerceiro > 0 ? calcularIRRF(decimoTerceiro, { inss: inss13, dependentes }) : 0;
+  const irrf13 = decimoTerceiro > 0
+    ? calcularIRRF(decimoTerceiro, { inss: inss13, dependentes, pensao: decimoTerceiro * fatorPensao })
+    : 0;
   if (irrf13 > 0) {
     descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
   }
@@ -408,6 +443,7 @@ export function calcularRescisao(dados) {
       ultimoDiaTrabalhado,
       dataProjetada,
       avos13,
+      avos13AnoSeguinte,
       avosFerias,
       periodosVencidos,
       emDobro,

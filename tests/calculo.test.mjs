@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularRescisao, calcularINSS, contarAvos, parseData } from '../src/calculo.js';
+import { calcularRescisao, calcularINSS, calcularIRRF, contarAvos, parseData } from '../src/calculo.js';
 
 const base = {
   dataAdmissao: '2019-03-01',
@@ -188,4 +188,49 @@ test('contratos curtos informam meses e dias em vez de anos', () => {
   assert.equal(r.contexto.anos, 0);
   assert.equal(r.contexto.meses, 2);
   assert.equal(r.contexto.diasContrato, 90);
+});
+
+/* --------------------------------------------- correções de fórmula ------- */
+
+test('saldo de salário não passa do mês cheio em meses de 31 dias', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    dataAviso: '2026-01-31',
+    salarioBase: 3000,
+    mediaHorasExtras: 0,
+  });
+  assert.equal(r.contexto.diasSaldo, 30);
+  assert.equal(verba(r, 'saldo_salario'), 3000); // e não 3.100,00
+});
+
+test('aviso indenizado que projeta para o ano seguinte gera 13º dos dois anos', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-12-20',
+    salarioBase: 1200,
+  });
+  assert.equal(r.contexto.dataProjetada.toISOString().slice(0, 10), '2027-02-06');
+  assert.equal(r.contexto.avos13, 12);
+  assert.equal(r.contexto.avos13AnoSeguinte, 1);
+  assert.equal(verba(r, 'decimo_terceiro'), 1200);
+  assert.equal(verba(r, 'decimo_terceiro_ano_seguinte'), 100);
+});
+
+test('IRRF usa o desconto simplificado quando é mais favorável', () => {
+  const inss = calcularINSS(5000);
+  assert.equal(inss, 509.6);
+  // base legal 4.490,40 -> R$ 334,85; base simplificada 4.392,80 -> R$ 312,89
+  assert.equal(calcularIRRF(5000, { inss }), 312.89);
+});
+
+test('pensão alimentícia reduz a base do IRRF', () => {
+  const inss = calcularINSS(5000);
+  const semPensao = calcularIRRF(5000, { inss });
+  const comPensao = calcularIRRF(5000, { inss, pensao: 1000 });
+  assert.ok(comPensao < semPensao);
+  assert.equal(comPensao, 129.4);
 });

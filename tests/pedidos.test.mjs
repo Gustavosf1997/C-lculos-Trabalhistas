@@ -106,3 +106,17 @@ test('campos obrigatórios ausentes retornam erros', () => {
   const r = calcularHorasExtras({});
   assert.ok(r.erros.length >= 4);
 });
+
+test('período menor que uma competência vira fração de mês, não zero', () => {
+  const r = calcularHorasExtras({ ...base, dataInicio: '2024-01-20', dataFim: '2024-02-10' });
+  assert.equal(r.contexto.diasPeriodo, 22);
+  assert.ok(r.contexto.mesesFracionados);
+  assert.equal(r.contexto.meses, 0.73); // 22 / 30
+  assert.ok(r.totais.periodo > 0);
+});
+
+test('período com competências fechadas conta meses inteiros', () => {
+  const r = calcularHorasExtras({ ...base, dataInicio: '2024-01-01', dataFim: '2024-03-31' });
+  assert.equal(r.contexto.meses, 3);
+  assert.equal(r.contexto.mesesFracionados, false);
+});

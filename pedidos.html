@@ -41,16 +41,16 @@
             <div class="campos">
               <label class="campo">
                 <span class="campo__rotulo">Início do período <b>*</b></span>
-                <input type="date" id="dataInicio" />
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataInicio" />
                 <span class="campo__dica">Primeiro mês em que as horas extras foram prestadas.</span>
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Fim do período <b>*</b></span>
-                <input type="date" id="dataFim" />
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataFim" />
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Data do ajuizamento</span>
-                <input type="date" id="dataAjuizamento" />
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAjuizamento" />
                 <span class="campo__dica">Usada para conferir a prescrição quinquenal.</span>
               </label>
             </div>
@@ -61,7 +61,7 @@
             <div class="campos">
               <label class="campo">
                 <span class="campo__rotulo">Salário base mensal <b>*</b></span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" id="salarioBase" placeholder="0,00" /></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="salarioBase" placeholder="0,00" /></span>
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Jornada contratada</span>
@@ -70,12 +70,12 @@
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Divisor <b>*</b></span>
-                <input type="number" min="1" step="1" id="divisor" value="220" />
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="999" id="divisor" placeholder="220" value="220" />
                 <span class="campo__dica">Editável: categorias como a bancária usam 150 ou 180.</span>
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Outras parcelas salariais habituais</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" id="outrasParcelas" placeholder="0,00" /></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="outrasParcelas" placeholder="0,00" /></span>
                 <span class="campo__dica">Comissões, prêmios, adicional noturno (Súmula 264 do TST).</span>
               </label>
             </div>
@@ -110,7 +110,7 @@
               </label>
               <label class="campo" id="campo-base-informada" hidden>
                 <span class="campo__rotulo">Base informada</span>
-                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" id="baseInsalubridadeValor" placeholder="0,00" /></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="baseInsalubridadeValor" placeholder="0,00" /></span>
               </label>
             </div>
             <p class="nota-remuneracao" id="nota-risco" hidden></p>
@@ -128,21 +128,21 @@
               </fieldset>
               <label class="campo">
                 <span class="campo__rotulo">Quantidade de horas extras <b>*</b></span>
-                <input type="number" min="0" step="0.5" id="quantidadeHoras" placeholder="0" />
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="400" id="quantidadeHoras" placeholder="0" />
                 <span class="campo__dica" id="dica-quantidade">Média do período.</span>
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Adicional de hora extra</span>
-                <span class="campo__moeda campo__moeda--sufixo"><input type="number" min="0" step="5" id="adicionalHoraExtra" value="50" /><i>%</i></span>
+                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="adicionalHoraExtra" placeholder="50" value="50" /><i>%</i></span>
                 <span class="campo__dica">Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior.</span>
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Dias úteis no mês</span>
-                <input type="number" min="1" step="1" id="diasUteis" value="25" />
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="31" id="diasUteis" placeholder="25" value="25" />
               </label>
               <label class="campo">
                 <span class="campo__rotulo">Repousos no mês</span>
-                <input type="number" min="0" step="1" id="diasRepouso" value="5" />
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="15" id="diasRepouso" placeholder="5" value="5" />
                 <span class="campo__dica">Domingos e feriados, para o DSR.</span>
               </label>
             </div>
@@ -160,7 +160,7 @@
               <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexoAviso" /> <span>Aviso prévio indenizado</span></label>
               <label class="campo" id="campo-dias-aviso" hidden>
                 <span class="campo__rotulo">Dias de aviso prévio</span>
-                <input type="number" min="0" step="1" id="diasAviso" value="30" />
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="90" id="diasAviso" placeholder="30" value="30" />
               </label>
             </div>
           </fieldset>

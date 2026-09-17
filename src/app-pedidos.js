@@ -5,7 +5,8 @@
 
 import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRIDADE } from './pedidos.js';
 import { VIGENCIA } from './tabelas.js';
-import { moeda, parseMoeda, formatarCampoMoeda } from './formato.js';
+import { moeda, formatarQuantidade } from './formato.js';
+import { lerCampos, inicializarCampos } from './campos.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
@@ -32,12 +33,14 @@ const PEDIDOS = [
   { id: 'multas', nome: 'Multas dos arts. 467 e 477', tag: 'Atraso e diferenças', icone: '📌', disponivel: false },
 ];
 
-const CAMPOS_MOEDA = ['salarioBase', 'outrasParcelas', 'baseInsalubridadeValor'];
-const CAMPOS_SIMPLES = [
-  'dataInicio', 'dataFim', 'dataAjuizamento', 'divisor', 'quantidadeHoras',
-  'adicionalHoraExtra', 'diasUteis', 'diasRepouso', 'grauInsalubridade',
-  'baseInsalubridade', 'diasAviso',
+/** Campos digitáveis; o tipo de cada um está declarado no HTML. */
+const CAMPOS = [
+  'dataInicio', 'dataFim', 'dataAjuizamento',
+  'salarioBase', 'divisor', 'outrasParcelas', 'baseInsalubridadeValor',
+  'quantidadeHoras', 'adicionalHoraExtra', 'diasUteis', 'diasRepouso', 'diasAviso',
 ];
+/** Campos de seleção, lidos como texto. */
+const SELECTS = ['grauInsalubridade', 'baseInsalubridade'];
 const CHECKBOXES = ['reflexoDSR', 'dsrNosReflexos', 'reflexo13', 'reflexoFerias', 'reflexoFGTS', 'multaFGTS', 'reflexoAviso'];
 
 let pedidoSelecionado = null;
@@ -45,9 +48,9 @@ let pedidoSelecionado = null;
 /* ------------------------------------------------------------- formulário */
 
 function coletarDados() {
-  const dados = {};
-  for (const id of CAMPOS_SIMPLES) dados[id] = $(`#${id}`).value;
-  for (const id of CAMPOS_MOEDA) dados[id] = parseMoeda($(`#${id}`).value);
+  const { valores, erros } = lerCampos(CAMPOS);
+  const dados = { ...valores, errosDeCampo: erros };
+  for (const id of SELECTS) dados[id] = $(`#${id}`).value;
   for (const id of CHECKBOXES) dados[id] = $(`#${id}`).checked;
   dados.risco = document.querySelector('input[name="risco"]:checked')?.value ?? 'nenhum';
   dados.modoQuantidade = document.querySelector('input[name="modoQuantidade"]:checked')?.value ?? 'mes';
@@ -151,8 +154,8 @@ function renderResultado(r) {
     ['Divisor', String(c.divisor)],
     ['Valor da hora', moeda.format(c.valorHora)],
     [`Hora extra (+${c.percentualAdicional}%)`, moeda.format(c.valorHoraExtra)],
-    ['Horas por mês', c.horasMes.toLocaleString('pt-BR')],
-    ['Meses no período', String(c.meses)],
+    ['Horas por mês', formatarQuantidade(c.horasMes)],
+    ['Meses no período', c.mesesFracionados ? `${formatarQuantidade(c.meses)} (${c.diasPeriodo} dias)` : String(c.meses)],
   ];
 
   alvo.innerHTML = `
@@ -167,7 +170,7 @@ function renderResultado(r) {
       <tr class="total"><td>Total mensal</td><td>${moeda.format(r.totais.mensal)}</td></tr>
     </table>
 
-    <p class="bloco-titulo">No período (${c.meses} meses)</p>
+    <p class="bloco-titulo">No período (${formatarQuantidade(c.meses)} meses)</p>
     <table class="linhas">
       ${linhas(r.periodo)}
       <tr class="total"><td>Total das verbas</td><td>${moeda.format(r.totais.periodo)}</td></tr>
@@ -191,6 +194,13 @@ function atualizar() {
   const dados = coletarDados();
   aplicarVisibilidade(dados);
   if (!pedidoSelecionado) return;
+
+  // Campo com conteúdo inválido interrompe o cálculo: o valor seria chute.
+  if (dados.errosDeCampo.length) {
+    $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
+      <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    return;
+  }
   renderResultado(calcularHorasExtras(dados));
 }
 
@@ -206,8 +216,5 @@ $('#formulario').addEventListener('submit', (evento) => {
   atualizar();
 });
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
-for (const id of CAMPOS_MOEDA) {
-  const campo = $(`#${id}`);
-  campo.addEventListener('blur', () => formatarCampoMoeda(campo));
-}
+inicializarCampos();
 selecionarPedido('horas_extras');

@@ -5,7 +5,8 @@
  */
 
 import { FGTS, SALARIO_MINIMO } from './tabelas.js';
-import { parseData, formatarData, contarMeses } from './calculo.js';
+import { parseData, formatarData, contarMeses, diasEntre } from './calculo.js';
+import { moeda, formatarQuantidade } from './formato.js';
 
 /** Jornadas usuais e o divisor mensal correspondente (Súmula 431 do TST). */
 export const JORNADAS = [
@@ -118,7 +119,12 @@ export function calcularHorasExtras(dados) {
   const horasMes =
     dados.modoQuantidade === 'semana' ? horasInformadas * SEMANAS_POR_MES : horasInformadas;
 
-  const meses = contarMeses(inicio, fim);
+  // Períodos curtos não chegam a fechar uma competência de 15 dias: em vez de
+  // devolver zero, o período vira fração de mês.
+  const diasPeriodo = diasEntre(inicio, fim);
+  const mesesInteiros = contarMeses(inicio, fim);
+  const meses = mesesInteiros > 0 ? mesesInteiros : Math.round((diasPeriodo / 30) * 100) / 100;
+  const mesesFracionados = mesesInteiros === 0;
 
   /* --- valores mensais --- */
   const horasExtrasMes = arredondar(horasMes * valorHoraExtra);
@@ -128,7 +134,7 @@ export function calcularHorasExtras(dados) {
     {
       chave: 'horas_extras',
       label: 'Horas extras',
-      detalhe: `${horasMes.toFixed(2)} h/mês x ${formatarMoeda(valorHoraExtra)}`,
+      detalhe: `${formatarQuantidade(horasMes)} h/mês x ${moeda.format(valorHoraExtra)}`,
       valor: horasExtrasMes,
     },
   ];
@@ -214,6 +220,8 @@ export function calcularHorasExtras(dados) {
     alertas,
     contexto: {
       meses,
+      mesesFracionados,
+      diasPeriodo,
       divisor,
       baseCalculo,
       risco,
@@ -234,8 +242,4 @@ export function calcularHorasExtras(dados) {
       geral: arredondar(totalPeriodo + fgtsDevido + multaFgts),
     },
   };
-}
-
-function formatarMoeda(valor) {
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }

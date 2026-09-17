@@ -23,6 +23,14 @@ Os cálculos rodam no navegador — nenhum dado é enviado para servidor.
 node --test tests/*.test.mjs
 ```
 
+Há ainda uma verificação da interface no navegador (máscaras, validação e
+formato dos campos). Precisa do servidor no ar e do Playwright instalado:
+
+```bash
+npx http-server -p 8080 -c-1 . &
+node tests/interface.mjs
+```
+
 ## Estrutura
 
 | Arquivo | Papel |
@@ -34,10 +42,12 @@ node --test tests/*.test.mjs
 | `src/calculo.js` | Motor das verbas rescisórias (módulo puro, sem DOM) |
 | `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
-| `src/formato.js` | Leitura e formatação de valores em reais |
+| `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
+| `src/campos.js` | Máscara, validação e marcação de erro nos campos |
 | `src/app-rescisao.js` | Interface da aba de verbas rescisórias |
 | `src/app-pedidos.js` | Interface da aba de pedidos |
-| `tests/calculo.test.mjs`, `tests/pedidos.test.mjs` | Testes dos motores de cálculo |
+| `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
+| `tests/interface.mjs` | Verificação da interface no navegador (Playwright) |
 
 Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
 culpa recíproca, encerramento da empresa), basta adicionar uma entrada em
@@ -73,6 +83,28 @@ Verbas e descontos:
 - FGTS: depósito de 8% sobre as verbas salariais, multa de 40% ou 20%, saque e
   seguro-desemprego.
 
+## Campos e validação
+
+Todos os campos digitáveis são de texto com máscara, e não campos nativos de
+data ou número — assim o formato não depende do idioma do navegador:
+
+- **datas** em `dd/mm/aaaa`, com as barras inseridas durante a digitação;
+  data inexistente (31/02, por exemplo) é recusada;
+- **valores e quantidades** em padrão brasileiro: vírgula decimal e ponto de
+  milhar (`3.500,75`). Quem digita `12.5` recebe `12,5`; quem cola `1.234`
+  recebe mil duzentos e trinta e quatro, pela regra das três casas;
+- **letras e símbolos são descartados na digitação**, de modo que nenhum campo
+  chega ao cálculo com conteúdo inválido;
+- **limites** por campo (`data-min` / `data-max` no HTML): percentual de pensão
+  até 100, dias úteis até 31, divisor até 999 e assim por diante.
+
+Campo inválido fica destacado em vermelho, com a mensagem abaixo dele, e o
+cálculo é interrompido enquanto durar o erro — em vez de seguir com zero.
+Campo escondido pela modalidade escolhida não bloqueia nem entra na conta.
+
+O tipo de cada campo é declarado no HTML (`data-campo="data|moeda|decimal|inteiro"`)
+e `src/campos.js` cuida do resto.
+
 ## Módulo de pedidos
 
 Começa pelas **horas extras**. O cálculo parte da hora normal — base de cálculo
@@ -100,6 +132,10 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 
 - **As tabelas de INSS e IRRF em `src/tabelas.js` são de referência (2025) e
   precisam ser conferidas e atualizadas antes de qualquer uso oficial.**
+- Quando o aviso indenizado projeta o contrato para o ano seguinte, o 13º de
+  cada ano é calculado em separado, mas o INSS e o IRRF incidem sobre a soma.
+- As faltas injustificadas reduzem todos os períodos de férias informados, e
+  não apenas o período aquisitivo em que ocorreram.
 - Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
   doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
 - Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e

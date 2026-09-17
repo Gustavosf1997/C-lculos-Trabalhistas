@@ -4,35 +4,35 @@
  */
 
 import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
-import { calcularRescisao, formatarData, parseData, periodosAquisitivos } from './calculo.js';
+import { calcularRescisao, formatarData } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
-import { moeda, parseMoeda, formatarCampoMoeda } from './formato.js';
+import { moeda } from './formato.js';
+import { lerCampos, inicializarCampos } from './campos.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
-const CAMPOS_MOEDA = [
+/** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
+const CAMPOS = [
+  'dataAdmissao', 'dataAviso', 'dataTermoFinal',
   'salarioBase', 'mediaHorasExtras', 'mediaAdicionais', 'mediaComissoes',
-  'saldoFgts', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
+  'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts',
+  'dependentes', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
 ];
-const CAMPOS_SIMPLES = ['periodosFeriasVencidas', 'faltasInjustificadas', 'dependentes', 'pensaoPercentual'];
 
 let tipoSelecionado = null;
 
 /* ------------------------------------------------------------ utilitários */
 
 function coletarDados() {
-  const dados = {
+  const { valores, erros } = lerCampos(CAMPOS);
+  return {
+    ...valores,
     tipo: tipoSelecionado,
-    dataAdmissao: $('#dataAdmissao').value,
-    dataAviso: $('#dataAviso').value,
-    dataTermoFinal: $('#dataTermoFinal').value,
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
+    feriasDobro: $('#feriasDobro').checked,
+    tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
+    errosDeCampo: erros,
   };
-  for (const id of CAMPOS_MOEDA) dados[id] = parseMoeda($(`#${id}`).value);
-  for (const id of CAMPOS_SIMPLES) dados[id] = $(`#${id}`).value;
-  dados.tipoAviso = document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null;
-  dados.feriasDobro = $('#feriasDobro').checked;
-  return dados;
 }
 
 /* ------------------------------------------------------- tipos e formulário */
@@ -147,6 +147,7 @@ function renderResultado(resultado) {
   const alvo = $('#resultado');
 
   if (resultado.erros.length) {
+    atualizarDicaPeriodos(null);
     alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${resultado.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
     return;
@@ -154,6 +155,7 @@ function renderResultado(resultado) {
 
   const { contexto: c, proventos, descontos, totais, fgts } = resultado;
   const tipo = TIPOS[tipoSelecionado];
+  atualizarDicaPeriodos(c);
 
   const tempoDeServico =
     c.anos >= 1 ? `${c.anos} ano(s)` : c.meses >= 1 ? `${c.meses} mês(es)` : `${c.diasContrato} dia(s)`;
@@ -219,17 +221,13 @@ function atualizarDicas(dados) {
   const remuneracao =
     dados.salarioBase + dados.mediaHorasExtras + dados.mediaAdicionais + dados.mediaComissoes;
   $('#nota-remuneracao').innerHTML = `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>`;
+}
 
-  const admissao = parseData(dados.dataAdmissao);
-  // No término no prazo não há data de desligamento: vale o termo final.
-  const desligamento = parseData(dados.dataAviso || dados.dataTermoFinal);
-  const dica = $('#dica-periodos');
-  if (admissao && desligamento && desligamento >= admissao) {
-    const { completos } = periodosAquisitivos(admissao, desligamento);
-    dica.textContent = `Períodos aquisitivos completos no contrato: ${completos}. Informe quantos não foram gozados.`;
-  } else {
-    dica.textContent = 'Preencha as datas para ver os períodos aquisitivos completos.';
-  }
+/** A contagem de períodos vem do cálculo, para não divergir dele. */
+function atualizarDicaPeriodos(contexto) {
+  $('#dica-periodos').textContent = contexto
+    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados.`
+    : 'Preencha as datas para ver os períodos aquisitivos completos.';
 }
 
 function atualizar() {
@@ -238,6 +236,13 @@ function atualizar() {
   if (!tipoSelecionado) return;
   aplicarVisibilidade(TIPOS[tipoSelecionado]);
   renderResumoTipo(TIPOS[tipoSelecionado]);
+
+  // Campo com conteúdo inválido interrompe o cálculo: o valor seria chute.
+  if (dados.errosDeCampo.length) {
+    $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
+      <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    return;
+  }
   renderResultado(calcularRescisao(dados));
 }
 
@@ -253,7 +258,4 @@ $('#formulario').addEventListener('submit', (evento) => {
 });
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 
-for (const id of CAMPOS_MOEDA) {
-  const campo = $(`#${id}`);
-  campo.addEventListener('blur', () => formatarCampoMoeda(campo));
-}
+inicializarCampos();
