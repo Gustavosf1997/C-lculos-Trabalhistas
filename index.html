@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cálculo de Verbas Rescisórias</title>
+<link rel="stylesheet" href="assets/estilos.css" />
+</head>
+<body>
+  <header class="topo">
+    <div class="topo__conteudo">
+      <div class="topo__marca">
+        <span class="topo__logo">§</span>
+        <div>
+          <h1>Cálculos Trabalhistas</h1>
+          <p>Ferramenta de cálculos trabalhistas — esboço v0.1</p>
+        </div>
+      </div>
+      <span class="badge" id="badge-vigencia">tabelas</span>
+    </div>
+    <nav class="abas" aria-label="Módulos">
+      <a class="aba aba--ativa" href="index.html" aria-current="page">Verbas rescisórias</a>
+      <a class="aba" href="pedidos.html">Cálculo de pedidos</a>
+    </nav>
+  </header>
+
+  <main class="pagina">
+    <section class="etapa">
+      <h2><span class="etapa__num">1</span> Tipo de rescisão</h2>
+      <p class="etapa__ajuda">Selecione a modalidade: os campos e as verbas devidas mudam conforme a escolha.</p>
+      <div class="tipos-grupos" id="tipos" role="radiogroup" aria-label="Tipo de rescisão"></div>
+      <div class="resumo-tipo" id="resumo-tipo" hidden></div>
+    </section>
+
+    <div class="colunas">
+      <section class="etapa etapa--form" id="etapa-dados" hidden>
+        <h2><span class="etapa__num">2</span> Dados para o cálculo</h2>
+        <form id="formulario" autocomplete="off">
+          <fieldset class="grupo">
+            <legend>Contrato de trabalho</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Data de admissão <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAdmissao" />
+              </label>
+              <label class="campo" id="campo-termo-final" hidden>
+                <span class="campo__rotulo">Data do termo final previsto <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataTermoFinal" />
+                <span class="campo__dica">Data combinada para o fim do contrato (experiência: até 90 dias).</span>
+              </label>
+              <label class="campo" id="campo-data-aviso">
+                <span class="campo__rotulo" id="rotulo-data-aviso">Data do aviso prévio / desligamento <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAviso" />
+                <span class="campo__dica" id="dica-data-aviso">Data da comunicação da rescisão.</span>
+              </label>
+              <label class="campo campo--largo checkbox" id="campo-clausula" hidden>
+                <input type="checkbox" id="clausulaAssecuratoria" />
+                <span>Contrato com <b>cláusula assecuratória</b> do direito recíproco de rescisão antecipada (art. 481 da CLT)</span>
+              </label>
+            </div>
+            <div class="campos" id="grupo-aviso" hidden>
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo" id="rotulo-aviso">Aviso prévio</legend>
+                <div class="opcoes__lista" id="opcoes-aviso"></div>
+                <span class="campo__dica" id="dica-aviso"></span>
+              </fieldset>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Remuneração</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Último salário base <b>*</b></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="salarioBase" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Média de horas extras</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaHorasExtras" placeholder="0,00" /></span>
+                <span class="campo__dica">Média dos últimos 12 meses.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Adicionais (insalubridade, periculosidade, noturno)</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaAdicionais" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Comissões, gorjetas e prêmios</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaComissoes" placeholder="0,00" /></span>
+              </label>
+            </div>
+            <p class="nota-remuneracao" id="nota-remuneracao">Remuneração para cálculo: <b>R$ 0,00</b></p>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Férias</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Períodos de férias vencidas (não gozadas)</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="20" id="periodosFeriasVencidas" placeholder="0" />
+                <span class="campo__dica" id="dica-periodos">Preencha as datas para ver os períodos aquisitivos completos.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Faltas injustificadas no período aquisitivo</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="365" id="faltasInjustificadas" placeholder="0" />
+                <span class="campo__dica">Acima de 5 faltas, reduz os dias de férias (art. 130 da CLT).</span>
+              </label>
+              <label class="campo campo--largo checkbox">
+                <input type="checkbox" id="feriasDobro" />
+                <span>Pagar as férias vencidas <b>em dobro</b> (período concessivo expirado — art. 137 da CLT)</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo" id="grupo-fgts">
+            <legend>FGTS</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Saldo do FGTS depositado</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="saldoFgts" placeholder="0,00" /></span>
+                <span class="campo__dica">Extrato da conta vinculada, sem os depósitos da rescisão (base da multa).</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Descontos e dados fiscais</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Dependentes para IRRF</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="30" id="dependentes" placeholder="0" />
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Pensão alimentícia</span>
+                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="pensaoPercentual" placeholder="0" /><i>%</i></span>
+                <span class="campo__dica">Percentual incidente sobre as verbas rescisórias.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Adiantamento de salário</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="adiantamentoSalario" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Adiantamento do 13º</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="adiantamento13" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Outros descontos (VT, VR, empréstimos)</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="outrosDescontos" placeholder="0,00" /></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="acoes">
+            <button type="submit" class="botao botao--primario">Calcular verbas</button>
+            <button type="reset" class="botao">Limpar</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="painel" id="painel" hidden>
+        <div class="painel__topo">
+          <h2>Resultado</h2>
+          <span class="painel__tag">estimativa</span>
+        </div>
+        <div id="resultado"></div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="rodape">
+    <p><b>Uso orientativo.</b> Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.</p>
+    <p id="rodape-vigencia"></p>
+  </footer>
+
+  <script type="module" src="src/app-rescisao.js"></script>
+</body>
+</html>

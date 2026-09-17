@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cálculo de Pedidos</title>
+<link rel="stylesheet" href="assets/estilos.css" />
+</head>
+<body>
+  <header class="topo">
+    <div class="topo__conteudo">
+      <div class="topo__marca">
+        <span class="topo__logo">§</span>
+        <div>
+          <h1>Cálculos Trabalhistas</h1>
+          <p>Ferramenta de cálculos trabalhistas — esboço v0.1</p>
+        </div>
+      </div>
+      <span class="badge" id="badge-vigencia">tabelas</span>
+    </div>
+    <nav class="abas" aria-label="Módulos">
+      <a class="aba" href="index.html">Verbas rescisórias</a>
+      <a class="aba aba--ativa" href="pedidos.html" aria-current="page">Cálculo de pedidos</a>
+    </nav>
+  </header>
+
+  <main class="pagina">
+    <section class="etapa">
+      <h2><span class="etapa__num">1</span> Pedido</h2>
+      <p class="etapa__ajuda">Escolha o pedido a calcular. Cada um pede os dados que lhe são próprios.</p>
+      <div class="tipos" id="pedidos"></div>
+      <div class="resumo-tipo" id="resumo-pedido" hidden></div>
+    </section>
+
+    <div class="colunas">
+      <section class="etapa etapa--form">
+        <h2><span class="etapa__num">2</span> Dados do pedido</h2>
+        <form id="formulario" autocomplete="off">
+          <fieldset class="grupo">
+            <legend>Período pedido</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Início do período <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataInicio" />
+                <span class="campo__dica">Primeiro mês em que as horas extras foram prestadas.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Fim do período <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataFim" />
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Data do ajuizamento</span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAjuizamento" />
+                <span class="campo__dica">Usada para conferir a prescrição quinquenal.</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Remuneração e jornada</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Salário base mensal <b>*</b></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="salarioBase" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Jornada contratada</span>
+                <select id="jornada"></select>
+                <span class="campo__dica">Define o divisor mensal (Súmula 431 do TST).</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Divisor <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="999" id="divisor" placeholder="220" value="220" />
+                <span class="campo__dica">Editável: categorias como a bancária usam 150 ou 180.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Outras parcelas salariais habituais</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="outrasParcelas" placeholder="0,00" /></span>
+                <span class="campo__dica">Comissões, prêmios, adicional noturno (Súmula 264 do TST).</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Adicional de insalubridade ou periculosidade</legend>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">O trabalho era insalubre ou perigoso?</legend>
+                <div class="opcoes__lista">
+                  <label class="opcao"><input type="radio" name="risco" value="nenhum" checked /> Nenhum</label>
+                  <label class="opcao"><input type="radio" name="risco" value="insalubridade" /> Insalubridade</label>
+                  <label class="opcao"><input type="radio" name="risco" value="periculosidade" /> Periculosidade</label>
+                </div>
+                <span class="campo__dica">Não se acumulam: o empregado opta por um deles (art. 193, §2º, da CLT). O adicional integra a base das horas extras (Súmulas 132 e 264 do TST).</span>
+              </fieldset>
+            </div>
+            <div class="campos" id="campos-insalubridade" hidden>
+              <label class="campo">
+                <span class="campo__rotulo">Grau</span>
+                <select id="grauInsalubridade"></select>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Base de cálculo</span>
+                <select id="baseInsalubridade">
+                  <option value="salario_minimo">Salário mínimo (art. 192 da CLT)</option>
+                  <option value="salario_base">Salário base</option>
+                  <option value="valor_informado">Valor informado</option>
+                </select>
+                <span class="campo__dica">A Súmula 228 do TST está suspensa; a norma coletiva pode fixar base maior.</span>
+              </label>
+              <label class="campo" id="campo-base-informada" hidden>
+                <span class="campo__rotulo">Base informada</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="baseInsalubridadeValor" placeholder="0,00" /></span>
+              </label>
+            </div>
+            <p class="nota-remuneracao" id="nota-risco" hidden></p>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Horas extras</legend>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">Como informar a quantidade</legend>
+                <div class="opcoes__lista">
+                  <label class="opcao"><input type="radio" name="modoQuantidade" value="mes" checked /> Horas por mês</label>
+                  <label class="opcao"><input type="radio" name="modoQuantidade" value="semana" /> Horas por semana</label>
+                </div>
+              </fieldset>
+              <label class="campo">
+                <span class="campo__rotulo">Quantidade de horas extras <b>*</b></span>
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="400" id="quantidadeHoras" placeholder="0" />
+                <span class="campo__dica" id="dica-quantidade">Média do período.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Adicional de hora extra</span>
+                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="adicionalHoraExtra" placeholder="50" value="50" /><i>%</i></span>
+                <span class="campo__dica">Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Dias úteis no mês</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="31" id="diasUteis" placeholder="25" value="25" />
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Repousos no mês</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="15" id="diasRepouso" placeholder="5" value="5" />
+                <span class="campo__dica">Domingos e feriados, para o DSR.</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Reflexos</legend>
+            <div class="campos">
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexoDSR" checked /> <span>DSR sobre as horas extras (Lei 605/49, Súmula 172 do TST)</span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="dsrNosReflexos" checked /> <span>DSR majorado repercute nas demais verbas <b>(OJ 394, II, da SDI-1 — horas extras a partir de 20/03/2023)</b></span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexo13" checked /> <span>13º salário</span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexoFerias" checked /> <span>Férias + 1/3</span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexoFGTS" checked /> <span>FGTS (8%)</span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="multaFGTS" /> <span>Multa de 40% do FGTS (dispensa sem justa causa)</span></label>
+              <label class="campo campo--largo checkbox"><input type="checkbox" id="reflexoAviso" /> <span>Aviso prévio indenizado</span></label>
+              <label class="campo" id="campo-dias-aviso" hidden>
+                <span class="campo__rotulo">Dias de aviso prévio</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="90" id="diasAviso" placeholder="30" value="30" />
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="acoes">
+            <button type="submit" class="botao botao--primario">Calcular pedido</button>
+            <button type="reset" class="botao">Limpar</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="painel">
+        <div class="painel__topo">
+          <h2>Resultado</h2>
+          <span class="painel__tag">estimativa</span>
+        </div>
+        <div id="resultado"></div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="rodape">
+    <p><b>Uso orientativo.</b> Os valores são estimativas e não substituem a memória de cálculo do processo. Não há aplicação de juros nem de correção monetária.</p>
+    <p id="rodape-vigencia"></p>
+  </footer>
+
+  <script type="module" src="src/app-pedidos.js"></script>
+</body>
+</html>
