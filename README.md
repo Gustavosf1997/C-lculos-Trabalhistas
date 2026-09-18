@@ -173,11 +173,16 @@ Sobre isso incidem o adicional de hora extra (50% por padrão), o **DSR**
 prévio — cada um ligável e desligável. A repercussão do DSR majorado nas demais
 verbas segue a OJ 394, II, da SDI-1, válida para horas extras a partir de
 20/03/2023; a tela avisa quando o período pedido começa antes desse marco.
-Informada a data do ajuizamento, a prescrição quinquenal é tratada como o que
-é — fato impeditivo do direito: havendo parcela prescrita no período, o cálculo
-não acontece. O painel mostra uma caixa vermelha explicando se a prescrição é
-integral ou parcial, e os demais campos ficam bloqueados. As três datas seguem
-editáveis, já que é por elas que o impedimento se afasta.
+Informada a data do ajuizamento, a prescrição quinquenal é apurada antes de
+qualquer conta, em dois desfechos:
+
+- **período inteiro prescrito** — nada a calcular. Caixa vermelha no lugar do
+  resultado e demais campos bloqueados; só as três datas seguem editáveis, já
+  que é por elas que o impedimento se afasta;
+- **parte do período prescrita** — o cálculo corre a partir do marco
+  quinquenal e só sobre ele. Um aviso no topo do resultado diz quais parcelas
+  estão prescritas e qual período foi efetivamente calculado, e o resumo traz
+  esse período. O recorte dá o mesmo resultado de pedir o período já ajustado.
 
 Próximos pedidos previstos na tela: adicional noturno, intervalo intrajornada,
 insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 477.

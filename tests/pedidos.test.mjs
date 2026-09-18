@@ -96,19 +96,40 @@ test('prescrição quinquenal impede o cálculo, e não apenas alerta', () => {
   assert.deepEqual(r.mensais, []);
 });
 
-test('prescrição integral e parcial recebem mensagens distintas', () => {
+test('prescrição integral impede o cálculo', () => {
   const integral = calcularHorasExtras({
     ...base, dataInicio: '2015-01-01', dataFim: '2020-01-01', dataAjuizamento: '2026-09-18',
   });
   assert.ok(integral.impedimento.integral);
   assert.match(integral.impedimento.titulo, /integralmente prescrito/);
   assert.ok(integral.impedimento.mensagem.includes('18/09/2021')); // marco quinquenal
+  assert.equal(integral.totais, null);
+});
 
-  const parcial = calcularHorasExtras({
+test('prescrição parcial recorta o período e calcula o imprescrito', () => {
+  const r = calcularHorasExtras({
     ...base, dataInicio: '2019-01-01', dataFim: '2024-01-01', dataAjuizamento: '2026-09-18',
   });
-  assert.equal(parcial.impedimento.integral, false);
-  assert.match(parcial.impedimento.titulo, /parcelas prescritas/);
+  assert.equal(r.impedimento, null);
+  assert.ok(r.recorte);
+  assert.match(r.recorte.titulo, /Parte do período/);
+  assert.ok(r.recorte.mensagem.includes('18/09/2021 a 01/01/2024'));
+  // o cálculo passa a correr do marco, não da data pedida
+  assert.equal(r.contexto.inicio.toISOString().slice(0, 10), '2021-09-18');
+  assert.equal(r.contexto.inicioPedido.toISOString().slice(0, 10), '2019-01-01');
+  assert.ok(r.totais.periodo > 0);
+});
+
+test('o recorte dá o mesmo resultado de pedir o período já ajustado', () => {
+  const recortado = calcularHorasExtras({
+    ...base, dataInicio: '2019-01-01', dataFim: '2024-01-01', dataAjuizamento: '2026-09-18',
+  });
+  const pedidoCerto = calcularHorasExtras({
+    ...base, dataInicio: '2021-09-18', dataFim: '2024-01-01', dataAjuizamento: '2026-09-18',
+  });
+  assert.equal(pedidoCerto.recorte, null);
+  assert.equal(recortado.contexto.meses, pedidoCerto.contexto.meses);
+  assert.equal(recortado.totais.geral, pedidoCerto.totais.geral);
 });
 
 test('período dentro do quinquênio calcula normalmente', () => {

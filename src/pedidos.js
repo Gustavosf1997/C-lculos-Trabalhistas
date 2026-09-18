@@ -104,38 +104,59 @@ export function calcularHorasExtras(dados) {
 
   if (erros.length) {
     return {
-      erros, alertas: [], impedimento: null, contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
+      erros,
+      alertas: [],
+      impedimento: null,
+      recorte: null,
+      contexto: null,
+      mensais: [],
+      periodo: [],
+      fgts: null,
+      totais: null,
     };
   }
 
-  // Prescrição quinquenal (art. 7º, XXIX, da CF): fato impeditivo do direito,
-  // apurado antes de qualquer conta. Havendo parcela prescrita no período, não
-  // há o que calcular enquanto ele não for ajustado.
+  // Prescrição quinquenal (art. 7º, XXIX, da CF), apurada antes de qualquer
+  // conta. Prescrito o período inteiro, não há o que calcular; prescrita só
+  // uma parte, o cálculo corre a partir do marco e diz isso na cara.
   const ajuizamento = parseData(dados.dataAjuizamento);
+  let inicioCalculo = inicio;
+  let recorte = null;
+
   if (ajuizamento) {
     const marco = new Date(
       Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
     );
-    if (inicio < marco) {
-      const integral = fim < marco;
+
+    if (fim < marco) {
       return {
         erros: [],
         alertas: [],
         impedimento: {
-          integral,
+          integral: true,
           marco,
-          titulo: integral ? 'Pedido integralmente prescrito' : 'Há parcelas prescritas no período',
-          mensagem: integral
-            ? `Todo o período pedido é anterior a ${formatarData(marco)}, marco da prescrição `
-              + `quinquenal contado do ajuizamento em ${formatarData(ajuizamento)}. Não há parcela exigível a calcular.`
-            : `As parcelas anteriores a ${formatarData(marco)} estão prescritas, contadas do ajuizamento `
-              + `em ${formatarData(ajuizamento)}. Ajuste o início do período para essa data ou posterior.`,
+          titulo: 'Pedido integralmente prescrito',
+          mensagem: `Todo o período pedido é anterior a ${formatarData(marco)}, marco da prescrição `
+            + `quinquenal contado do ajuizamento em ${formatarData(ajuizamento)}. Não há parcela exigível a calcular.`,
         },
+        recorte: null,
         contexto: null,
         mensais: [],
         periodo: [],
         fgts: null,
         totais: null,
+      };
+    }
+
+    if (inicio < marco) {
+      inicioCalculo = marco;
+      recorte = {
+        marco,
+        inicioPedido: inicio,
+        titulo: 'Parte do período está prescrita',
+        mensagem: `As parcelas anteriores a ${formatarData(marco)} estão prescritas, contadas do `
+          + `ajuizamento em ${formatarData(ajuizamento)}. O cálculo abaixo considera apenas o período `
+          + `imprescrito, de ${formatarData(marco)} a ${formatarData(fim)}.`,
       };
     }
   }
@@ -155,8 +176,8 @@ export function calcularHorasExtras(dados) {
 
   // Períodos curtos não chegam a fechar uma competência de 15 dias: em vez de
   // devolver zero, o período vira fração de mês.
-  const diasPeriodo = diasEntre(inicio, fim);
-  const mesesInteiros = contarMeses(inicio, fim);
+  const diasPeriodo = diasEntre(inicioCalculo, fim);
+  const mesesInteiros = contarMeses(inicioCalculo, fim);
   const meses = mesesInteiros > 0 ? mesesInteiros : Math.round((diasPeriodo / 30) * 100) / 100;
   const mesesFracionados = mesesInteiros === 0;
 
@@ -188,7 +209,7 @@ export function calcularHorasExtras(dados) {
   const dsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
   const baseReflexos = horasExtrasMes + (dsrNosReflexos ? dsrMes : 0);
 
-  if (dsrNosReflexos && inicio < parseData(MARCO_OJ_394)) {
+  if (dsrNosReflexos && inicioCalculo < parseData(MARCO_OJ_394)) {
     alertas.push(
       'O DSR majorado só repercute nas demais verbas para horas extras a partir de '
         + `${formatarData(parseData(MARCO_OJ_394))} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco.`,
@@ -239,6 +260,7 @@ export function calcularHorasExtras(dados) {
     erros: [],
     alertas,
     impedimento: null,
+    recorte,
     contexto: {
       meses,
       mesesFracionados,
@@ -250,7 +272,8 @@ export function calcularHorasExtras(dados) {
       valorHoraExtra: arredondar(valorHoraExtra),
       percentualAdicional,
       horasMes: arredondar(horasMes),
-      inicio,
+      inicio: inicioCalculo,
+      inicioPedido: inicio,
       fim,
     },
     mensais,

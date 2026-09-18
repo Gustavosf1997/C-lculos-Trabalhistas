@@ -4,6 +4,7 @@
  */
 
 import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRIDADE } from './pedidos.js';
+import { formatarData } from './calculo.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
 import { CARIMBO } from './versao.js';
 import { moeda, formatarQuantidade } from './formato.js';
@@ -162,6 +163,7 @@ function renderResultado(r) {
 
   const c = r.contexto;
   const contexto = [
+    ['Período calculado', `${formatarData(c.inicio)} a ${formatarData(c.fim)}`],
     ['Base de cálculo', moeda.format(c.baseCalculo)],
     ['Divisor', String(c.divisor)],
     ['Valor da hora', moeda.format(c.valorHora)],
@@ -171,6 +173,10 @@ function renderResultado(r) {
   ];
 
   alvo.innerHTML = `
+    ${r.recorte ? `<div class="recorte" role="alert">
+      <b>${r.recorte.titulo}</b>
+      <p>${r.recorte.mensagem}</p>
+    </div>` : ''}
     ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
     <dl class="contexto">
       ${contexto.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
