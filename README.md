@@ -94,7 +94,9 @@ Verbas e descontos:
   e periculosidade se excluem (art. 193, §2º);
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
-  com redução por faltas injustificadas (art. 130);
+  com redução por faltas injustificadas (art. 130). Os períodos vencidos são
+  informados por quem calcula — a ferramenta não tem como saber quais férias
+  foram gozadas —, e o painel mostra quantos períodos entraram na conta;
 - as duas contagens de avos seguem regras diferentes, como na lei: os avos de
   **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
   aberto na saída só vira avo com fração superior a 14 dias *dentro dele*

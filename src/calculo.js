@@ -402,7 +402,13 @@ export function calcularRescisao(dados) {
   const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
-  if (periodosVencidos > 0) {
+  if (periodosVencidos > 0 && fatorFaltas === 0) {
+    alertas.push(
+      `Com ${num(dados.faltasInjustificadas)} faltas injustificadas o empregado perde o direito às `
+        + 'férias do período (art. 130 da CLT), e por isso os períodos vencidos não foram pagos.',
+    );
+  }
+  if (periodosVencidos > 0 && fatorFaltas > 0) {
     feriasVencidas = arredondar(remuneracao * fatorFaltas * periodosVencidos * (emDobro ? 2 : 1));
     proventos.push({
       chave: 'ferias_vencidas',
@@ -583,6 +589,7 @@ export function calcularRescisao(dados) {
       avos13AnoSeguinte,
       avosFerias,
       periodosVencidos,
+      periodosInformados,
       emDobro,
       periodosCompletosCalculados: completos,
       diasFerias,

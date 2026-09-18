@@ -125,6 +125,23 @@ checar(
 );
 checar('campo some junto com a marcação', await page.locator('#campo-horas_negativas').isHidden(), null);
 
+// férias vencidas: entram na conta e aparecem no resumo
+await page.fill('#periodosFeriasVencidas', '1');
+await page.waitForTimeout(300);
+checar(
+  'férias vencidas entram nas verbas',
+  (await page.locator('.linhas tr', { hasText: 'Férias vencidas' }).count()) > 0,
+  null,
+);
+const resumoFerias = await page.locator('.contexto div', { hasText: 'Férias vencidas' }).textContent();
+checar('resumo mostra os períodos computados', resumoFerias.includes('1 período'), resumoFerias);
+
+await page.fill('#periodosFeriasVencidas', '9');
+await page.waitForTimeout(300);
+const erroPeriodos = await page.locator('.campo:has(#periodosFeriasVencidas) .campo__erro').textContent().catch(() => null);
+checar('período além do contrato marca o campo', (erroPeriodos ?? '').includes('completou'), erroPeriodos);
+await page.fill('#periodosFeriasVencidas', '1');
+
 // memória de cálculo para PDF
 checar('PDF bloqueado sem cálculo fechado', true, null); // conferido no carregamento
 await page.evaluate(() => { window.print = () => { window.__imprimiu = true; }; });

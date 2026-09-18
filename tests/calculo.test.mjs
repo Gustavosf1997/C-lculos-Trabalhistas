@@ -518,3 +518,31 @@ test('13º de dois anos é tributado como dois fatos, não como um só', () => {
   assert.equal(desconto(r, 'inss_13'), 217.85);
   assert.notEqual(desconto(r, 'inss_13'), calcularINSS(2708.33));
 });
+
+test('faltas que zeram o direito a férias explicam a ausência da verba', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 1,
+    faltasInjustificadas: 40,
+  });
+  assert.equal(r.contexto.diasFerias, 0);
+  assert.equal(verba(r, 'ferias_vencidas'), 0); // sem linha de R$ 0,00
+  assert.ok(r.alertas.some((a) => a.includes('art. 130')));
+});
+
+test('o contexto guarda o que foi informado e o que foi usado', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2026-03-01',
+    dataAviso: '2026-09-15',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 1,
+  });
+  assert.equal(r.contexto.periodosInformados, 1);
+  assert.equal(r.contexto.periodosCompletosCalculados, 0);
+  assert.equal(r.contexto.periodosVencidos, 0);
+});

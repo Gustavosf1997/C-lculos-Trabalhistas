@@ -7,7 +7,7 @@ import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
 import { calcularRescisao, formatarData, valorHorasExtras } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
 import { moeda } from './formato.js';
-import { lerCampos, inicializarCampos } from './campos.js';
+import { lerCampos, inicializarCampos, marcarErro } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
 import { montarMemoria, imprimir } from './memoria.js';
@@ -241,6 +241,15 @@ function renderResultado(resultado) {
   const tipo = TIPOS[tipoSelecionado];
   atualizarDicaPeriodos(c);
 
+  // Período vencido a mais do que o contrato comporta é erro do campo, não
+  // nota de rodapé: fica marcado onde foi digitado.
+  marcarErro(
+    $('#periodosFeriasVencidas'),
+    c.periodosInformados > c.periodosCompletosCalculados
+      ? `O contrato completou ${c.periodosCompletosCalculados} período(s) aquisitivo(s).`
+      : null,
+  );
+
   const tempoDeServico =
     c.anos >= 1 ? `${c.anos} ano(s)` : c.meses >= 1 ? `${c.meses} mês(es)` : `${c.diasContrato} dia(s)`;
 
@@ -260,6 +269,7 @@ function renderResultado(resultado) {
     ['Data projetada', formatarData(c.dataProjetada)],
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
+    ['Férias vencidas', c.periodosVencidos ? `${c.periodosVencidos} período(s)` : 'nenhum computado'],
   );
 
   alvo.innerHTML = `
