@@ -6,6 +6,7 @@
 import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
 import { calcularRescisao, formatarData, valorHorasExtras } from './calculo.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
+import { CARIMBO } from './versao.js';
 import { moeda } from './formato.js';
 import { lerCampos, inicializarCampos, marcarErro } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
@@ -393,6 +394,7 @@ montarDescontos();
 adicionaisMarcados = ligarGrupo('adicionais', SEM_ADICIONAIS, aplicarExclusoes);
 descontosMarcados = ligarGrupo('descontos', SEM_DESCONTOS, aplicarExclusoesDesconto);
 $('#badge-vigencia').textContent = VIGENCIA;
+$('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
 $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
 $('#formulario').addEventListener('input', atualizar);
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por

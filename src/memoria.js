@@ -8,6 +8,7 @@
  */
 
 import { VIGENCIA_DETALHE } from './tabelas.js';
+import { CARIMBO } from './versao.js';
 
 const texto = (el) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
@@ -102,6 +103,7 @@ export function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape
 
     <footer class="memoria__rodape">
       <p>${VIGENCIA_DETALHE}</p>
+      <p>Gerada pela ferramenta de cálculos trabalhistas — ${CARIMBO}</p>
       <p>${rodape}</p>
     </footer>`;
 }

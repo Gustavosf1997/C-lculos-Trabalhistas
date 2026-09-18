@@ -4,7 +4,9 @@
  */
 
 import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRIDADE } from './pedidos.js';
+import { formatarData } from './calculo.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
+import { CARIMBO } from './versao.js';
 import { moeda, formatarQuantidade } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { montarMemoria, imprimir } from './memoria.js';
@@ -143,6 +145,16 @@ function linhas(itens) {
 function renderResultado(r) {
   const alvo = $('#resultado');
 
+  // Prescrição barra o cálculo: caixa vermelha no lugar do resultado.
+  if (r.impedimento) {
+    alvo.innerHTML = `<div class="impedimento" role="alert">
+      <b>${r.impedimento.titulo}</b>
+      <p>${r.impedimento.mensagem}</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. Corrija o período pedido ou a data do ajuizamento para liberar o cálculo.</p>
+    </div>`;
+    return;
+  }
+
   if (r.erros.length) {
     alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${r.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
@@ -151,6 +163,7 @@ function renderResultado(r) {
 
   const c = r.contexto;
   const contexto = [
+    ['Período calculado', `${formatarData(c.inicio)} a ${formatarData(c.fim)}`],
     ['Base de cálculo', moeda.format(c.baseCalculo)],
     ['Divisor', String(c.divisor)],
     ['Valor da hora', moeda.format(c.valorHora)],
@@ -160,6 +173,10 @@ function renderResultado(r) {
   ];
 
   alvo.innerHTML = `
+    ${r.recorte ? `<div class="recorte" role="alert">
+      <b>${r.recorte.titulo}</b>
+      <p>${r.recorte.mensagem}</p>
+    </div>` : ''}
     ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
     <dl class="contexto">
       ${contexto.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
@@ -189,6 +206,17 @@ function renderResultado(r) {
     <p class="observacao">Sem juros e sem correção monetária.</p>`;
 }
 
+/** Campos que permanecem editáveis: são eles que afastam o impedimento. */
+const CAMPOS_DO_PERIODO = ['dataInicio', 'dataFim', 'dataAjuizamento'];
+
+/** Prescrição reconhecida: a tela para de aceitar os demais dados. */
+function bloquearEntrada(bloqueado) {
+  for (const campo of $('#formulario').querySelectorAll('input, select')) {
+    if (!CAMPOS_DO_PERIODO.includes(campo.id)) campo.disabled = bloqueado;
+  }
+  $('#formulario').classList.toggle('formulario--bloqueado', bloqueado);
+}
+
 /* ------------------------------------------------------------- atualização */
 
 function atualizar() {
@@ -200,11 +228,14 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    bloquearEntrada(false);
   } else {
-    renderResultado(calcularHorasExtras(dados));
+    const resultado = calcularHorasExtras(dados);
+    renderResultado(resultado);
+    bloquearEntrada(Boolean(resultado.impedimento));
   }
   // Só se gera PDF de um cálculo fechado.
-  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro, #resultado .impedimento'));
 }
 
 function gerarPdf() {
@@ -224,6 +255,7 @@ function gerarPdf() {
 montarPedidos();
 montarSelects();
 $('#badge-vigencia').textContent = VIGENCIA;
+$('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
 $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
 $('#formulario').addEventListener('input', atualizar);
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por

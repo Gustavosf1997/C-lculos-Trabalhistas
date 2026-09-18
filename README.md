@@ -15,6 +15,11 @@ npx http-server -p 8080 -c-1 .     # ou: python3 -m http.server 8080
 
 Depois abra <http://localhost:8080>.
 
+O cabeçalho mostra a versão e a data da última atualização — o texto é escrito
+pelo próprio JavaScript, então serve de prova de que a página carregou os
+arquivos atuais. Se a data não confere com a do `src/versao.js`, o que está
+sendo servido é antigo.
+
 O `-c-1` desliga o cache do servidor. Sem ele, o navegador pode guardar uma
 versão antiga do JavaScript e a tela aparece incompleta — nesse caso, recarregue
 com `Ctrl+Shift+R` (`Cmd+Shift+R` no Mac). As páginas avisam quando isso
@@ -168,7 +173,16 @@ Sobre isso incidem o adicional de hora extra (50% por padrão), o **DSR**
 prévio — cada um ligável e desligável. A repercussão do DSR majorado nas demais
 verbas segue a OJ 394, II, da SDI-1, válida para horas extras a partir de
 20/03/2023; a tela avisa quando o período pedido começa antes desse marco.
-Informada a data do ajuizamento, avisa também sobre a prescrição quinquenal.
+Informada a data do ajuizamento, a prescrição quinquenal é apurada antes de
+qualquer conta, em dois desfechos:
+
+- **período inteiro prescrito** — nada a calcular. Caixa vermelha no lugar do
+  resultado e demais campos bloqueados; só as três datas seguem editáveis, já
+  que é por elas que o impedimento se afasta;
+- **parte do período prescrita** — o cálculo corre a partir do marco
+  quinquenal e só sobre ele. Um aviso no topo do resultado diz quais parcelas
+  estão prescritas e qual período foi efetivamente calculado, e o resumo traz
+  esse período. O recorte dá o mesmo resultado de pedir o período já ajustado.
 
 Próximos pedidos previstos na tela: adicional noturno, intervalo intrajornada,
 insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 477.

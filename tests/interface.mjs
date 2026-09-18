@@ -28,6 +28,10 @@ page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
 /* ---------------------------------------------------- verbas rescisórias */
 await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
 
+// o carimbo de versão é escrito pelo módulo: prova que o JavaScript é o atual
+const carimbo = await page.locator('#versao').textContent();
+checar('carimbo de versão na tela', carimbo.includes('atualizada em'), carimbo);
+
 // a vigência das tabelas aparece na tela e é a de 2026
 const etiqueta = await page.locator('#badge-vigencia').textContent();
 checar('etiqueta informa as tabelas de 2026', etiqueta.includes('2026'), etiqueta);
@@ -183,6 +187,36 @@ const horasMes = await page.locator('.contexto div', { hasText: 'Horas por mês'
 checar('horas por mês em formato brasileiro', /\d+,\d+/.test(horasMes), horasMes);
 const detalhe = await page.locator('.linhas small').first().textContent();
 checar('detalhe da verba em formato brasileiro', !/\d\.\d\d h/.test(detalhe), detalhe);
+
+// prescrição quinquenal bloqueia a entrada de dados
+await page.fill('#dataInicio', '01/01/2015');
+await page.fill('#dataFim', '01/01/2020');
+await page.fill('#dataAjuizamento', '18/09/2026');
+await page.waitForTimeout(350);
+const caixa = await page.locator('#resultado .impedimento').textContent().catch(() => null);
+checar('impedimento em caixa vermelha', (caixa ?? '').includes('prescrito'), (caixa ?? '').slice(0, 50));
+checar('salário bloqueado', await page.locator('#salarioBase').isDisabled(), null);
+checar('marcação de risco bloqueada', await page.locator('input[name="risco"][value="insalubridade"]').isDisabled(), null);
+checar('datas seguem editáveis', !(await page.locator('#dataInicio').isDisabled()), null);
+checar('PDF bloqueado com prescrição', await page.locator('#gerar-pdf').isDisabled(), null);
+
+// prescrição parcial: calcula o imprescrito e avisa do recorte
+await page.fill('#dataFim', '01/01/2024');
+await page.waitForTimeout(350);
+const recorte = await page.locator('#resultado .recorte').textContent().catch(() => null);
+checar('recorte avisado no resultado', (recorte ?? '').includes('18/09/2021 a 01/01/2024'), (recorte ?? '').slice(0, 60));
+checar('campos liberados na prescrição parcial', !(await page.locator('#salarioBase').isDisabled()), null);
+checar('resultado calculado apesar do recorte', (await page.locator('.liquido b').count()) > 0, null);
+const periodoCalculado = await page.locator('.contexto div', { hasText: 'Período calculado' }).textContent();
+checar('resumo mostra o período usado', periodoCalculado.includes('18/09/2021'), periodoCalculado);
+
+// corrigir o período devolve a tela ao normal
+await page.fill('#dataInicio', '01/01/2023');
+await page.fill('#dataFim', '01/01/2025');
+await page.waitForTimeout(350);
+checar('sem recorte quando o período está dentro do quinquênio', (await page.locator('#resultado .recorte').count()) === 0, null);
+checar('campos liberados após ajuste', !(await page.locator('#salarioBase').isDisabled()), null);
+checar('resultado volta a aparecer', (await page.locator('.liquido b').count()) > 0, null);
 
 await page.fill('#diasUteis', '40');
 await page.waitForTimeout(250);
