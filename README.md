@@ -163,8 +163,7 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 
 - **As tabelas de INSS e IRRF em `src/tabelas.js` são de referência (2025) e
   precisam ser conferidas e atualizadas antes de qualquer uso oficial.**
-- Quando o aviso indenizado projeta o contrato para o ano seguinte, o 13º de
-  cada ano é calculado em separado, mas o INSS e o IRRF incidem sobre a soma.
+
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.
 - A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
@@ -177,9 +176,10 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
   não têm campo próprio — o módulo de pedidos calcula esses reflexos.
 - O adicional noturno não aplica a hora noturna reduzida de 52min30s
   (art. 73, §1º).
-- O salário-hora, usado nas horas negativas e no adicional noturno, sai do
-  salário base dividido pelo divisor informado — não inclui adicionais nem
-  médias de variáveis.
+- A hora normal do cálculo é uma só: salário e adicionais divididos pelo
+  divisor informado. Ela remunera as horas extras e desconta as negativas. O
+  adicional noturno incide sobre ela já integrada pelos adicionais de risco;
+  médias de variáveis ficam de fora.
 - Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
   doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
 - Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e

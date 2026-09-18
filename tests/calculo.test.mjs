@@ -484,3 +484,37 @@ test('INSS, IRRF e FGTS do mês alcançam as horas extras', () => {
   assert.ok(desconto(com, 'inss_salario') > desconto(sem, 'inss_salario'));
   assert.equal(com.fgts.rescisao, Math.round((1650 + 450 + 2750 + 5610) * 0.08 * 100) / 100);
 });
+
+/* ------------------------------- coerência entre as horas do cálculo ------ */
+
+test('horas negativas usam a mesma hora normal das horas extras', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    divisor: 220,
+    adicionais: ['periculosidade_30'],
+    horasExtras: 4,
+    descontos: ['horas_negativas'],
+    horasNegativas: 8,
+  });
+  // hora normal: (2.200 + 660) / 220 = 13,00
+  assert.equal(desconto(r, 'horas_negativas'), 104); // 8 x 13,00
+  assert.equal(verba(r, 'horas_extras'), 78); // 4 x 13,00 x 1,5
+});
+
+test('13º de dois anos é tributado como dois fatos, não como um só', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-12-20',
+    salarioBase: 2500,
+  });
+  assert.equal(verba(r, 'decimo_terceiro'), 2500);
+  assert.equal(verba(r, 'decimo_terceiro_ano_seguinte'), 208.33);
+  // INSS de cada ano, e não da soma: 202,23 + 15,62
+  assert.equal(desconto(r, 'inss_13'), 217.85);
+  assert.notEqual(desconto(r, 'inss_13'), calcularINSS(2708.33));
+});

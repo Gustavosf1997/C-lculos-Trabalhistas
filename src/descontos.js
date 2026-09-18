@@ -15,7 +15,7 @@ export const DESCONTOS = [
     campo: 'horasNegativas',
     tipo: 'horas',
     rotulo: 'Horas negativas',
-    dica: 'Descontadas pelo salário-hora (salário base ÷ divisor).',
+    dica: 'Descontadas pela mesma hora normal das extras: salário e adicionais ÷ divisor.',
   },
   {
     id: 'adiantamento_salario',

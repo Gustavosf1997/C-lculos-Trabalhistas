@@ -350,6 +350,8 @@ export function calcularRescisao(dados) {
   let decimoTerceiro = 0;
   let avos13 = 0;
   let avos13AnoSeguinte = 0;
+  // Cada ano tem o seu 13º, tributado como fato próprio.
+  const decimosPorAno = [];
   if (tipo.campos.decimoTerceiro) {
     const ano = ultimoDiaTrabalhado.getUTCFullYear();
     const inicioAno = new Date(Date.UTC(ano, 0, 1));
@@ -359,6 +361,7 @@ export function calcularRescisao(dados) {
 
     avos13 = contarAvos(inicio13, fim13);
     decimoTerceiro = arredondar((remuneracao / 12) * avos13);
+    if (decimoTerceiro > 0) decimosPorAno.push(decimoTerceiro);
     proventos.push({
       chave: 'decimo_terceiro',
       label: `13º salário proporcional (${ano})`,
@@ -372,6 +375,7 @@ export function calcularRescisao(dados) {
       avos13AnoSeguinte = contarAvos(new Date(Date.UTC(ano + 1, 0, 1)), dataProjetada);
       if (avos13AnoSeguinte > 0) {
         const valor = arredondar((remuneracao / 12) * avos13AnoSeguinte);
+        decimosPorAno.push(valor);
         decimoTerceiro = arredondar(decimoTerceiro + valor);
         proventos.push({
           chave: 'decimo_terceiro_ano_seguinte',
@@ -446,16 +450,22 @@ export function calcularRescisao(dados) {
   if (inssSalario > 0) {
     descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
   }
-  const inss13 = decimoTerceiro > 0 ? calcularINSS(decimoTerceiro) : 0;
+  const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
   if (inss13 > 0) {
-    descontos.push({ chave: 'inss_13', label: 'INSS sobre 13º salário', detalhe: 'cálculo em separado', valor: inss13 });
+    descontos.push({
+      chave: 'inss_13',
+      label: 'INSS sobre 13º salário',
+      detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
+      valor: inss13,
+    });
   }
 
   // Só desconta o que foi marcado na tela; o resto decorre da lei.
   const marcados = dados.descontos ?? [];
   const aplica = (id) => marcados.includes(id);
 
-  const valorHora = salarioHora(salarioBase, divisor);
+  // Mesma hora normal que remunera a extra: salário e adicionais ÷ divisor.
+  const valorHora = salarioHora(remuneracaoFixa, divisor);
   const horasNegativas = aplica('horas_negativas') ? num(dados.horasNegativas) : 0;
   if (horasNegativas > 0) {
     descontos.push({
@@ -477,9 +487,16 @@ export function calcularRescisao(dados) {
   if (irrfSalario > 0) {
     descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
   }
-  const irrf13 = decimoTerceiro > 0
-    ? calcularIRRF(decimoTerceiro, { inss: inss13, dependentes, pensao: decimoTerceiro * fatorPensao })
-    : 0;
+  const irrf13 = arredondar(
+    decimosPorAno.reduce(
+      (soma, valor) => soma + calcularIRRF(valor, {
+        inss: calcularINSS(valor),
+        dependentes,
+        pensao: valor * fatorPensao,
+      }),
+      0,
+    ),
+  );
   if (irrf13 > 0) {
     descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
   }

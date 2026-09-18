@@ -85,7 +85,14 @@ export function calcularAdicionais({
 } = {}) {
   const itens = [];
 
-  for (const id of selecionados) {
+  // O adicional noturno incide sobre a hora normal, que já vem integrada pelos
+  // adicionais de natureza salarial (Súmulas 60, I, e 264 do TST). Por isso ele
+  // é calculado por último, sobre a base acumulada.
+  const porHora = (id) => (adicionalPorId(id)?.base === 'horas_noturnas' ? 1 : 0);
+  const ordenados = [...selecionados].sort((a, b) => porHora(a) - porHora(b));
+  let baseHora = salarioBase;
+
+  for (const id of ordenados) {
     const adicional = adicionalPorId(id);
     if (!adicional) continue;
 
@@ -93,8 +100,9 @@ export function calcularAdicionais({
     if (adicional.base === 'salario_minimo') valor = SALARIO_MINIMO * adicional.percentual;
     else if (adicional.base === 'salario_base') valor = salarioBase * adicional.percentual;
     else if (adicional.base === 'horas_noturnas') {
-      valor = (salarioBase / divisor) * horasNoturnas * adicional.percentual;
+      valor = (baseHora / divisor) * horasNoturnas * adicional.percentual;
     }
+    if (adicional.base !== 'horas_noturnas') baseHora += valor;
 
     itens.push({
       id,
@@ -106,6 +114,7 @@ export function calcularAdicionais({
     });
   }
 
+  itens.sort((a, b) => ADICIONAIS.findIndex((x) => x.id === a.id) - ADICIONAIS.findIndex((x) => x.id === b.id));
   return { itens, total: arredondar(itens.reduce((soma, i) => soma + i.valor, 0)) };
 }
 
