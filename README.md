@@ -53,7 +53,13 @@ node tests/interface.mjs
 | `src/calculo.js` | Motor das verbas rescisórias (módulo puro, sem DOM) |
 | `src/adicionais.js` | Catálogo dos adicionais legais, com percentual, base e exclusões |
 | `src/descontos.js` | Catálogo dos descontos escolhíveis e o salário-hora |
-| `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
+| `src/pedidos/catalogo.js` | Catálogo dos pedidos: cards, grupos de campos e resumo de cada um |
+| `src/pedidos/comum.js` | Base compartilhada dos pedidos: hora normal, prescrição, reflexos e fechamento |
+| `src/pedidos/horas-extras.js` | Horas extras, DSR e reflexos (módulo puro) |
+| `src/pedidos/noturno.js` | Adicional noturno, com a hora reduzida do art. 73, §1º |
+| `src/pedidos/intervalo.js` | Intervalo intrajornada nos dois regimes do art. 71, §4º |
+| `src/pedidos/insalubridade.js` | Insalubridade e periculosidade como pedido autônomo |
+| `src/pedidos/multas.js` | Multas dos arts. 467 e 477, §8º, da CLT |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
 | `src/memoria.js` | Memória de cálculo para impressão e PDF |
@@ -66,6 +72,11 @@ node tests/interface.mjs
 Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
 culpa recíproca, encerramento da empresa), basta adicionar uma entrada em
 `src/tipos.js`: os cards, os campos exibidos e as regras de FGTS saem de lá.
+
+Para acrescentar um pedido, o caminho é o mesmo: um módulo de cálculo em
+`src/pedidos/` e uma entrada em `src/pedidos/catalogo.js` declarando os grupos
+de campos. O formulário de `pedidos.html` é montado a partir desse catálogo —
+não há HTML por pedido.
 
 ## O que já está implementado
 
@@ -157,35 +168,89 @@ e `src/campos.js` cuida do resto.
 
 ## Módulo de pedidos
 
-Começa pelas **horas extras**. O cálculo parte da hora normal — base de cálculo
-dividida pelo divisor da jornada (220 para 44h semanais, 200 para 40h e assim
-por diante, conforme a Súmula 431 do TST; o campo é editável para categorias
-com divisor próprio, como a bancária).
+Cinco pedidos, escolhidos no cartão do topo. Cada um monta o seu próprio
+formulário a partir de `src/pedidos/catalogo.js` e mostra, ao ser escolhido, o
+que entra e o que não entra na conta.
 
-A base de cálculo integra as parcelas de natureza salarial (Súmula 264 do TST),
-entre elas o **adicional de insalubridade** (10%, 20% ou 40%, sobre o salário
-mínimo, sobre o salário base ou sobre a base que a norma coletiva fixar) e o
-**adicional de periculosidade** (30% sobre o salário base, art. 193, §1º). Os
-dois não se acumulam (art. 193, §2º), então a tela pede um ou outro.
+O que é comum a todos eles:
 
-Sobre isso incidem o adicional de hora extra (50% por padrão), o **DSR**
-(Lei 605/49) e os reflexos em 13º, férias + 1/3, FGTS, multa de 40% e aviso
-prévio — cada um ligável e desligável. A repercussão do DSR majorado nas demais
-verbas segue a OJ 394, II, da SDI-1, válida para horas extras a partir de
-20/03/2023; a tela avisa quando o período pedido começa antes desse marco.
-Informada a data do ajuizamento, a prescrição quinquenal é apurada antes de
-qualquer conta, em dois desfechos:
+- **hora normal** — base de cálculo dividida pelo divisor da jornada (220 para
+  44h semanais, 200 para 40h e assim por diante, conforme a Súmula 431 do TST;
+  o campo é editável para categorias com divisor próprio, como a bancária);
+- **base de cálculo** integrando as parcelas de natureza salarial (Súmula 264
+  do TST), entre elas o **adicional de insalubridade** (10%, 20% ou 40%, sobre
+  o salário mínimo, sobre o salário base ou sobre a base que a norma coletiva
+  fixar) e o **adicional de periculosidade** (30% sobre o salário base,
+  art. 193, §1º). Os dois não se acumulam (art. 193, §2º), então a tela pede um
+  ou outro;
+- **reflexos** em 13º, férias + 1/3, FGTS, multa de 40% e aviso prévio, cada um
+  ligável e desligável. O FGTS incide só sobre as parcelas salariais que aquele
+  pedido apurou — a linha do resultado diz quais são;
+- **prescrição quinquenal**, apurada antes de qualquer conta quando a data do
+  ajuizamento é informada (veja abaixo).
+
+### Horas extras (art. 7º, XVI, da CF)
+
+Hora normal acrescida do adicional (50% por padrão, editável), com **DSR**
+(Lei 605/49). A repercussão do DSR majorado nas demais verbas segue a
+OJ 394, II, da SDI-1, válida para horas extras a partir de 20/03/2023; a tela
+avisa quando o período pedido começa antes desse marco. A quantidade pode ser
+informada por mês ou por semana.
+
+### Adicional noturno (art. 73 da CLT)
+
+Trabalho entre 22h e 5h, com **hora noturna reduzida de 52min30s**
+(art. 73, §1º): as horas de relógio informadas viram horas fictas na razão
+60/52,5 antes de receberem o adicional — 30 horas de relógio são 34,29 horas
+fictas. O percentual é editável (20% no urbano, 25% no rural da
+Lei 5.889/73). Gera DSR e reflexos. A prorrogação da jornada noturna
+(Súmula 60, II, do TST) não é somada sozinha: informe as horas já somadas.
+
+### Intervalo intrajornada (art. 71, §4º, da CLT)
+
+Dois regimes, escolhidos na tela, porque a Lei 13.467/2017 mudou a regra:
+
+- **até 10/11/2017** — Súmula 437, I e III, do TST: paga-se o **intervalo
+  integral**, ainda que a supressão seja parcial, com natureza salarial e
+  reflexos;
+- **a partir de 11/11/2017** — paga-se **apenas o período suprimido**, com
+  acréscimo de 50% e natureza **indenizatória**: sem reflexos e sem FGTS.
+
+Quando o período pedido cruza o marco, a tela avisa que os dois trechos
+precisam ser calculados em separado.
+
+### Insalubridade / periculosidade (arts. 192 e 193 da CLT)
+
+O adicional como pedido autônomo, e não como integrante de outra verba.
+Insalubridade em grau mínimo (10%), médio (20%) ou máximo (40%), sobre o
+salário mínimo (art. 192, redação da CLT), sobre o salário base ou sobre a base
+que a norma coletiva fixar; periculosidade de 30% sobre o salário base
+(art. 193, §1º). Gera reflexos em 13º, férias + 1/3 e FGTS (Súmulas 132 e 139
+do TST). Não há DSR: o adicional é mensal, não por hora trabalhada.
+
+### Multas dos arts. 467 e 477 da CLT
+
+Pedido sem período e sem FGTS:
+
+- **art. 477, §8º** — uma remuneração do empregado quando as verbas
+  rescisórias não são pagas em **10 dias** contados do término do contrato
+  (prazo único desde a Lei 13.467/2017). A tela mostra o dia do vencimento e
+  os dias de atraso, e a multa é afastada quando o empregado deu causa à mora;
+- **art. 467** — 50% sobre a parte **incontroversa** das verbas rescisórias
+  não paga no comparecimento à Justiça do Trabalho.
+
+### Prescrição quinquenal
+
+Informada a data do ajuizamento, o quinquênio do art. 7º, XXIX, da CF é
+apurado antes de qualquer conta, em dois desfechos:
 
 - **período inteiro prescrito** — nada a calcular. Caixa vermelha no lugar do
-  resultado e demais campos bloqueados; só as três datas seguem editáveis, já
-  que é por elas que o impedimento se afasta;
+  resultado e demais campos bloqueados; só as datas seguem editáveis, já que é
+  por elas que o impedimento se afasta;
 - **parte do período prescrita** — o cálculo corre a partir do marco
   quinquenal e só sobre ele. Um aviso no topo do resultado diz quais parcelas
   estão prescritas e qual período foi efetivamente calculado, e o resumo traz
   esse período. O recorte dá o mesmo resultado de pedir o período já ajustado.
-
-Próximos pedidos previstos na tela: adicional noturno, intervalo intrajornada,
-insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 477.
 
 ## Limitações conhecidas
 
@@ -197,19 +262,27 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 - O redutor da Lei 15.270/2025 é aplicado também ao 13º salário, tributado em
   separado. O ponto comporta leitura diversa: se a sua for outra, a regra está
   isolada em `calcularRedutorIRRF`.
-
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.
-- A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
-  coletiva que fixe outra base precisa ser ajustada em `src/adicionais.js`.
+- Na aba de rescisão, a insalubridade é calculada sobre o salário mínimo
+  (art. 192 da CLT); norma coletiva que fixe outra base precisa ser ajustada em
+  `src/adicionais.js`.
 - A média de comissões, gorjetas e prêmios integra aviso, 13º e férias, mas não
   o saldo de salário: é média para indenização, não o que o último mês pagou.
 - As horas extras informadas são as do mês da rescisão e formam verba própria;
   elas entram nas bases de INSS, IRRF e FGTS do mês, mas não integram aviso,
   13º e férias. Horas extras habituais que devam repercutir nessas verbas ainda
   não têm campo próprio — o módulo de pedidos calcula esses reflexos.
-- O adicional noturno não aplica a hora noturna reduzida de 52min30s
-  (art. 73, §1º).
+- Na aba de **rescisão**, o adicional noturno não aplica a hora noturna
+  reduzida de 52min30s (art. 73, §1º) — o pedido autônomo de adicional noturno,
+  na outra aba, aplica.
+- A insalubridade da aba de **rescisão** tem base fixa no salário mínimo; o
+  pedido autônomo, na outra aba, aceita as três bases.
+- O pedido de intervalo intrajornada calcula um regime por vez: período que
+  cruze 11/11/2017 precisa ser dividido em dois cálculos, e a tela avisa disso.
+- As multas dos arts. 467 e 477 não apuram a data em que o empregado
+  compareceu à audiência nem o que de fato foi pago: o valor incontroverso é
+  informado por quem calcula.
 - A hora normal do cálculo é uma só: salário e adicionais divididos pelo
   divisor informado. Ela remunera as horas extras e desconta as negativas. O
   adicional noturno incide sobre ela já integrada pelos adicionais de risco;
@@ -222,8 +295,10 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 - Não aplica convenção coletiva (multa normativa, pisos, adicionais próprios).
 - Não gera TRCT nem guias (GRRF, DARF, GPS) e não persiste os cálculos.
 - Nos pedidos, não há juros nem correção monetária, e o período usa uma única
-  média de horas extras e um único salário — períodos com jornadas ou salários
-  diferentes precisam ser calculados em separado.
+  quantidade mensal e um único salário — períodos com jornadas ou salários
+  diferentes precisam ser calculados em separado. O cálculo também não faz a
+  evolução salarial ao longo do período: a base informada vale para todos os
+  meses.
 - A pensão alimentícia é aplicada como percentual único sobre o total das
   verbas; casos reais dependem do que consta na decisão judicial.
 

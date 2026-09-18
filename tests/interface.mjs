@@ -223,6 +223,80 @@ await page.waitForTimeout(250);
 const erroDias = await page.locator('.campo:has(#diasUteis) .campo__erro').textContent().catch(() => null);
 checar('dias úteis limitado a 31', (erroDias ?? '').includes('máximo'), erroDias);
 
+/* ----------------------------------- os demais pedidos do catálogo ------ */
+
+// O Intl separa "R$" do número com espaço não-quebrável: normaliza antes de comparar.
+const texto = async () => (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ');
+const dadosBase = async () => {
+  await page.fill('#dataInicio', '01/01/2024');
+  await page.fill('#dataFim', '31/12/2024');
+  await page.fill('#salarioBase', '2.200,00'); // divisor 220 -> hora de R$ 10,00
+};
+
+checar('catálogo traz os cinco pedidos', await page.locator('#pedidos .tipo').count() === 5,
+  await page.locator('#pedidos .tipo').count());
+
+// adicional noturno: hora ficta de 52min30s (art. 73, §1º)
+await page.click('[data-pedido="adicional_noturno"]');
+checar('formulário trocou junto com o pedido',
+  (await page.locator('#horasNoturnas').count()) === 1 && (await page.locator('#quantidadeHoras').count()) === 0, null);
+await dadosBase();
+await page.fill('#horasNoturnas', '30');
+await page.waitForTimeout(350);
+const noturno = await texto();
+checar('30 h de relógio viram 34,29 h fictas', noturno.includes('34,29'), null);
+checar('adicional noturno de R$ 68,57', noturno.includes('R$ 68,57'), null);
+checar('FGTS descreve a base real', noturno.includes('8% sobre adicional noturno, DSR e 13º'), null);
+
+// intervalo intrajornada: dois regimes
+await page.click('[data-pedido="intervalo"]');
+await dadosBase();
+await page.fill('#minutosSuprimidos', '30');
+await page.waitForTimeout(350);
+const reforma = await texto();
+checar('pós-reforma paga só o suprimido', reforma.includes('R$ 165,00'), null); // 30min x 22 x R$ 15,00
+checar('pós-reforma não tem reflexos', !reforma.includes('Reflexo no 13º'), null);
+checar('pós-reforma sem FGTS', !reforma.includes('FGTS'), null);
+checar('intervalo integral escondido no regime novo', await page.locator('#intervaloIntegral').isHidden(), null);
+
+await page.check('input[name="regimeIntervalo"][value="anterior_reforma"]');
+await page.waitForTimeout(350);
+const anterior = await texto();
+checar('intervalo integral revelado no regime antigo', await page.locator('#intervaloIntegral').isVisible(), null);
+checar('Súmula 437 paga a hora cheia', anterior.includes('R$ 330,00'), null); // 60min x 22 x R$ 15,00
+checar('Súmula 437 gera reflexos', anterior.includes('Reflexo no 13º'), null);
+checar('regime antigo avisa o descompasso de período', (await page.locator('#resultado .alerta').count()) > 0, null);
+
+// insalubridade sobre o salário mínimo de 2026
+await page.click('[data-pedido="adicional_risco"]');
+await dadosBase();
+checar('risco exige a escolha entre os adicionais', (await texto()).includes('Escolha entre insalubridade'), null);
+await page.check('input[name="risco"][value="insalubridade"]');
+await page.waitForTimeout(350);
+checar('grau médio sobre o mínimo de 2026', (await texto()).includes('R$ 324,20'), null); // 20% de 1.621,00
+await page.selectOption('#baseInsalubridade', 'salario_base');
+await page.waitForTimeout(350);
+checar('base do salário contratual muda o adicional', (await texto()).includes('R$ 440,00'), null); // 20% de 2.200
+
+// multas dos arts. 477 e 467: sem período e sem FGTS
+await page.click('[data-pedido="multas"]');
+checar('multas dispensam o período', (await page.locator('#dataInicio').count()) === 0, null);
+await page.fill('#salarioBase', '2.500,00');
+await page.fill('#dataRescisao', '01/03/2026');
+await page.fill('#dataPagamento', '30/03/2026');
+await page.waitForTimeout(350);
+const multas = await texto();
+checar('prazo do art. 477 calculado', multas.includes('11/03/2026'), null);
+checar('multa do art. 477 de um salário', multas.includes('R$ 2.500,00'), null);
+await page.check('#multa467');
+await page.fill('#valorIncontroverso', '5.000,00');
+await page.waitForTimeout(350);
+checar('as duas multas somam R$ 5.000,00', (await texto()).includes('R$ 5.000,00'), null);
+
+// voltar ao primeiro pedido devolve os campos próprios dele
+await page.click('[data-pedido="horas_extras"]');
+checar('volta às horas extras com os campos certos', (await page.locator('#quantidadeHoras').count()) === 1, null);
+
 await browser.close();
 console.log(checagens.join('\n'));
 console.log(erros.length ? 'ERROS DE CONSOLE: ' + erros.join(' | ') : 'sem erros de console');

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularHorasExtras, calcularAdicionalRisco, SEMANAS_POR_MES } from '../src/pedidos.js';
+import { calcularHorasExtras } from '../src/pedidos/horas-extras.js';
+import { calcularAdicionalRisco, SEMANAS_POR_MES } from '../src/pedidos/comum.js';
 import { SALARIO_MINIMO } from '../src/tabelas.js';
 
 const base = {
