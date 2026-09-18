@@ -28,6 +28,10 @@ page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
 /* ---------------------------------------------------- verbas rescisórias */
 await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
 
+// o carimbo de versão é escrito pelo módulo: prova que o JavaScript é o atual
+const carimbo = await page.locator('#versao').textContent();
+checar('carimbo de versão na tela', carimbo.includes('atualizada em'), carimbo);
+
 // a vigência das tabelas aparece na tela e é a de 2026
 const etiqueta = await page.locator('#badge-vigencia').textContent();
 checar('etiqueta informa as tabelas de 2026', etiqueta.includes('2026'), etiqueta);

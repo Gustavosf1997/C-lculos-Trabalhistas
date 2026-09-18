@@ -5,6 +5,7 @@
 
 import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRIDADE } from './pedidos.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
+import { CARIMBO } from './versao.js';
 import { moeda, formatarQuantidade } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { montarMemoria, imprimir } from './memoria.js';
@@ -224,6 +225,7 @@ function gerarPdf() {
 montarPedidos();
 montarSelects();
 $('#badge-vigencia').textContent = VIGENCIA;
+$('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
 $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
 $('#formulario').addEventListener('input', atualizar);
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por

@@ -15,6 +15,11 @@ npx http-server -p 8080 -c-1 .     # ou: python3 -m http.server 8080
 
 Depois abra <http://localhost:8080>.
 
+O cabeçalho mostra a versão e a data da última atualização — o texto é escrito
+pelo próprio JavaScript, então serve de prova de que a página carregou os
+arquivos atuais. Se a data não confere com a do `src/versao.js`, o que está
+sendo servido é antigo.
+
 O `-c-1` desliga o cache do servidor. Sem ele, o navegador pode guardar uma
 versão antiga do JavaScript e a tela aparece incompleta — nesse caso, recarregue
 com `Ctrl+Shift+R` (`Cmd+Shift+R` no Mac). As páginas avisam quando isso
