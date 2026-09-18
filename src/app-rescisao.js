@@ -10,6 +10,7 @@ import { moeda } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
+import { montarMemoria, imprimir } from './memoria.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
@@ -355,9 +356,23 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
-    return;
+  } else {
+    renderResultado(calcularRescisao(dados));
   }
-  renderResultado(calcularRescisao(dados));
+  // Só se gera PDF de um cálculo fechado.
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+}
+
+function gerarPdf() {
+  const tipo = TIPOS[tipoSelecionado];
+  montarMemoria({
+    titulo: 'Verbas rescisórias',
+    subtitulo: `${tipo.nome} — ${tipo.tag}`,
+    formulario: $('#formulario'),
+    resultado: $('#resultado'),
+    rodape: 'Uso orientativo. Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.',
+  });
+  imprimir(`Memoria de calculo - ${tipo.nome}`);
 }
 
 /* -------------------------------------------------------------- inicializa */
@@ -379,3 +394,5 @@ $('#formulario').addEventListener('submit', (evento) => {
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 
 inicializarCampos();
+$('#gerar-pdf').addEventListener('click', gerarPdf);
+$('#gerar-pdf').disabled = true;

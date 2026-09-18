@@ -254,3 +254,36 @@ body {
 @media (max-width: 620px) {
   .tipos, .campos, .contexto { grid-template-columns: 1fr; }
 }
+
+/* ------------------------------------------------- memória de cálculo ---- */
+/* Bloco montado só para a impressão: invisível na tela, único visível no papel. */
+.memoria { display: none; }
+.memoria__topo { border-bottom: 2px solid var(--tinta); padding-bottom: 8px; margin-bottom: 16px; }
+.memoria__topo h1 { margin: 0; font-size: 18px; }
+.memoria__topo p { margin: 2px 0 0; font-size: 13px; }
+.memoria__data { color: var(--tinta-media); }
+.memoria h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+  margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--linha);
+}
+.memoria__dados { width: 100%; border-collapse: collapse; }
+.memoria__dados td { padding: 4px 0; font-size: 12.5px; border-bottom: 1px dotted var(--linha); }
+.memoria__dados td:last-child { text-align: right; font-weight: 600; }
+.memoria__rodape { margin-top: 18px; padding-top: 8px; border-top: 1px solid var(--linha); font-size: 11px; color: var(--tinta-media); }
+
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; font-size: 12px; }
+  .topo, .abas, .pagina, .rodape, .aviso-cache { display: none !important; }
+  .memoria { display: block; }
+  .memoria .contexto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .memoria .contexto div { border: 1px solid var(--linha); background: none; }
+  .memoria .liquido { border: 2px solid var(--tinta); background: none; }
+  .memoria .liquido b, .memoria .liquido span { color: var(--tinta); }
+  .memoria .alerta, .memoria .fgts-card { background: none; }
+  .memoria .bloco-titulo { color: var(--tinta); }
+  /* Cinza claro some no papel. */
+  .memoria .contexto dt, .memoria .linhas small, .memoria .fgts-card p { color: var(--tinta-media); }
+  .memoria table, .memoria .fgts-card, .memoria .liquido { break-inside: avoid; }
+  .memoria section { break-inside: avoid-page; }
+}

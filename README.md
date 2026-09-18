@@ -51,6 +51,7 @@ node tests/interface.mjs
 | `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
+| `src/memoria.js` | Memória de cálculo para impressão e PDF |
 | `src/campos.js` | Máscara, validação e marcação de erro nos campos |
 | `src/app-rescisao.js` | Interface da aba de verbas rescisórias |
 | `src/app-pedidos.js` | Interface da aba de pedidos |
@@ -112,6 +113,15 @@ Verbas e descontos:
   empregado (art. 480);
 - FGTS: depósito de 8% sobre as verbas salariais, multa de 40% ou 20%, saque e
   seguro-desemprego.
+
+## PDF da memória de cálculo
+
+O botão **Gerar PDF** monta um documento próprio — cabeçalho com a modalidade e
+a data de emissão, os dados informados, o resultado completo e o aviso legal —
+e abre a janela de impressão do navegador, onde se escolhe "Salvar como PDF".
+Não há biblioteca envolvida: a folha de estilos tem um bloco `@media print` que
+esconde a interface e imprime só a memória. O botão fica desabilitado enquanto
+o cálculo não fecha.
 
 ## Campos e validação
 

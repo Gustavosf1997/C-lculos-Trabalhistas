@@ -6,6 +6,7 @@
  */
 
 import { SALARIO_MINIMO } from './tabelas.js';
+import { formatarQuantidade } from './formato.js';
 
 /** Divisor mensal padrão (44h semanais). Cada tela pode informar o seu. */
 export const DIVISOR_PADRAO = 220;
@@ -108,7 +109,7 @@ export function calcularAdicionais({
       id,
       label: adicional.label,
       detalhe: adicional.base === 'horas_noturnas'
-        ? `${horasNoturnas} hora(s) noturna(s) por mês`
+        ? `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`
         : adicional.detalhe,
       valor: arredondar(valor),
     });

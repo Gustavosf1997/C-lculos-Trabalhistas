@@ -515,7 +515,7 @@ export function calcularRescisao(dados) {
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
-      detalhe: `${pensaoPercentual}% sobre as verbas rescisórias`,
+      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
       valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
     });
   }
