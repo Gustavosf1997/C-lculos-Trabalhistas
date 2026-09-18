@@ -88,9 +88,41 @@ test('DSR majorado nos reflexos alerta sobre o marco da OJ 394', () => {
   assert.equal(depois.alertas.length, 0);
 });
 
-test('período anterior a cinco anos do ajuizamento gera alerta de prescrição', () => {
+test('prescrição quinquenal impede o cálculo, e não apenas alerta', () => {
   const r = calcularHorasExtras({ ...base, dataInicio: '2024-01-01', dataAjuizamento: '2030-06-01' });
-  assert.ok(r.alertas.some((a) => a.includes('Prescrição quinquenal')));
+  assert.ok(r.impedimento);
+  assert.equal(r.totais, null);
+  assert.equal(r.contexto, null);
+  assert.deepEqual(r.mensais, []);
+});
+
+test('prescrição integral e parcial recebem mensagens distintas', () => {
+  const integral = calcularHorasExtras({
+    ...base, dataInicio: '2015-01-01', dataFim: '2020-01-01', dataAjuizamento: '2026-09-18',
+  });
+  assert.ok(integral.impedimento.integral);
+  assert.match(integral.impedimento.titulo, /integralmente prescrito/);
+  assert.ok(integral.impedimento.mensagem.includes('18/09/2021')); // marco quinquenal
+
+  const parcial = calcularHorasExtras({
+    ...base, dataInicio: '2019-01-01', dataFim: '2024-01-01', dataAjuizamento: '2026-09-18',
+  });
+  assert.equal(parcial.impedimento.integral, false);
+  assert.match(parcial.impedimento.titulo, /parcelas prescritas/);
+});
+
+test('período dentro do quinquênio calcula normalmente', () => {
+  const r = calcularHorasExtras({
+    ...base, dataInicio: '2022-01-01', dataFim: '2024-01-01', dataAjuizamento: '2026-09-18',
+  });
+  assert.equal(r.impedimento, null);
+  assert.ok(r.totais.periodo > 0);
+});
+
+test('sem data de ajuizamento não há impedimento a reconhecer', () => {
+  const r = calcularHorasExtras({ ...base, dataInicio: '2010-01-01', dataFim: '2012-01-01' });
+  assert.equal(r.impedimento, null);
+  assert.ok(r.totais.periodo > 0);
 });
 
 test('FGTS e multa entram em bloco próprio', () => {

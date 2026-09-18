@@ -103,7 +103,41 @@ export function calcularHorasExtras(dados) {
   const diasRepouso = num(dados.diasRepouso) || 5;
 
   if (erros.length) {
-    return { erros, alertas: [], contexto: null, mensais: [], periodo: [], fgts: null, totais: null };
+    return {
+      erros, alertas: [], impedimento: null, contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
+    };
+  }
+
+  // Prescrição quinquenal (art. 7º, XXIX, da CF): fato impeditivo do direito,
+  // apurado antes de qualquer conta. Havendo parcela prescrita no período, não
+  // há o que calcular enquanto ele não for ajustado.
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  if (ajuizamento) {
+    const marco = new Date(
+      Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
+    );
+    if (inicio < marco) {
+      const integral = fim < marco;
+      return {
+        erros: [],
+        alertas: [],
+        impedimento: {
+          integral,
+          marco,
+          titulo: integral ? 'Pedido integralmente prescrito' : 'Há parcelas prescritas no período',
+          mensagem: integral
+            ? `Todo o período pedido é anterior a ${formatarData(marco)}, marco da prescrição `
+              + `quinquenal contado do ajuizamento em ${formatarData(ajuizamento)}. Não há parcela exigível a calcular.`
+            : `As parcelas anteriores a ${formatarData(marco)} estão prescritas, contadas do ajuizamento `
+              + `em ${formatarData(ajuizamento)}. Ajuste o início do período para essa data ou posterior.`,
+        },
+        contexto: null,
+        mensais: [],
+        periodo: [],
+        fgts: null,
+        totais: null,
+      };
+    }
   }
 
   /* --- base de cálculo --- */
@@ -201,23 +235,10 @@ export function calcularHorasExtras(dados) {
   const fgtsDevido = arredondar(baseFgts * FGTS.aliquotaDeposito);
   const multaFgts = dados.multaFGTS ? arredondar(fgtsDevido * FGTS.multaSemJustaCausa) : 0;
 
-  /* --- prescrição --- */
-  const ajuizamento = parseData(dados.dataAjuizamento);
-  if (ajuizamento) {
-    const marco = new Date(
-      Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
-    );
-    if (inicio < marco) {
-      alertas.push(
-        `Prescrição quinquenal (art. 7º, XXIX, da CF): as parcelas anteriores a ${formatarData(marco)} `
-          + 'estão prescritas. Ajuste o início do período.',
-      );
-    }
-  }
-
   return {
     erros: [],
     alertas,
+    impedimento: null,
     contexto: {
       meses,
       mesesFracionados,
