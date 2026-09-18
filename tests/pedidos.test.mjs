@@ -43,8 +43,8 @@ test('insalubridade usa o salário mínimo como base, salvo escolha diferente', 
 
 test('insalubridade e periculosidade não se somam', () => {
   const r = calcularHorasExtras({ ...base, risco: 'insalubridade', grauInsalubridade: 20 });
-  assert.equal(r.contexto.risco.valor, 303.6);
-  assert.equal(r.contexto.baseCalculo, 2303.6); // só um dos adicionais
+  assert.equal(r.contexto.risco.valor, 324.2);
+  assert.equal(r.contexto.baseCalculo, 2324.2); // só um dos adicionais
 });
 
 test('o divisor muda o valor da hora', () => {
