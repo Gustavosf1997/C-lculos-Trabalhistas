@@ -56,8 +56,12 @@ export function aplicarExclusoesDesconto(selecionados, alterado) {
   return selecionados.filter((id) => id !== SEM_DESCONTOS);
 }
 
-/** Salário-hora: a mesma hora que remunera, agora descontando (art. 64 da CLT). */
-export function salarioHora(salarioBase, divisor) {
+/**
+ * Salário-hora: a mesma hora que remunera, agora descontando (art. 64 da CLT).
+ * A base mensal é salário mais adicionais — os de natureza salarial integram a
+ * hora normal (Súmula 139 do TST).
+ */
+export function salarioHora(baseMensal, divisor) {
   if (!divisor || divisor <= 0) return 0;
-  return salarioBase / divisor;
+  return baseMensal / divisor;
 }
