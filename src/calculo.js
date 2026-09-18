@@ -176,7 +176,22 @@ function impostoPelaTabela(base) {
 }
 
 /**
- * IRRF pelo modelo mais favorável: deduções legais x desconto simplificado.
+ * Redutor da Lei 15.270/2025: zera o imposto até R$ 5.000,00 de rendimento
+ * mensal e decresce linearmente até se anular em R$ 7.350,00.
+ *
+ * @param {number} rendimento rendimento tributável bruto do mês
+ * @param {number} imposto imposto apurado pela tabela
+ */
+export function calcularRedutorIRRF(rendimento, imposto) {
+  const { isencaoAte, limite, constante, fator } = IRRF.redutor;
+  if (rendimento <= isencaoAte) return imposto; // isenção integral
+  if (rendimento > limite) return 0;
+  return Math.max(0, constante - fator * rendimento);
+}
+
+/**
+ * IRRF pelo modelo mais favorável — deduções legais x desconto simplificado —,
+ * já descontado o redutor da Lei 15.270/2025.
  */
 export function calcularIRRF(rendimento, { inss = 0, dependentes = 0, pensao = 0 } = {}) {
   if (rendimento <= 0) return 0;
@@ -184,7 +199,7 @@ export function calcularIRRF(rendimento, { inss = 0, dependentes = 0, pensao = 0
   // O desconto simplificado é valor fixo e substitui todas as deduções legais.
   const baseSimplificada = rendimento - IRRF.descontoSimplificado;
   const imposto = Math.min(impostoPelaTabela(baseLegal), impostoPelaTabela(baseSimplificada));
-  return arredondar(Math.max(0, imposto));
+  return arredondar(Math.max(0, imposto - calcularRedutorIRRF(rendimento, imposto)));
 }
 
 /* ---------------------------------------------------------------- cálculo */
@@ -402,7 +417,13 @@ export function calcularRescisao(dados) {
   const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
-  if (periodosVencidos > 0) {
+  if (periodosVencidos > 0 && fatorFaltas === 0) {
+    alertas.push(
+      `Com ${num(dados.faltasInjustificadas)} faltas injustificadas o empregado perde o direito às `
+        + 'férias do período (art. 130 da CLT), e por isso os períodos vencidos não foram pagos.',
+    );
+  }
+  if (periodosVencidos > 0 && fatorFaltas > 0) {
     feriasVencidas = arredondar(remuneracao * fatorFaltas * periodosVencidos * (emDobro ? 2 : 1));
     proventos.push({
       chave: 'ferias_vencidas',
@@ -583,6 +604,7 @@ export function calcularRescisao(dados) {
       avos13AnoSeguinte,
       avosFerias,
       periodosVencidos,
+      periodosInformados,
       emDobro,
       periodosCompletosCalculados: completos,
       diasFerias,

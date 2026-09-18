@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  calcularRescisao, calcularINSS, calcularIRRF, contarAvos, contarAvosFerias,
-  periodosAquisitivos, parseData,
+  calcularRescisao, calcularINSS, calcularIRRF, calcularRedutorIRRF, contarAvos,
+  contarAvosFerias, periodosAquisitivos, parseData,
 } from '../src/calculo.js';
 
 const base = {
@@ -23,8 +23,8 @@ test('avos consideram fração igual ou superior a 15 dias', () => {
 });
 
 test('INSS progressivo sobre uma faixa intermediária', () => {
-  // 1518,00 x 7,5% + 1275,88 x 9% + 206,12 x 12%
-  assert.equal(calcularINSS(3000), 253.41);
+  // 1.621,00 x 7,5% + 1.281,84 x 9% + 97,16 x 12% (tabela de 2026)
+  assert.equal(calcularINSS(3000), 248.6);
 });
 
 test('dispensa sem justa causa com aviso indenizado projeta o contrato', () => {
@@ -222,19 +222,30 @@ test('aviso indenizado que projeta para o ano seguinte gera 13º dos dois anos',
   assert.equal(verba(r, 'decimo_terceiro_ano_seguinte'), 100);
 });
 
-test('IRRF usa o desconto simplificado quando é mais favorável', () => {
-  const inss = calcularINSS(5000);
-  assert.equal(inss, 509.6);
-  // base legal 4.490,40 -> R$ 334,85; base simplificada 4.392,80 -> R$ 312,89
-  assert.equal(calcularIRRF(5000, { inss }), 312.89);
+test('rendimento de até R$ 5.000 não paga IRRF (Lei 15.270/2025)', () => {
+  assert.equal(calcularINSS(5000), 501.51);
+  assert.equal(calcularIRRF(5000, { inss: calcularINSS(5000) }), 0);
+  assert.equal(calcularIRRF(4000, { inss: calcularINSS(4000) }), 0);
+});
+
+test('o redutor decresce até se anular em R$ 7.350', () => {
+  const imposto = (r) => calcularIRRF(r, { inss: calcularINSS(r) });
+  assert.equal(calcularRedutorIRRF(5000, 999), 999); // isenção integral
+  // No teto da faixa a fórmula da lei deixa um resíduo de menos de um centavo
+  assert.ok(calcularRedutorIRRF(7350, 999) < 0.01);
+  assert.equal(calcularRedutorIRRF(8000, 999), 0); // acima, sem redutor
+  // sem degrau na virada da faixa
+  assert.ok(imposto(7400) - imposto(7350) < 20);
+  assert.ok(imposto(5500) > 0 && imposto(5500) < imposto(6000));
 });
 
 test('pensão alimentícia reduz a base do IRRF', () => {
-  const inss = calcularINSS(5000);
-  const semPensao = calcularIRRF(5000, { inss });
-  const comPensao = calcularIRRF(5000, { inss, pensao: 1000 });
+  const inss = calcularINSS(8000);
+  const semPensao = calcularIRRF(8000, { inss });
+  const comPensao = calcularIRRF(8000, { inss, pensao: 1600 });
   assert.ok(comPensao < semPensao);
-  assert.equal(comPensao, 129.4);
+  assert.equal(semPensao, 1037.85);
+  assert.equal(comPensao, 597.85);
 });
 
 /* ------------------------------------------------- adicionais legais ------ */
@@ -247,8 +258,8 @@ test('adicionais marcados integram a remuneração', () => {
     salarioBase: 3000,
     adicionais: ['insalubridade_20'],
   });
-  assert.equal(r.contexto.totalAdicionais, 303.6); // 20% do salário mínimo
-  assert.equal(r.contexto.remuneracao, 3303.6);
+  assert.equal(r.contexto.totalAdicionais, 324.2); // 20% do salário mínimo de 2026
+  assert.equal(r.contexto.remuneracao, 3324.2);
 });
 
 test('periculosidade incide sobre o salário base', () => {
@@ -514,7 +525,35 @@ test('13º de dois anos é tributado como dois fatos, não como um só', () => {
   });
   assert.equal(verba(r, 'decimo_terceiro'), 2500);
   assert.equal(verba(r, 'decimo_terceiro_ano_seguinte'), 208.33);
-  // INSS de cada ano, e não da soma: 202,23 + 15,62
-  assert.equal(desconto(r, 'inss_13'), 217.85);
+  // INSS de cada ano, e não da soma
+  assert.equal(desconto(r, 'inss_13'), 216.31);
   assert.notEqual(desconto(r, 'inss_13'), calcularINSS(2708.33));
+});
+
+test('faltas que zeram o direito a férias explicam a ausência da verba', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 1,
+    faltasInjustificadas: 40,
+  });
+  assert.equal(r.contexto.diasFerias, 0);
+  assert.equal(verba(r, 'ferias_vencidas'), 0); // sem linha de R$ 0,00
+  assert.ok(r.alertas.some((a) => a.includes('art. 130')));
+});
+
+test('o contexto guarda o que foi informado e o que foi usado', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2026-03-01',
+    dataAviso: '2026-09-15',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 1,
+  });
+  assert.equal(r.contexto.periodosInformados, 1);
+  assert.equal(r.contexto.periodosCompletosCalculados, 0);
+  assert.equal(r.contexto.periodosVencidos, 0);
 });

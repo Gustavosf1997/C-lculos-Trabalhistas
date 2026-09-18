@@ -4,7 +4,7 @@
  */
 
 import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRIDADE } from './pedidos.js';
-import { VIGENCIA } from './tabelas.js';
+import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
 import { moeda, formatarQuantidade } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { montarMemoria, imprimir } from './memoria.js';
@@ -224,7 +224,7 @@ function gerarPdf() {
 montarPedidos();
 montarSelects();
 $('#badge-vigencia').textContent = VIGENCIA;
-$('#rodape-vigencia').textContent = VIGENCIA;
+$('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
 $('#formulario').addEventListener('input', atualizar);
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por
 // Enter é neutralizado para que a página nunca recarregue e perca os dados.

@@ -94,7 +94,9 @@ Verbas e descontos:
   e periculosidade se excluem (art. 193, §2º);
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
-  com redução por faltas injustificadas (art. 130);
+  com redução por faltas injustificadas (art. 130). Os períodos vencidos são
+  informados por quem calcula — a ferramenta não tem como saber quais férias
+  foram gozadas —, e o painel mostra quantos períodos entraram na conta;
 - as duas contagens de avos seguem regras diferentes, como na lei: os avos de
   **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
   aberto na saída só vira avo com fração superior a 14 dias *dentro dele*
@@ -106,7 +108,9 @@ Verbas e descontos:
   adiantamento do 13º, pensão alimentícia e outros descontos — ou "não há
   descontos", que limpa a seleção;
 - INSS progressivo, com cálculo em separado sobre o 13º;
-- IRRF pelo modelo mais favorável (deduções legais x desconto simplificado);
+- IRRF pelo modelo mais favorável (deduções legais x desconto simplificado),
+  já com o redutor da Lei 15.270/2025: rendimento mensal de até R$ 5.000,00 não
+  paga imposto, e entre R$ 5.000,01 e R$ 7.350,00 o redutor decresce até zerar;
 - pensão alimentícia, adiantamentos e outros descontos;
 - indenização da rescisão antecipada: metade da remuneração dos dias que
   faltavam até o termo final, paga pelo empregador (art. 479) ou descontada do
@@ -171,8 +175,14 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 
 ## Limitações conhecidas
 
-- **As tabelas de INSS e IRRF em `src/tabelas.js` são de referência (2025) e
-  precisam ser conferidas e atualizadas antes de qualquer uso oficial.**
+- **As tabelas em `src/tabelas.js` são as de 2026** — INSS pela Portaria
+  Interministerial MPS/MF nº 13, de 09/01/2026 (salário mínimo de R$ 1.621,00,
+  teto de R$ 8.475,55) e IRRF com o redutor da Lei 15.270/2025. Confira-as
+  contra a fonte oficial antes de qualquer uso profissional, e reveja a cada
+  competência.
+- O redutor da Lei 15.270/2025 é aplicado também ao 13º salário, tributado em
+  separado. O ponto comporta leitura diversa: se a sua for outra, a regra está
+  isolada em `calcularRedutorIRRF`.
 
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.

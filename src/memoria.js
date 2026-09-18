@@ -7,6 +7,8 @@
  * dispensa qualquer biblioteca externa.
  */
 
+import { VIGENCIA_DETALHE } from './tabelas.js';
+
 const texto = (el) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
 /** O asterisco de campo obrigatório não faz sentido fora do formulário. */
@@ -98,7 +100,10 @@ export function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape
       ${resultado.innerHTML}
     </section>
 
-    <footer class="memoria__rodape">${rodape}</footer>`;
+    <footer class="memoria__rodape">
+      <p>${VIGENCIA_DETALHE}</p>
+      <p>${rodape}</p>
+    </footer>`;
 }
 
 /**

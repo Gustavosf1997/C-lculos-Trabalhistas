@@ -27,6 +27,12 @@ page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
 
 /* ---------------------------------------------------- verbas rescisórias */
 await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+
+// a vigência das tabelas aparece na tela e é a de 2026
+const etiqueta = await page.locator('#badge-vigencia').textContent();
+checar('etiqueta informa as tabelas de 2026', etiqueta.includes('2026'), etiqueta);
+const rodapeVigencia = await page.locator('#rodape-vigencia').textContent();
+checar('rodapé cita as fontes', rodapeVigencia.includes('MPS/MF') && rodapeVigencia.includes('15.270'), rodapeVigencia);
 await page.click('[data-tipo="sem_justa_causa"]');
 
 // letras não entram em campo de dinheiro
@@ -76,6 +82,11 @@ await page.fill('#pensaoPercentual', '10'); // volta a um valor válido
 
 // adicionais: exclusão entre insalubridade e periculosidade
 await page.check('input[name="adicionais"][value="insalubridade_20"]');
+await page.waitForTimeout(250);
+// 20% do salário mínimo de 2026 (R$ 1.621,00); com a tabela de 2025 daria 303,60
+const notaAdicional = await page.locator('#nota-remuneracao').textContent();
+checar('insalubridade usa o mínimo de 2026', notaAdicional.includes('324,20'), notaAdicional);
+
 await page.check('input[name="adicionais"][value="periculosidade_30"]');
 await page.waitForTimeout(250);
 checar(
@@ -124,6 +135,23 @@ checar(
   null,
 );
 checar('campo some junto com a marcação', await page.locator('#campo-horas_negativas').isHidden(), null);
+
+// férias vencidas: entram na conta e aparecem no resumo
+await page.fill('#periodosFeriasVencidas', '1');
+await page.waitForTimeout(300);
+checar(
+  'férias vencidas entram nas verbas',
+  (await page.locator('.linhas tr', { hasText: 'Férias vencidas' }).count()) > 0,
+  null,
+);
+const resumoFerias = await page.locator('.contexto div', { hasText: 'Férias vencidas' }).textContent();
+checar('resumo mostra os períodos computados', resumoFerias.includes('1 período'), resumoFerias);
+
+await page.fill('#periodosFeriasVencidas', '9');
+await page.waitForTimeout(300);
+const erroPeriodos = await page.locator('.campo:has(#periodosFeriasVencidas) .campo__erro').textContent().catch(() => null);
+checar('período além do contrato marca o campo', (erroPeriodos ?? '').includes('completou'), erroPeriodos);
+await page.fill('#periodosFeriasVencidas', '1');
 
 // memória de cálculo para PDF
 checar('PDF bloqueado sem cálculo fechado', true, null); // conferido no carregamento
