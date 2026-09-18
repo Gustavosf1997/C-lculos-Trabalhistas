@@ -32,6 +32,14 @@ function addDias(data, dias) {
   return new Date(data.getTime() + dias * DIA_MS);
 }
 
+/** Soma meses mantendo o dia; dia inexistente no mês de destino encosta no último. */
+function addMeses(data, meses) {
+  const ano = data.getUTCFullYear();
+  const mes = data.getUTCMonth() + meses;
+  const ultimoDia = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(ano, mes, Math.min(data.getUTCDate(), ultimoDia)));
+}
+
 function addAnos(data, anos) {
   return new Date(Date.UTC(data.getUTCFullYear() + anos, data.getUTCMonth(), data.getUTCDate()));
 }
@@ -78,9 +86,38 @@ export function contarMeses(inicio, fim) {
   return meses;
 }
 
-/** Avos de 13º e de férias: os meses do período, limitados a 12. */
+/** Avos do 13º: meses de competência do ano, limitados a 12. */
 export function contarAvos(inicio, fim) {
   return Math.min(contarMeses(inicio, fim), 12);
+}
+
+/**
+ * Avos de férias: contados em ciclos mensais a partir do dia da admissão, e
+ * não por mês de calendário (art. 130 c/c art. 146, parágrafo único, da CLT).
+ *
+ * O ciclo em curso na saída só vira avo se tiver 15 dias ou mais trabalhados
+ * dentro dele — a fração superior a 14 dias —, pouco importando quantos dias
+ * do mês de calendário foram cumpridos.
+ *
+ * @param {Date} inicioPeriodo início do período aquisitivo em curso
+ * @param {Date} fim último dia do contrato, já projetado quando há aviso
+ */
+export function contarAvosFerias(inicioPeriodo, fim) {
+  if (!inicioPeriodo || !fim || fim < inicioPeriodo) return 0;
+
+  let avos = 0;
+  for (let ciclo = 0; ciclo < 12; ciclo += 1) {
+    const inicioCiclo = addMeses(inicioPeriodo, ciclo);
+    const fimCiclo = addDias(addMeses(inicioPeriodo, ciclo + 1), -1);
+
+    if (fim >= fimCiclo) {
+      avos += 1; // ciclo mensal completo
+      continue;
+    }
+    if (diffDias(inicioCiclo, fim) + 1 >= 15) avos += 1; // fração superior a 14 dias
+    break;
+  }
+  return Math.min(avos, 12);
 }
 
 /** Períodos aquisitivos de férias já completados e início do período em curso. */
@@ -97,6 +134,15 @@ export function periodosAquisitivos(admissao, fim) {
     }
   }
   return { completos, inicioPeriodoAtual: inicio };
+}
+
+/**
+ * Valor das horas extras do mês: hora normal — salário e adicionais divididos
+ * pelo divisor da jornada (Súmula 264 do TST) — acrescida do adicional.
+ */
+export function valorHorasExtras(remuneracaoFixa, divisor, horas, percentual = 50) {
+  if (!divisor || divisor <= 0 || !horas || horas <= 0) return 0;
+  return arredondar((remuneracaoFixa / divisor) * (1 + percentual / 100) * horas);
 }
 
 /** Dias de férias a que o empregado faz jus conforme faltas (art. 130 da CLT). */
@@ -197,8 +243,12 @@ export function calcularRescisao(dados) {
     horasNoturnas: num(dados.horasNoturnas),
     divisor,
   });
-  const medias = num(dados.mediaHorasExtras) + adicionais.total + num(dados.mediaComissoes);
-  const remuneracao = arredondar(salarioBase + medias);
+  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
+  // que o saldo de salário é rateado. As médias de variáveis servem para
+  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
+  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
+  const medias = num(dados.mediaComissoes);
+  const remuneracao = arredondar(remuneracaoFixa + medias);
 
   /* --- aviso prévio --- */
   const anos = anosCompletos(admissao, dataAviso);
@@ -232,15 +282,40 @@ export function calcularRescisao(dados) {
   /* --- proventos --- */
   const proventos = [];
   const descontosAntecipados = [];
-  // Mês de 31 dias não gera 31/30 de salário: o teto é o mês cheio.
-  const diasSaldo = Math.min(ultimoDiaTrabalhado.getUTCDate(), 30);
-  const saldoSalario = arredondar((remuneracao / 30) * diasSaldo);
+  // Dias do último mês: conta a partir da admissão quando ela cai nesse mesmo
+  // mês, e paga o mês cheio (30/30) quando ele foi trabalhado por inteiro —
+  // inclusive em fevereiro, que tem menos de 30 dias.
+  const anoSaldo = ultimoDiaTrabalhado.getUTCFullYear();
+  const mesSaldo = ultimoDiaTrabalhado.getUTCMonth();
+  const primeiroDoMes = new Date(Date.UTC(anoSaldo, mesSaldo, 1));
+  const ultimoDoMes = new Date(Date.UTC(anoSaldo, mesSaldo + 1, 0));
+  const inicioNoMes = admissao > primeiroDoMes ? admissao : primeiroDoMes;
+  const mesInteiro = admissao <= primeiroDoMes && ultimoDiaTrabalhado >= ultimoDoMes;
+  const diasSaldo = mesInteiro ? 30 : Math.min(diffDias(inicioNoMes, ultimoDiaTrabalhado) + 1, 30);
+
+  const saldoSalario = arredondar((remuneracaoFixa / 30) * diasSaldo);
   proventos.push({
     chave: 'saldo_salario',
     label: 'Saldo de salário',
-    detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)}`,
+    detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)} · salário e adicionais`,
     valor: saldoSalario,
   });
+
+  // Horas extras efetivamente prestadas no mês da rescisão: verba do mês, e
+  // não média de integração.
+  const horasExtras = num(dados.horasExtras);
+  const percentualHoraExtra = num(dados.adicionalHoraExtra) || 50;
+  const valorHoras = valorHorasExtras(remuneracaoFixa, divisor, horasExtras, percentualHoraExtra);
+  if (valorHoras > 0) {
+    proventos.push({
+      chave: 'horas_extras',
+      label: 'Horas extras',
+      detalhe: `${formatarQuantidade(horasExtras)} h x ${moeda.format(
+        arredondar((remuneracaoFixa / divisor) * (1 + percentualHoraExtra / 100)),
+      )} (hora + ${formatarQuantidade(percentualHoraExtra)}%)`,
+      valor: valorHoras,
+    });
+  }
 
   let valorAviso = 0;
   if (avisoIndenizado && diasAvisoDevidos > 0) {
@@ -275,6 +350,8 @@ export function calcularRescisao(dados) {
   let decimoTerceiro = 0;
   let avos13 = 0;
   let avos13AnoSeguinte = 0;
+  // Cada ano tem o seu 13º, tributado como fato próprio.
+  const decimosPorAno = [];
   if (tipo.campos.decimoTerceiro) {
     const ano = ultimoDiaTrabalhado.getUTCFullYear();
     const inicioAno = new Date(Date.UTC(ano, 0, 1));
@@ -284,6 +361,7 @@ export function calcularRescisao(dados) {
 
     avos13 = contarAvos(inicio13, fim13);
     decimoTerceiro = arredondar((remuneracao / 12) * avos13);
+    if (decimoTerceiro > 0) decimosPorAno.push(decimoTerceiro);
     proventos.push({
       chave: 'decimo_terceiro',
       label: `13º salário proporcional (${ano})`,
@@ -297,6 +375,7 @@ export function calcularRescisao(dados) {
       avos13AnoSeguinte = contarAvos(new Date(Date.UTC(ano + 1, 0, 1)), dataProjetada);
       if (avos13AnoSeguinte > 0) {
         const valor = arredondar((remuneracao / 12) * avos13AnoSeguinte);
+        decimosPorAno.push(valor);
         decimoTerceiro = arredondar(decimoTerceiro + valor);
         proventos.push({
           chave: 'decimo_terceiro_ano_seguinte',
@@ -312,7 +391,14 @@ export function calcularRescisao(dados) {
   const diasFerias = diasDeFeriasPorFaltas(num(dados.faltasInjustificadas));
   const fatorFaltas = diasFerias / 30;
   const { completos, inicioPeriodoAtual } = periodosAquisitivos(admissao, dataProjetada);
-  const periodosVencidos = Math.min(num(dados.periodosFeriasVencidas), completos);
+  const periodosInformados = num(dados.periodosFeriasVencidas);
+  const periodosVencidos = Math.min(periodosInformados, completos);
+  if (periodosInformados > completos) {
+    alertas.push(
+      `Foram informados ${periodosInformados} períodos de férias vencidas, mas o contrato completou `
+        + `${completos}. O cálculo usou ${completos}.`,
+    );
+  }
   const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
@@ -335,7 +421,7 @@ export function calcularRescisao(dados) {
   let feriasProporcionais = 0;
   let avosFerias = 0;
   if (tipo.campos.feriasProporcionais) {
-    avosFerias = contarAvos(inicioPeriodoAtual, dataProjetada);
+    avosFerias = contarAvosFerias(inicioPeriodoAtual, dataProjetada);
     feriasProporcionais = arredondar((remuneracao / 12) * avosFerias * fatorFaltas);
     if (feriasProporcionais > 0) {
       proventos.push({
@@ -355,20 +441,31 @@ export function calcularRescisao(dados) {
 
   /* --- descontos --- */
   const descontos = [...descontosAntecipados];
-  const inssSalario = calcularINSS(saldoSalario);
+
+  // O mês é tributado por inteiro: saldo somado às horas extras nele pagas.
+  const baseMensal = arredondar(saldoSalario + valorHoras);
+  const rotuloMensal = valorHoras > 0 ? 'saldo de salário e horas extras' : 'saldo de salário';
+
+  const inssSalario = calcularINSS(baseMensal);
   if (inssSalario > 0) {
-    descontos.push({ chave: 'inss_salario', label: 'INSS sobre saldo de salário', detalhe: 'tabela progressiva', valor: inssSalario });
+    descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
   }
-  const inss13 = decimoTerceiro > 0 ? calcularINSS(decimoTerceiro) : 0;
+  const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
   if (inss13 > 0) {
-    descontos.push({ chave: 'inss_13', label: 'INSS sobre 13º salário', detalhe: 'cálculo em separado', valor: inss13 });
+    descontos.push({
+      chave: 'inss_13',
+      label: 'INSS sobre 13º salário',
+      detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
+      valor: inss13,
+    });
   }
 
   // Só desconta o que foi marcado na tela; o resto decorre da lei.
   const marcados = dados.descontos ?? [];
   const aplica = (id) => marcados.includes(id);
 
-  const valorHora = salarioHora(salarioBase, divisor);
+  // Mesma hora normal que remunera a extra: salário e adicionais ÷ divisor.
+  const valorHora = salarioHora(remuneracaoFixa, divisor);
   const horasNegativas = aplica('horas_negativas') ? num(dados.horasNegativas) : 0;
   if (horasNegativas > 0) {
     descontos.push({
@@ -382,17 +479,24 @@ export function calcularRescisao(dados) {
   const dependentes = num(dados.dependentes);
   const pensaoPercentual = aplica('pensao') ? num(dados.pensaoPercentual) : 0;
   const fatorPensao = pensaoPercentual / 100;
-  const irrfSalario = calcularIRRF(saldoSalario, {
+  const irrfSalario = calcularIRRF(baseMensal, {
     inss: inssSalario,
     dependentes,
-    pensao: saldoSalario * fatorPensao,
+    pensao: baseMensal * fatorPensao,
   });
   if (irrfSalario > 0) {
-    descontos.push({ chave: 'irrf_salario', label: 'IRRF sobre saldo de salário', detalhe: 'tabela progressiva', valor: irrfSalario });
+    descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
   }
-  const irrf13 = decimoTerceiro > 0
-    ? calcularIRRF(decimoTerceiro, { inss: inss13, dependentes, pensao: decimoTerceiro * fatorPensao })
-    : 0;
+  const irrf13 = arredondar(
+    decimosPorAno.reduce(
+      (soma, valor) => soma + calcularIRRF(valor, {
+        inss: calcularINSS(valor),
+        dependentes,
+        pensao: valor * fatorPensao,
+      }),
+      0,
+    ),
+  );
   if (irrf13 > 0) {
     descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
   }
@@ -411,7 +515,7 @@ export function calcularRescisao(dados) {
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
-      detalhe: `${pensaoPercentual}% sobre as verbas rescisórias`,
+      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
       valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
     });
   }
@@ -441,7 +545,7 @@ export function calcularRescisao(dados) {
 
   /* --- FGTS --- */
   const saldoFgtsInformado = num(dados.saldoFgts);
-  const baseFgtsRescisao = saldoSalario + decimoTerceiro + valorAviso;
+  const baseFgtsRescisao = saldoSalario + valorHoras + decimoTerceiro + valorAviso;
   const fgtsRescisao = arredondar(baseFgtsRescisao * FGTS.aliquotaDeposito);
   const baseMulta = arredondar(saldoFgtsInformado + fgtsRescisao);
   const percentualMulta = tipo.fgts.multa;
@@ -455,6 +559,9 @@ export function calcularRescisao(dados) {
     alertas,
     contexto: {
       remuneracao,
+      remuneracaoFixa,
+      horasExtras,
+      valorHorasExtras: valorHoras,
       medias: arredondar(medias),
       adicionais: adicionais.itens,
       totalAdicionais: adicionais.total,

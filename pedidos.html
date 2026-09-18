@@ -28,7 +28,7 @@
     <section class="etapa">
       <h2><span class="etapa__num">1</span> Pedido</h2>
       <p class="etapa__ajuda">Escolha o pedido a calcular. Cada um pede os dados que lhe são próprios.</p>
-      <div class="tipos" id="pedidos"></div>
+      <div class="tipos" id="pedidos" data-dinamico></div>
       <div class="resumo-tipo" id="resumo-pedido" hidden></div>
     </section>
 
@@ -166,6 +166,7 @@
           </fieldset>
 
           <div class="acoes">
+            <button type="button" class="botao botao--primario" id="gerar-pdf">Gerar PDF</button>
             <button type="reset" class="botao">Limpar</button>
             <span class="acoes__nota">O resultado é recalculado a cada campo preenchido.</span>
           </div>
@@ -182,11 +183,28 @@
     </div>
   </main>
 
+  <section id="memoria" class="memoria" aria-hidden="true"></section>
+
   <footer class="rodape">
     <p><b>Uso orientativo.</b> Os valores são estimativas e não substituem a memória de cálculo do processo. Não há aplicação de juros nem de correção monetária.</p>
     <p id="rodape-vigencia"></p>
   </footer>
 
   <script type="module" src="src/app-pedidos.js"></script>
+  <script>
+    /* Os grupos de marcação são montados pelo módulo. Se algum ficar vazio, o
+       navegador está servindo um JavaScript antigo de cache: avisa, em vez de
+       deixar a seção sumir sem explicação. */
+    addEventListener('load', () => setTimeout(() => {
+      const vazios = [...document.querySelectorAll('[data-dinamico]')].filter((el) => !el.children.length);
+      if (!vazios.length) return;
+      const aviso = document.createElement('p');
+      aviso.className = 'aviso-cache';
+      aviso.innerHTML = 'Esta página carregou uma versão antiga guardada em cache. '
+        + 'Recarregue com <b>Ctrl+Shift+R</b> (ou <b>Cmd+Shift+R</b> no Mac).';
+      document.querySelector('.pagina').prepend(aviso);
+    }, 700));
+  </script>
+
 </body>
 </html>

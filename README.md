@@ -15,6 +15,12 @@ npx http-server -p 8080 -c-1 .     # ou: python3 -m http.server 8080
 
 Depois abra <http://localhost:8080>.
 
+O `-c-1` desliga o cache do servidor. Sem ele, o navegador pode guardar uma
+versão antiga do JavaScript e a tela aparece incompleta — nesse caso, recarregue
+com `Ctrl+Shift+R` (`Cmd+Shift+R` no Mac). As páginas avisam quando isso
+acontece: se um grupo montado por JavaScript ficar vazio, aparece um alerta
+pedindo a recarga.
+
 Os cálculos rodam no navegador — nenhum dado é enviado para servidor.
 
 ## Testes
@@ -45,6 +51,7 @@ node tests/interface.mjs
 | `src/pedidos.js` | Motor dos pedidos — hoje, horas extras (módulo puro) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
+| `src/memoria.js` | Memória de cálculo para impressão e PDF |
 | `src/campos.js` | Máscara, validação e marcação de erro nos campos |
 | `src/app-rescisao.js` | Interface da aba de verbas rescisórias |
 | `src/app-pedidos.js` | Interface da aba de pedidos |
@@ -69,10 +76,17 @@ sai a indenização dos arts. 479/480).
 
 Verbas e descontos:
 
-- saldo de salário pelos dias trabalhados no mês;
+- saldo de salário pelos dias efetivamente trabalhados no último mês —
+  contados a partir da admissão quando ela cai nesse mesmo mês, e pagos como
+  mês cheio (30/30) quando o mês foi trabalhado por inteiro, inclusive em
+  fevereiro — sobre o salário base e os adicionais, sem as médias de variáveis;
 - aviso prévio proporcional (30 dias + 3 por ano, máx. 90 — Lei 12.506/2011),
   indenizado, trabalhado, pela metade (comum acordo) ou descontado (pedido de
   demissão não cumprido), com projeção do contrato quando indenizado;
+- horas extras do mês da rescisão informadas em quantidade, não em média:
+  viram verba própria, calculadas pela hora normal (salário e adicionais
+  divididos pelo divisor, Súmula 264 do TST) acrescida do adicional — 50% por
+  padrão, editável;
 - adicionais legais escolhidos por marcação, cada um com percentual e base
   próprios: insalubridade de 10%, 20% ou 40% sobre o salário mínimo,
   periculosidade de 30% e transferência de 25% sobre o salário base, e
@@ -81,6 +95,12 @@ Verbas e descontos:
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
   com redução por faltas injustificadas (art. 130);
+- as duas contagens de avos seguem regras diferentes, como na lei: os avos de
+  **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
+  aberto na saída só vira avo com fração superior a 14 dias *dentro dele*
+  (art. 146, parágrafo único); os avos do **13º** seguem o mês de competência
+  do calendário, com fração igual ou superior a 15 dias no mês
+  (Lei 4.090/62, art. 1º, §2º);
 - descontos marcados na tela, cada um com o seu campo: horas negativas
   (salário base ÷ divisor, multiplicado pelas horas), adiantamento de salário,
   adiantamento do 13º, pensão alimentícia e outros descontos — ou "não há
@@ -93,6 +113,15 @@ Verbas e descontos:
   empregado (art. 480);
 - FGTS: depósito de 8% sobre as verbas salariais, multa de 40% ou 20%, saque e
   seguro-desemprego.
+
+## PDF da memória de cálculo
+
+O botão **Gerar PDF** monta um documento próprio — cabeçalho com a modalidade e
+a data de emissão, os dados informados, o resultado completo e o aviso legal —
+e abre a janela de impressão do navegador, onde se escolhe "Salvar como PDF".
+Não há biblioteca envolvida: a folha de estilos tem um bloco `@media print` que
+esconde a interface e imprime só a memória. O botão fica desabilitado enquanto
+o cálculo não fecha.
 
 ## Campos e validação
 
@@ -144,17 +173,23 @@ insalubridade/periculosidade como pedido autônomo e as multas dos arts. 467 e 4
 
 - **As tabelas de INSS e IRRF em `src/tabelas.js` são de referência (2025) e
   precisam ser conferidas e atualizadas antes de qualquer uso oficial.**
-- Quando o aviso indenizado projeta o contrato para o ano seguinte, o 13º de
-  cada ano é calculado em separado, mas o INSS e o IRRF incidem sobre a soma.
+
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.
 - A insalubridade é calculada sobre o salário mínimo (art. 192 da CLT); norma
   coletiva que fixe outra base precisa ser ajustada em `src/adicionais.js`.
+- A média de comissões, gorjetas e prêmios integra aviso, 13º e férias, mas não
+  o saldo de salário: é média para indenização, não o que o último mês pagou.
+- As horas extras informadas são as do mês da rescisão e formam verba própria;
+  elas entram nas bases de INSS, IRRF e FGTS do mês, mas não integram aviso,
+  13º e férias. Horas extras habituais que devam repercutir nessas verbas ainda
+  não têm campo próprio — o módulo de pedidos calcula esses reflexos.
 - O adicional noturno não aplica a hora noturna reduzida de 52min30s
   (art. 73, §1º).
-- O salário-hora, usado nas horas negativas e no adicional noturno, sai do
-  salário base dividido pelo divisor informado — não inclui adicionais nem
-  médias de variáveis.
+- A hora normal do cálculo é uma só: salário e adicionais divididos pelo
+  divisor informado. Ela remunera as horas extras e desconta as negativas. O
+  adicional noturno incide sobre ela já integrada pelos adicionais de risco;
+  médias de variáveis ficam de fora.
 - Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
   doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
 - Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e

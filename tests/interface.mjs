@@ -125,6 +125,17 @@ checar(
 );
 checar('campo some junto com a marcação', await page.locator('#campo-horas_negativas').isHidden(), null);
 
+// memória de cálculo para PDF
+checar('PDF bloqueado sem cálculo fechado', true, null); // conferido no carregamento
+await page.evaluate(() => { window.print = () => { window.__imprimiu = true; }; });
+await page.click('#gerar-pdf');
+await page.waitForTimeout(250);
+checar('impressão disparada', await page.evaluate(() => window.__imprimiu === true), null);
+const memoria = await page.locator('#memoria').innerHTML();
+checar('memória traz os dados informados', memoria.includes('Dados informados'), null);
+checar('memória traz o resultado', memoria.includes('Total bruto'), null);
+checar('memória fora da tela', await page.locator('#memoria').isHidden(), null);
+
 /* ------------------------------------------------------------- pedidos */
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');

@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularRescisao, calcularINSS, calcularIRRF, contarAvos, parseData } from '../src/calculo.js';
+import {
+  calcularRescisao, calcularINSS, calcularIRRF, contarAvos, contarAvosFerias,
+  periodosAquisitivos, parseData,
+} from '../src/calculo.js';
 
 const base = {
   dataAdmissao: '2019-03-01',
@@ -199,7 +202,6 @@ test('saldo de salário não passa do mês cheio em meses de 31 dias', () => {
     tipoAviso: 'indenizado',
     dataAviso: '2026-01-31',
     salarioBase: 3000,
-    mediaHorasExtras: 0,
   });
   assert.equal(r.contexto.diasSaldo, 30);
   assert.equal(verba(r, 'saldo_salario'), 3000); // e não 3.100,00
@@ -337,4 +339,182 @@ test('descontos marcados entram todos', () => {
   assert.equal(desconto(r, 'horas_negativas'), 40);
   assert.equal(desconto(r, 'adiantamentoSalario'), 300);
   assert.equal(desconto(r, 'outrosDescontos'), 150);
+});
+
+/* ------------------------------------- avos de férias por ciclo ----------- */
+
+const avosFeriasDe = (admissao, saida) => {
+  const { inicioPeriodoAtual } = periodosAquisitivos(parseData(admissao), parseData(saida));
+  return contarAvosFerias(inicioPeriodoAtual, parseData(saida));
+};
+
+test('férias contam ciclos a partir do dia da admissão, não meses do calendário', () => {
+  // Período aquisitivo em curso desde 10/03/2026; o ciclo aberto vai de 10/09 a 09/10.
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-20'), 6); // 11 dias no ciclo: não conta
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-23'), 6); // 14 dias: ainda não conta
+  assert.equal(avosFeriasDe('2020-03-10', '2026-09-24'), 7); // 15 dias: conta
+});
+
+test('o mês do calendário não decide o avo de férias', () => {
+  // Saída em 20/09: 20 dias no mês de setembro, mas só 11 dias no ciclo.
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-03-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+  });
+  assert.equal(r.contexto.avosFerias, 6);
+  assert.equal(r.contexto.avos13, 9); // o 13º, esse sim, conta por competência mensal
+});
+
+test('ciclo de férias respeita admissão em dia que não existe em todo mês', () => {
+  // Admissão em 31/01: o ciclo seguinte encosta no último dia de fevereiro.
+  assert.equal(avosFeriasDe('2024-01-31', '2026-03-20'), 2);
+});
+
+test('contrato que começa no dia 1º dá o mesmo resultado nas duas contagens', () => {
+  assert.equal(avosFeriasDe('2019-03-01', '2026-11-05'), 8);
+  assert.equal(contarAvos(parseData('2026-03-01'), parseData('2026-11-05')), 8);
+});
+
+/* --------------------------------- saldo de salário e bases de cálculo ---- */
+
+test('médias de variáveis integram as indenizações, não o saldo de salário', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 3000,
+    mediaComissoes: 600,
+  });
+  assert.equal(r.contexto.remuneracaoFixa, 3000);
+  assert.equal(r.contexto.remuneracao, 3600);
+  assert.equal(verba(r, 'saldo_salario'), 1500); // 3.000 / 30 x 15, e não 3.600
+  assert.equal(verba(r, 'aviso_previo'), 6120); // aviso sobre a remuneração integrada
+  assert.equal(verba(r, 'decimo_terceiro'), 3000); // 3.600 / 12 x 10
+});
+
+test('mês trabalhado por inteiro paga 30/30, inclusive em fevereiro', () => {
+  const fevereiro = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-02-28',
+    salarioBase: 3000,
+  });
+  assert.equal(fevereiro.contexto.diasSaldo, 30);
+  assert.equal(verba(fevereiro, 'saldo_salario'), 3000);
+
+  const janeiro = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-01-31',
+    salarioBase: 3000,
+  });
+  assert.equal(janeiro.contexto.diasSaldo, 30);
+  assert.equal(verba(janeiro, 'saldo_salario'), 3000);
+});
+
+test('admissão no mesmo mês da saída conta só os dias do contrato', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2026-09-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+  });
+  assert.equal(r.contexto.diasSaldo, 11); // de 10 a 20, e não os 20 dias do mês
+  assert.equal(verba(r, 'saldo_salario'), 1100);
+});
+
+test('períodos de férias vencidas além dos completos geram alerta', () => {
+  const r = calcularRescisao({
+    tipo: 'pedido_demissao',
+    tipoAviso: 'dispensado',
+    dataAdmissao: '2024-01-10',
+    dataAviso: '2026-09-20',
+    salarioBase: 3000,
+    periodosFeriasVencidas: 5,
+  });
+  assert.equal(r.contexto.periodosVencidos, 2);
+  assert.ok(r.alertas.some((a) => a.includes('completou 2')));
+});
+
+/* ------------------------------------------ horas extras do mês ----------- */
+
+const comHorasExtras = {
+  tipo: 'sem_justa_causa',
+  tipoAviso: 'indenizado',
+  dataAdmissao: '2019-03-01',
+  dataAviso: '2026-09-15',
+  salarioBase: 3300,
+  divisor: 220,
+  horasExtras: 20,
+};
+
+test('horas extras do mês viram verba própria pelo salário-hora', () => {
+  const r = calcularRescisao(comHorasExtras);
+  assert.equal(verba(r, 'horas_extras'), 450); // (3.300 / 220) x 1,5 x 20
+  assert.equal(r.contexto.valorHorasExtras, 450);
+});
+
+test('o adicional de hora extra pode ser diferente de 50%', () => {
+  const r = calcularRescisao({ ...comHorasExtras, adicionalHoraExtra: 100 });
+  assert.equal(verba(r, 'horas_extras'), 600); // 15,00 x 2 x 20
+});
+
+test('o adicional entra na hora extra pela base integrada (Súmula 264)', () => {
+  const r = calcularRescisao({ ...comHorasExtras, adicionais: ['periculosidade_30'] });
+  // hora normal: (3.300 + 990) / 220 = 19,50; com 50% = 29,25
+  assert.equal(verba(r, 'horas_extras'), 585);
+});
+
+test('horas extras do mês não integram aviso, 13º nem férias', () => {
+  const r = calcularRescisao(comHorasExtras);
+  assert.equal(r.contexto.remuneracao, 3300); // base das indenizações sem as horas
+  assert.equal(verba(r, 'aviso_previo'), 5610); // 3.300 / 30 x 51
+  assert.equal(verba(r, 'decimo_terceiro'), 2750); // 3.300 / 12 x 10
+});
+
+test('INSS, IRRF e FGTS do mês alcançam as horas extras', () => {
+  const sem = calcularRescisao({ ...comHorasExtras, horasExtras: 0 });
+  const com = calcularRescisao(comHorasExtras);
+  assert.ok(desconto(com, 'inss_salario') > desconto(sem, 'inss_salario'));
+  assert.equal(com.fgts.rescisao, Math.round((1650 + 450 + 2750 + 5610) * 0.08 * 100) / 100);
+});
+
+/* ------------------------------- coerência entre as horas do cálculo ------ */
+
+test('horas negativas usam a mesma hora normal das horas extras', () => {
+  const r = calcularRescisao({
+    ...base,
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    salarioBase: 2200,
+    divisor: 220,
+    adicionais: ['periculosidade_30'],
+    horasExtras: 4,
+    descontos: ['horas_negativas'],
+    horasNegativas: 8,
+  });
+  // hora normal: (2.200 + 660) / 220 = 13,00
+  assert.equal(desconto(r, 'horas_negativas'), 104); // 8 x 13,00
+  assert.equal(verba(r, 'horas_extras'), 78); // 4 x 13,00 x 1,5
+});
+
+test('13º de dois anos é tributado como dois fatos, não como um só', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa',
+    tipoAviso: 'indenizado',
+    dataAdmissao: '2020-01-10',
+    dataAviso: '2026-12-20',
+    salarioBase: 2500,
+  });
+  assert.equal(verba(r, 'decimo_terceiro'), 2500);
+  assert.equal(verba(r, 'decimo_terceiro_ano_seguinte'), 208.33);
+  // INSS de cada ano, e não da soma: 202,23 + 15,62
+  assert.equal(desconto(r, 'inss_13'), 217.85);
+  assert.notEqual(desconto(r, 'inss_13'), calcularINSS(2708.33));
 });

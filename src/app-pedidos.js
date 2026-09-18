@@ -7,6 +7,7 @@ import { calcularHorasExtras, calcularAdicionalRisco, JORNADAS, GRAUS_INSALUBRID
 import { VIGENCIA } from './tabelas.js';
 import { moeda, formatarQuantidade } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
+import { montarMemoria, imprimir } from './memoria.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
@@ -153,7 +154,7 @@ function renderResultado(r) {
     ['Base de cálculo', moeda.format(c.baseCalculo)],
     ['Divisor', String(c.divisor)],
     ['Valor da hora', moeda.format(c.valorHora)],
-    [`Hora extra (+${c.percentualAdicional}%)`, moeda.format(c.valorHoraExtra)],
+    [`Hora extra (+${formatarQuantidade(c.percentualAdicional)}%)`, moeda.format(c.valorHoraExtra)],
     ['Horas por mês', formatarQuantidade(c.horasMes)],
     ['Meses no período', c.mesesFracionados ? `${formatarQuantidade(c.meses)} (${c.diasPeriodo} dias)` : String(c.meses)],
   ];
@@ -199,9 +200,23 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
-    return;
+  } else {
+    renderResultado(calcularHorasExtras(dados));
   }
-  renderResultado(calcularHorasExtras(dados));
+  // Só se gera PDF de um cálculo fechado.
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+}
+
+function gerarPdf() {
+  const pedido = PEDIDOS.find((p) => p.id === pedidoSelecionado);
+  montarMemoria({
+    titulo: 'Cálculo de pedidos',
+    subtitulo: `${pedido.nome} — ${pedido.tag}`,
+    formulario: $('#formulario'),
+    resultado: $('#resultado'),
+    rodape: 'Uso orientativo. Os valores são estimativas e não substituem a memória de cálculo do processo. Não há aplicação de juros nem de correção monetária.',
+  });
+  imprimir(`Memoria de calculo - ${pedido.nome}`);
 }
 
 /* -------------------------------------------------------------- inicializa */
@@ -219,4 +234,5 @@ $('#formulario').addEventListener('submit', (evento) => {
 });
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 inicializarCampos();
+$('#gerar-pdf').addEventListener('click', gerarPdf);
 selecionarPedido('horas_extras');

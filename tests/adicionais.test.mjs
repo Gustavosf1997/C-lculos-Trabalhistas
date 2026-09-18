@@ -51,3 +51,24 @@ test('"não recebia adicionais" limpa a seleção', () => {
 test('id desconhecido é ignorado', () => {
   assert.equal(calcularAdicionais({ selecionados: ['inventado'], salarioBase: 2000 }).total, 0);
 });
+
+test('adicional noturno incide sobre a hora já integrada pelos demais adicionais', () => {
+  const soNoturno = calcularAdicionais({ selecionados: ['noturno_20'], salarioBase: 2200, horasNoturnas: 30 });
+  assert.equal(soNoturno.total, 60); // hora de 10,00
+
+  const comPericulosidade = calcularAdicionais({
+    selecionados: ['periculosidade_30', 'noturno_20'],
+    salarioBase: 2200,
+    horasNoturnas: 30,
+  });
+  // hora integrada: (2.200 + 660) / 220 = 13,00 -> 30 h x 13,00 x 20% = 78,00
+  assert.equal(comPericulosidade.itens.find((i) => i.id === 'noturno_20').valor, 78);
+  assert.equal(comPericulosidade.total, 738);
+});
+
+test('a ordem dos adicionais na lista não muda o resultado', () => {
+  const a = calcularAdicionais({ selecionados: ['noturno_20', 'periculosidade_30'], salarioBase: 2200, horasNoturnas: 30 });
+  const b = calcularAdicionais({ selecionados: ['periculosidade_30', 'noturno_20'], salarioBase: 2200, horasNoturnas: 30 });
+  assert.equal(a.total, b.total);
+  assert.deepEqual(a.itens.map((i) => i.id), b.itens.map((i) => i.id));
+});

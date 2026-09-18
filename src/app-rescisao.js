@@ -4,19 +4,20 @@
  */
 
 import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
-import { calcularRescisao, formatarData } from './calculo.js';
+import { calcularRescisao, formatarData, valorHorasExtras } from './calculo.js';
 import { VIGENCIA } from './tabelas.js';
 import { moeda } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
+import { montarMemoria, imprimir } from './memoria.js';
 
 const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
   'dataAdmissao', 'dataAviso', 'dataTermoFinal',
-  'salarioBase', 'divisor', 'mediaHorasExtras', 'mediaComissoes', 'horasNoturnas',
+  'salarioBase', 'divisor', 'horasExtras', 'adicionalHoraExtra', 'mediaComissoes', 'horasNoturnas',
   'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
   'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
 ];
@@ -287,7 +288,7 @@ function renderResultado(resultado) {
         fgts.percentualMulta > 0
           ? `<table class="linhas">
         <tr><td>Saldo informado</td><td>${moeda.format(fgts.informado)}</td></tr>
-        <tr><td>FGTS sobre as verbas rescisórias<small>8% sobre saldo, 13º e aviso indenizado</small></td><td>${moeda.format(fgts.rescisao)}</td></tr>
+        <tr><td>FGTS sobre as verbas rescisórias<small>8% sobre saldo, horas extras, 13º e aviso indenizado</small></td><td>${moeda.format(fgts.rescisao)}</td></tr>
         <tr><td>${fgts.rotuloMulta}<small>base ${moeda.format(fgts.baseMulta)}</small></td><td>${moeda.format(fgts.multa)}</td></tr>
       </table>
       <p>Saque: ${fgts.saque} · Seguro-desemprego: ${fgts.seguroDesemprego}</p>
@@ -306,14 +307,23 @@ function atualizarDicas(dados) {
     salarioBase: dados.salarioBase,
     horasNoturnas: dados.horasNoturnas,
   });
-  const remuneracao =
-    dados.salarioBase + dados.mediaHorasExtras + adicionais.total + dados.mediaComissoes;
+  // Base das indenizações: salário, adicionais e médias de variáveis. As horas
+  // extras do mês são verba própria e aparecem à parte.
+  const remuneracaoFixa = dados.salarioBase + adicionais.total;
+  const remuneracao = remuneracaoFixa + dados.mediaComissoes;
+  const horasExtras = valorHorasExtras(
+    remuneracaoFixa,
+    dados.divisor || 220,
+    dados.horasExtras,
+    dados.adicionalHoraExtra || 50,
+  );
 
   const detalhe = adicionais.itens.length
     ? ` — inclui ${adicionais.itens.map((i) => `${i.label} (${moeda.format(i.valor)})`).join(' e ')}`
     : '';
   $('#nota-remuneracao').innerHTML =
-    `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>${detalhe}`;
+    `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>${detalhe}`
+    + (horasExtras ? ` · Horas extras do mês: <b>${moeda.format(horasExtras)}</b>` : '');
 
 }
 
@@ -346,9 +356,23 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
-    return;
+  } else {
+    renderResultado(calcularRescisao(dados));
   }
-  renderResultado(calcularRescisao(dados));
+  // Só se gera PDF de um cálculo fechado.
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+}
+
+function gerarPdf() {
+  const tipo = TIPOS[tipoSelecionado];
+  montarMemoria({
+    titulo: 'Verbas rescisórias',
+    subtitulo: `${tipo.nome} — ${tipo.tag}`,
+    formulario: $('#formulario'),
+    resultado: $('#resultado'),
+    rodape: 'Uso orientativo. Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.',
+  });
+  imprimir(`Memoria de calculo - ${tipo.nome}`);
 }
 
 /* -------------------------------------------------------------- inicializa */
@@ -370,3 +394,5 @@ $('#formulario').addEventListener('submit', (evento) => {
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 
 inicializarCampos();
+$('#gerar-pdf').addEventListener('click', gerarPdf);
+$('#gerar-pdf').disabled = true;
