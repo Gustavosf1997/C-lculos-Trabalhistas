@@ -269,6 +269,7 @@ body {
 .memoria__dados { width: 100%; border-collapse: collapse; }
 .memoria__dados td { padding: 4px 0; font-size: 12.5px; border-bottom: 1px dotted var(--linha); }
 .memoria__dados td:last-child { text-align: right; font-weight: 600; }
+.memoria__rodape p { margin: 0 0 4px; }
 .memoria__rodape { margin-top: 18px; padding-top: 8px; border-top: 1px solid var(--linha); font-size: 11px; color: var(--tinta-media); }
 
 @media print {

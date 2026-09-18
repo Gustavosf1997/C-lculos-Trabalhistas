@@ -27,6 +27,12 @@ page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
 
 /* ---------------------------------------------------- verbas rescisórias */
 await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+
+// a vigência das tabelas aparece na tela e é a de 2026
+const etiqueta = await page.locator('#badge-vigencia').textContent();
+checar('etiqueta informa as tabelas de 2026', etiqueta.includes('2026'), etiqueta);
+const rodapeVigencia = await page.locator('#rodape-vigencia').textContent();
+checar('rodapé cita as fontes', rodapeVigencia.includes('MPS/MF') && rodapeVigencia.includes('15.270'), rodapeVigencia);
 await page.click('[data-tipo="sem_justa_causa"]');
 
 // letras não entram em campo de dinheiro
@@ -76,6 +82,11 @@ await page.fill('#pensaoPercentual', '10'); // volta a um valor válido
 
 // adicionais: exclusão entre insalubridade e periculosidade
 await page.check('input[name="adicionais"][value="insalubridade_20"]');
+await page.waitForTimeout(250);
+// 20% do salário mínimo de 2026 (R$ 1.621,00); com a tabela de 2025 daria 303,60
+const notaAdicional = await page.locator('#nota-remuneracao').textContent();
+checar('insalubridade usa o mínimo de 2026', notaAdicional.includes('324,20'), notaAdicional);
+
 await page.check('input[name="adicionais"][value="periculosidade_30"]');
 await page.waitForTimeout(250);
 checar(

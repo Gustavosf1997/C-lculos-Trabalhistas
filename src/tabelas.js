@@ -6,7 +6,14 @@
  * exibida na interface para que o usuário saiba qual tabela foi aplicada.
  */
 
-export const VIGENCIA = 'Tabelas de 2026 — INSS: Portaria MPS/MF 13/2026; IRRF: Lei 15.270/2025';
+/** Rótulo curto, para a etiqueta do cabeçalho. */
+export const VIGENCIA = 'Tabelas de 2026';
+
+/** Fonte de cada tabela, para o rodapé e para a memória de cálculo. */
+export const VIGENCIA_DETALHE =
+  'INSS: Portaria Interministerial MPS/MF nº 13, de 09/01/2026 · '
+  + 'IRRF: tabela progressiva com o redutor da Lei 15.270/2025 · '
+  + 'Salário mínimo: R$ 1.621,00';
 
 /** Salário mínimo nacional de 2026. Base da insalubridade (art. 192 da CLT). */
 export const SALARIO_MINIMO = 1621.0;
@@ -26,10 +33,10 @@ export const INSS = {
 };
 
 /**
- * Tabela progressiva mensal do IRRF. As faixas seguem as mesmas de 2025 — o
- * que mudou em 2026 foi o redutor criado pela Lei 15.270/2025, que zera o
- * imposto até R$ 5.000,00 de rendimento mensal e decresce linearmente até
- * se anular em R$ 7.350,00.
+ * Tabela progressiva mensal do IRRF vigente em 2026. As faixas em si não
+ * mudaram na virada do ano: o que entrou foi o redutor da Lei 15.270/2025,
+ * que zera o imposto até R$ 5.000,00 de rendimento mensal e decresce
+ * linearmente até se anular em R$ 7.350,00.
  */
 export const IRRF = {
   faixas: [
