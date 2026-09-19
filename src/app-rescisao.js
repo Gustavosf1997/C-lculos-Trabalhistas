@@ -228,6 +228,22 @@ function linha(item, negativo = false) {
   </tr>`;
 }
 
+/**
+ * Resume o aviso prévio em uma linha: quanto foi cumprido em serviço, quanto
+ * foi indenizado e quanto foi descontado. O excedente dos 30 dias trabalháveis
+ * aparece em separado porque muda a data projetada do contrato.
+ */
+function descreverAviso(c) {
+  if (!c.avisoAplicavel) return 'não devido';
+  if (c.tipoAviso === 'nao_cumprido') return `${c.diasAvisoLegais} dias descontados`;
+  if (c.tipoAviso === 'dispensado') return 'dispensado, sem desconto';
+  if (c.excedenteTrabalhado > 0) {
+    return `${c.diasAvisoTrabalhados} trabalhados + ${c.excedenteTrabalhado} indenizados`;
+  }
+  if (c.tipoAviso === 'trabalhado') return `${c.diasAvisoTrabalhados} dias trabalhados`;
+  return c.diasAvisoPagos ? `${c.diasAvisoPagos} dias indenizados` : 'não indenizado';
+}
+
 function renderResultado(resultado) {
   const alvo = $('#resultado');
 
@@ -266,7 +282,7 @@ function renderResultado(resultado) {
     }
   }
   contexto.push(
-    ['Aviso prévio', c.avisoAplicavel && c.diasAvisoDevidos ? `${c.diasAvisoDevidos} dias` : 'não indenizado'],
+    ['Aviso prévio', descreverAviso(c)],
     ['Data projetada', formatarData(c.dataProjetada)],
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],

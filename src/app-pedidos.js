@@ -181,7 +181,9 @@ function renderResultado(r) {
     alvo.innerHTML = `<div class="impedimento" role="alert">
       <b>${r.impedimento.titulo}</b>
       <p>${r.impedimento.mensagem}</p>
-      <p class="impedimento__saida">Os demais campos ficam bloqueados. Corrija o período pedido ou a data do ajuizamento para liberar o cálculo.</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. ${r.impedimento.bienal
+        ? 'Corrija a data de extinção do contrato ou a do ajuizamento'
+        : 'Corrija o período pedido ou a data do ajuizamento'} para liberar o cálculo.</p>
     </div>`;
     return;
   }
@@ -254,7 +256,7 @@ function selecionarPedido(id) {
 /* --------------------------------------------------------------- bloqueio */
 
 /** Campos que permanecem editáveis: são eles que afastam o impedimento. */
-const CAMPOS_DO_PERIODO = ['dataInicio', 'dataFim', 'dataAjuizamento'];
+const CAMPOS_DO_PERIODO = ['dataInicio', 'dataFim', 'dataAjuizamento', 'dataExtincao'];
 
 function bloquearEntrada(bloqueado) {
   for (const campo of $('#formulario').querySelectorAll('input, select')) {

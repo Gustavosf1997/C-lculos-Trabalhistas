@@ -42,7 +42,10 @@ const grupoPeriodo = {
       dica: 'Primeiro mês do pedido.' },
     { id: 'dataFim', rotulo: 'Fim do período', tipo: 'data', obrigatorio: true },
     { id: 'dataAjuizamento', rotulo: 'Data do ajuizamento', tipo: 'data',
-      dica: 'Usada para apurar a prescrição quinquenal.' },
+      dica: 'Marco da prescrição quinquenal (Súmula 308, I, do TST).' },
+    { id: 'dataExtincao', rotulo: 'Extinção do contrato', tipo: 'data',
+      dica: 'Se informada, apura também a prescrição bienal: ajuizamento mais de dois anos '
+        + 'depois da extinção fulmina a pretensão inteira (art. 7º, XXIX, da CF).' },
   ],
 };
 
@@ -85,7 +88,8 @@ const camposRisco = [
 ];
 
 const camposDSR = [
-  { id: 'diasUteis', rotulo: 'Dias úteis no mês', tipo: 'inteiro', valor: 25, min: 1, max: 31 },
+  { id: 'diasUteis', rotulo: 'Dias úteis no mês', tipo: 'inteiro', valor: 25, min: 1, max: 31,
+    dica: 'O sábado conta como dia útil não trabalhado (Súmula 113 do TST), salvo norma coletiva.' },
   { id: 'diasRepouso', rotulo: 'Repousos no mês', tipo: 'inteiro', valor: 5, min: 0, max: 15,
     dica: 'Domingos e feriados, para o DSR.' },
 ];
@@ -164,6 +168,7 @@ export const PEDIDOS = [
     descricao: 'Trabalho entre 22h e 5h: adicional sobre a hora normal, com a hora noturna reduzida de 52min30s.',
     itens: [
       { label: 'Hora noturna reduzida (art. 73, §1º)', devida: true },
+      { label: 'Base integrada pelo adicional de risco', devida: true, nota: 'Súmulas 60, I, e 264' },
       { label: 'DSR sobre o adicional', devida: true },
       { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
       { label: 'Prorrogação após as 5h (Súmula 60, II)', devida: false, nota: 'informe as horas já somadas' },
@@ -179,6 +184,7 @@ export const PEDIDOS = [
     grupos: [
       grupoPeriodo,
       { titulo: 'Remuneração e jornada', campos: camposRemuneracao },
+      { titulo: 'Adicional de insalubridade ou periculosidade', campos: camposRisco },
       {
         titulo: 'Horas noturnas',
         campos: [
@@ -286,9 +292,10 @@ export const PEDIDOS = [
     icone: '📌',
     descricao: 'Multa pelo pagamento das verbas rescisórias fora do prazo e acréscimo sobre as incontroversas.',
     itens: [
-      { label: 'Art. 477: um salário, se paga fora dos 10 dias', devida: true },
+      { label: 'Art. 477: uma remuneração, se paga fora dos 10 dias', devida: true, nota: 'Tema 142 do TST' },
       { label: 'Art. 467: 50% sobre as verbas incontroversas', devida: true },
       { label: 'Reflexos e FGTS', devida: false, nota: 'natureza de penalidade' },
+      { label: 'Multa do art. 477 quando o empregado deu causa à mora', devida: false, nota: 'parte final do §8º' },
     ],
     calcular: calcularMultas,
     semPeriodo: true,
@@ -297,6 +304,7 @@ export const PEDIDOS = [
       ...(c.prazo ? [['Prazo do art. 477', formatarData(c.prazo)]] : []),
       ...(c.pagamento ? [['Pagamento', formatarData(c.pagamento)]] : []),
       ...(c.prazo ? [['Atraso', c.pagamento ? `${c.diasAtraso} dia(s)` : 'sem pagamento']] : []),
+      ...(c.remuneracao ? [['Remuneração base da multa', moeda.format(c.remuneracao)]] : []),
       ...(c.incontroverso ? [['Incontroverso', moeda.format(c.incontroverso)]] : []),
     ],
     grupos: [
@@ -304,9 +312,13 @@ export const PEDIDOS = [
         titulo: 'Multa do art. 477',
         campos: [
           { id: 'multa477', rotulo: 'Pedir a multa do art. 477, §8º', tipo: 'checkbox', valor: true, largo: true },
-          { id: 'salarioBase', rotulo: 'Salário do empregado', tipo: 'moeda', obrigatorio: true,
+          { id: 'salarioBase', rotulo: 'Salário base do empregado', tipo: 'moeda', obrigatorio: true,
             aparece: (d) => d.multa477,
-            dica: 'A multa equivale a um salário. Há TRTs que adotam a remuneração integral.' },
+            dica: 'A multa equivale a um mês de remuneração.' },
+          { id: 'outrasParcelas', rotulo: 'Parcelas salariais habituais', tipo: 'moeda',
+            aparece: (d) => d.multa477,
+            dica: 'Adicionais, horas extras, comissões e demais parcelas dos arts. 457, §1º, e 458 da CLT. '
+              + 'O TST fixou no Tema 142 que a base da multa é a remuneração, não o salário base.' },
           { id: 'dataRescisao', rotulo: 'Término do contrato', tipo: 'data', obrigatorio: true,
             aparece: (d) => d.multa477, dica: 'O prazo de 10 dias corre daí (art. 477, §6º).' },
           { id: 'dataPagamento', rotulo: 'Data do pagamento', tipo: 'data',

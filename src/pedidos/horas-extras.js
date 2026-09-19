@@ -22,7 +22,7 @@ export function calcularHorasExtras(dados) {
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas extras.');
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
   const alertas = [];
@@ -61,14 +61,25 @@ export function calcularHorasExtras(dados) {
     });
   }
 
-  // OJ 394, II, da SDI-1: o DSR majorado repercute nas demais verbas para as
-  // horas extras prestadas a partir de 20/03/2023.
-  const dsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
+  // OJ 394, II, da SDI-1: o DSR majorado só repercute nas demais verbas para as
+  // horas extras prestadas a partir de 20/03/2023. Antes disso a majoração não
+  // repercute — e o cálculo afasta o reflexo em vez de apenas avisar, sob pena
+  // de entregar um número que a própria orientação recusa.
+  const marcoOJ394 = parseData(MARCO_OJ_394);
+  const periodoTodoAnterior = fim < marcoOJ394;
+  const pediuDsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
+  const dsrNosReflexos = pediuDsrNosReflexos && !periodoTodoAnterior;
   const baseReflexos = horasExtrasMes + (dsrNosReflexos ? dsrMes : 0);
-  if (dsrNosReflexos && inicioCalculo < parseData(MARCO_OJ_394)) {
+  if (pediuDsrNosReflexos && periodoTodoAnterior) {
+    alertas.push(
+      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}: pela OJ 394, II, da SDI-1 o DSR `
+        + 'majorado não repercute nas demais verbas nesse intervalo, e o cálculo afastou esse reflexo.',
+    );
+  } else if (dsrNosReflexos && inicioCalculo < marcoOJ394) {
     alertas.push(
       'O DSR majorado só repercute nas demais verbas para horas extras a partir de '
-        + `${formatarData(parseData(MARCO_OJ_394))} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco.`,
+        + `${formatarData(marcoOJ394)} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco: `
+        + 'calcule os dois trechos em separado para não estender o reflexo ao período anterior.',
     );
   }
 

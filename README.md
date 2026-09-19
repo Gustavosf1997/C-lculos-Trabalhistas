@@ -67,6 +67,7 @@ node tests/interface.mjs
 | `src/app-rescisao.js` | Interface da aba de verbas rescisórias |
 | `src/app-pedidos.js` | Interface da aba de pedidos |
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
+| `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
 | `tests/interface.mjs` | Verificação da interface no navegador (Playwright) |
 
 Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
@@ -98,7 +99,11 @@ Verbas e descontos:
   fevereiro — sobre o salário base e os adicionais, sem as médias de variáveis;
 - aviso prévio proporcional (30 dias + 3 por ano, máx. 90 — Lei 12.506/2011),
   indenizado, trabalhado, pela metade (comum acordo) ou descontado (pedido de
-  demissão não cumprido), com projeção do contrato quando indenizado;
+  demissão não cumprido), com projeção do contrato quando indenizado. A
+  proporcionalidade existe em favor do empregado: **ele só pode ser obrigado a
+  cumprir 30 dias em serviço**, e o que passar disso é lançado como indenizado
+  e projeta o contrato (Nota Técnica 184/2012 da SRT/MTE). Quem pede demissão
+  deve 30 dias, não o proporcional;
 - horas extras do mês da rescisão informadas em quantidade, não em média:
   viram verba própria, calculadas pela hora normal (salário e adicionais
   divididos pelo divisor, Súmula 264 do TST) acrescida do adicional — 50% por
@@ -203,8 +208,11 @@ Trabalho entre 22h e 5h, com **hora noturna reduzida de 52min30s**
 (art. 73, §1º): as horas de relógio informadas viram horas fictas na razão
 60/52,5 antes de receberem o adicional — 30 horas de relógio são 34,29 horas
 fictas. O percentual é editável (20% no urbano, 25% no rural da
-Lei 5.889/73). Gera DSR e reflexos. A prorrogação da jornada noturna
-(Súmula 60, II, do TST) não é somada sozinha: informe as horas já somadas.
+Lei 5.889/73). A hora normal sobre a qual o adicional incide já vem integrada
+pelas demais parcelas salariais, entre elas a insalubridade e a periculosidade
+(Súmulas 60, I, e 264 do TST). Gera DSR e reflexos. A prorrogação da jornada
+noturna (Súmula 60, II, do TST) não é somada sozinha: informe as horas já
+somadas.
 
 ### Intervalo intrajornada (art. 71, §4º, da CLT)
 
@@ -234,15 +242,29 @@ Pedido sem período e sem FGTS:
 
 - **art. 477, §8º** — uma remuneração do empregado quando as verbas
   rescisórias não são pagas em **10 dias** contados do término do contrato
-  (prazo único desde a Lei 13.467/2017). A tela mostra o dia do vencimento e
-  os dias de atraso, e a multa é afastada quando o empregado deu causa à mora;
+  (prazo único desde a Lei 13.467/2017). A base é a **remuneração** dos
+  arts. 457, §1º, e 458 da CLT, e não o salário base: é a tese vinculante do
+  Tema 142 de recursos repetitivos do TST, e por isso a tela pede o salário e
+  as parcelas habituais em separado. A tela mostra o dia do vencimento e os
+  dias de atraso, e a multa **não é cobrada** quando o empregado deu causa à
+  mora (parte final do §8º);
 - **art. 467** — 50% sobre a parte **incontroversa** das verbas rescisórias
   não paga no comparecimento à Justiça do Trabalho.
 
-### Prescrição quinquenal
+### Prescrição
 
-Informada a data do ajuizamento, o quinquênio do art. 7º, XXIX, da CF é
-apurado antes de qualquer conta, em dois desfechos:
+O art. 7º, XXIX, da CF reúne dois prazos, e a Súmula 308 do TST os harmoniza.
+A ferramenta apura os dois antes de qualquer conta:
+
+- **bienal** — extinto o contrato, a ação tem de ser ajuizada em dois anos.
+  Informe a data de extinção e, se o ajuizamento vier depois do biênio, nada
+  resta a calcular: a pretensão inteira está prescrita, inclusive o que
+  caberia no quinquênio;
+- **quinquenal** — respeitado o biênio, são exigíveis as parcelas dos cinco
+  anos imediatamente anteriores ao **ajuizamento**, e não à extinção do
+  contrato (Súmula 308, I).
+
+O quinquênio tem dois desfechos:
 
 - **período inteiro prescrito** — nada a calcular. Caixa vermelha no lugar do
   resultado e demais campos bloqueados; só as datas seguem editáveis, já que é
@@ -252,6 +274,46 @@ apurado antes de qualquer conta, em dois desfechos:
   estão prescritas e qual período foi efetivamente calculado, e o resumo traz
   esse período. O recorte dá o mesmo resultado de pedir o período já ajustado.
 
+## Base legal conferida
+
+Cada regra de cálculo foi confrontada com a lei, a súmula ou a orientação que
+a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
+
+| Regra | Fundamento | Onde |
+| --- | --- | --- |
+| Aviso prévio proporcional: 30 dias + 3 por ano, teto de 90 | Lei 12.506/2011 | `calculo.js` |
+| Só 30 dias de aviso podem ser cumpridos em serviço; o excedente é indenizado | Nota Técnica 184/2012 da SRT/MTE | `DIAS_AVISO_TRABALHAVEIS` |
+| Aviso indenizado integra o tempo de serviço e projeta o contrato | OJ 82 da SDI-1 e Súmula 305 do TST | `dataProjetada` |
+| Avos do 13º pelo mês de competência, fração de 15 dias ou mais | Lei 4.090/62, art. 1º, §2º | `contarAvos` |
+| Avos de férias em ciclos da admissão, fração superior a 14 dias | art. 146, parágrafo único, da CLT | `contarAvosFerias` |
+| Redução dos dias de férias por faltas injustificadas | art. 130 da CLT | `diasDeFeriasPorFaltas` |
+| Justa causa perde 13º e férias proporcionais | art. 3º da Lei 4.090/62 e Súmula 171 do TST | `tipos.js` |
+| Comum acordo: aviso e multa do FGTS pela metade, sem seguro-desemprego | art. 484-A da CLT | `tipos.js` |
+| Rescisão antecipada do contrato a termo: metade do que faltava | arts. 479 e 480 da CLT | `indenizacaoAntecipada` |
+| Cláusula assecuratória afasta os arts. 479/480 e traz o aviso prévio | art. 481 da CLT | `clausulaAtiva` |
+| Hora normal integrada pelas parcelas salariais | Súmula 264 do TST | `valorHoraNormal` |
+| Divisor mensal conforme a jornada contratada | Súmula 431 do TST | `JORNADAS` |
+| Hora noturna reduzida a 52min30s | art. 73, §1º, da CLT | `FATOR_HORA_NOTURNA` |
+| Adicional noturno integra o salário e incide sobre a hora já integrada | Súmulas 60, I, e 264 do TST | `noturno.js` |
+| DSR sobre as verbas variáveis: variáveis ÷ dias úteis × repousos | Lei 605/49 e Súmula 172 do TST | `dsrMes` |
+| Sábado é dia útil não trabalhado para o DSR | Súmula 113 do TST | dica do campo |
+| DSR majorado só repercute nas demais verbas a partir de 20/03/2023 | OJ 394, II, da SDI-1 (Tema 9 de repetitivos) | `MARCO_OJ_394` |
+| Intervalo suprimido até 10/11/2017: período integral, natureza salarial | Súmula 437, I e III, do TST | `intervalo.js` |
+| Intervalo a partir de 11/11/2017: só o suprimido, natureza indenizatória | art. 71, §4º, da CLT (Lei 13.467/2017) | `MARCO_REFORMA` |
+| Insalubridade sobre o salário mínimo, salvo base maior em norma coletiva | art. 192 da CLT; Súmula 228 suspensa (Rcl 6.266 do STF) | `calcularAdicionalRisco` |
+| Periculosidade de 30% sobre o salário base, sem gratificações e prêmios | art. 193, §1º, da CLT | `calcularAdicionalRisco` |
+| Insalubridade e periculosidade não se acumulam | art. 193, §2º, da CLT | `aplicarExclusoes` |
+| Adicional de risco repercute em 13º, férias e FGTS | Súmulas 132 e 139 do TST | `insalubridade.js` |
+| Multa do art. 477: uma remuneração, e não o salário base | Tema 142 de repetitivos do TST | `multas.js` |
+| Prazo de 10 dias para pagar as verbas rescisórias | art. 477, §6º, da CLT | `PRAZO_477_DIAS` |
+| Multa afastada quando o empregado deu causa à mora | parte final do art. 477, §8º | `multas.js` |
+| Multa do art. 467: 50% sobre as verbas incontroversas | art. 467 da CLT | `multas.js` |
+| Prescrição bienal de dois anos da extinção do contrato | art. 7º, XXIX, da CF | `apurarPrescricao` |
+| Quinquênio contado do ajuizamento, não da extinção | Súmula 308, I, do TST | `apurarPrescricao` |
+| INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
+| Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
+| Redutor mensal de R$ 978,62 − 0,133145 × rendimento | Lei 15.270/2025 | `calcularRedutorIRRF` |
+
 ## Limitações conhecidas
 
 - **As tabelas em `src/tabelas.js` são as de 2026** — INSS pela Portaria
@@ -260,8 +322,8 @@ apurado antes de qualquer conta, em dois desfechos:
   contra a fonte oficial antes de qualquer uso profissional, e reveja a cada
   competência.
 - O redutor da Lei 15.270/2025 é aplicado também ao 13º salário, tributado em
-  separado. O ponto comporta leitura diversa: se a sua for outra, a regra está
-  isolada em `calcularRedutorIRRF`.
+  separado — é o que orienta a Receita Federal. A regra está isolada em
+  `calcularRedutorIRRF`, caso a sua leitura seja outra.
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.
 - Na aba de rescisão, a insalubridade é calculada sobre o salário mínimo
@@ -276,13 +338,16 @@ apurado antes de qualquer conta, em dois desfechos:
 - Na aba de **rescisão**, o adicional noturno não aplica a hora noturna
   reduzida de 52min30s (art. 73, §1º) — o pedido autônomo de adicional noturno,
   na outra aba, aplica.
+- A prescrição bienal só é apurada quando a data de extinção do contrato é
+  informada na aba de pedidos; sem ela, apenas o quinquênio é verificado.
 - A insalubridade da aba de **rescisão** tem base fixa no salário mínimo; o
   pedido autônomo, na outra aba, aceita as três bases.
 - O pedido de intervalo intrajornada calcula um regime por vez: período que
   cruze 11/11/2017 precisa ser dividido em dois cálculos, e a tela avisa disso.
 - As multas dos arts. 467 e 477 não apuram a data em que o empregado
   compareceu à audiência nem o que de fato foi pago: o valor incontroverso é
-  informado por quem calcula.
+  informado por quem calcula. A remuneração que serve de base à multa do
+  art. 477 também é informada, e não deduzida de outro pedido.
 - A hora normal do cálculo é uma só: salário e adicionais divididos pelo
   divisor informado. Ela remunera as horas extras e desconta as negativas. O
   adicional noturno incide sobre ela já integrada pelos adicionais de risco;

@@ -25,7 +25,7 @@ export function calcularAdicionalRiscoPedido(dados) {
   }
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
   const risco = calcularAdicionalRisco(dados);

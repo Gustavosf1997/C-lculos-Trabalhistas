@@ -9,7 +9,7 @@
 
 import { moeda, formatarQuantidade } from '../formato.js';
 import {
-  FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal,
+  FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
   apurarPrescricao, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
   resultadoImpedido, validarPeriodo,
 } from './comum.js';
@@ -25,10 +25,13 @@ export function calcularAdicionalNoturno(dados) {
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas noturnas.');
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
-  const baseCalculo = arredondar(salarioBase + num(dados.outrasParcelas));
+  // A hora normal já vem integrada pelas parcelas salariais, entre elas o
+  // adicional de risco (Súmulas 60, I, e 264 do TST).
+  const risco = calcularAdicionalRisco(dados);
+  const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalNoturno) || 20;
 
@@ -84,6 +87,7 @@ export function calcularAdicionalNoturno(dados) {
       fim,
       divisor,
       baseCalculo,
+      risco,
       valorHora: arredondar(horaNormal),
       percentualAdicional: percentual,
       horasRelogio: arredondar(horasRelogio),

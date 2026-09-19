@@ -76,13 +76,45 @@ export function calcularAdicionalRisco(dados) {
 }
 
 /**
- * Prescrição quinquenal (art. 7º, XXIX, da CF).
+ * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
+ * reúne e que a Súmula 308 do TST harmoniza:
  *
+ *  - **bienal**: extinto o contrato, a ação tem de ser ajuizada em dois anos.
+ *    Perdido esse prazo, nada resta a calcular, nem o quinquênio;
+ *  - **quinquenal**: respeitado o biênio, são exigíveis as parcelas dos cinco
+ *    anos imediatamente anteriores ao ajuizamento — contados dele, e não da
+ *    extinção do contrato (Súmula 308, I).
+ *
+ * @param {Date} inicio início do período pedido
+ * @param {Date} fim fim do período pedido
+ * @param {object} dados campos da tela (dataAjuizamento e dataExtincao)
  * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date}}
  */
-export function apurarPrescricao(inicio, fim, dataAjuizamento) {
-  const ajuizamento = parseData(dataAjuizamento);
+export function apurarPrescricao(inicio, fim, dados = {}) {
+  const ajuizamento = parseData(dados.dataAjuizamento);
   if (!ajuizamento) return { impedimento: null, recorte: null, inicioCalculo: inicio };
+
+  const extincao = parseData(dados.dataExtincao);
+  if (extincao) {
+    const limiteBienal = new Date(
+      Date.UTC(extincao.getUTCFullYear() + 2, extincao.getUTCMonth(), extincao.getUTCDate()),
+    );
+    if (ajuizamento > limiteBienal) {
+      return {
+        inicioCalculo: inicio,
+        recorte: null,
+        impedimento: {
+          integral: true,
+          bienal: true,
+          marco: limiteBienal,
+          titulo: 'Pretensão atingida pela prescrição bienal',
+          mensagem: `O contrato foi extinto em ${formatarData(extincao)} e a ação só foi ajuizada em `
+            + `${formatarData(ajuizamento)}, depois do biênio que se encerrou em ${formatarData(limiteBienal)} `
+            + '(art. 7º, XXIX, da CF). Prescrita a pretensão como um todo, não há período imprescrito a calcular.',
+        },
+      };
+    }
+  }
 
   const marco = new Date(
     Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),

@@ -29,7 +29,7 @@ export function calcularIntervalo(dados) {
   if (minutosSuprimidos <= 0) erros.push('Informe os minutos de intervalo suprimidos por dia.');
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
   const alertas = [];
