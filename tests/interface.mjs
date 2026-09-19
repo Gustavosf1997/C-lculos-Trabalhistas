@@ -247,6 +247,11 @@ const noturno = await texto();
 checar('30 h de relógio viram 34,29 h fictas', noturno.includes('34,29'), null);
 checar('adicional noturno de R$ 68,57', noturno.includes('R$ 68,57'), null);
 checar('FGTS descreve a base real', noturno.includes('8% sobre adicional noturno, DSR e 13º'), null);
+await page.check('input[name="risco"][value="periculosidade"]');
+await page.waitForTimeout(350);
+// hora de R$ 13,00 (2.200 + 30%) x 34,29 h fictas x 20%
+checar('risco integra a hora normal do noturno', (await texto()).includes('R$ 89,14'), null);
+await page.check('input[name="risco"][value="nenhum"]');
 
 // intervalo intrajornada: dois regimes
 await page.click('[data-pedido="intervalo"]');
@@ -287,7 +292,23 @@ await page.fill('#dataPagamento', '30/03/2026');
 await page.waitForTimeout(350);
 const multas = await texto();
 checar('prazo do art. 477 calculado', multas.includes('11/03/2026'), null);
-checar('multa do art. 477 de um salário', multas.includes('R$ 2.500,00'), null);
+checar('multa do art. 477 de uma remuneração', multas.includes('R$ 2.500,00'), null);
+
+// Tema 142 do TST: a base é a remuneração, não o salário base
+await page.fill('#outrasParcelas', '400,00');
+await page.waitForTimeout(350);
+checar('parcelas habituais entram na base da multa', (await texto()).includes('R$ 2.900,00'), null);
+
+// parte final do §8º: a mora do empregado afasta a multa
+await page.check('#moraDoEmpregado');
+await page.waitForTimeout(350);
+const comMora = await texto();
+checar('mora do empregado afasta a multa', !comMora.includes('Multa do art. 477'), null);
+checar('nada a pagar com a mora do empregado', /Total do pedido\s*R\$ 0,00/i.test(comMora), null);
+checar('mora do empregado é explicada', comMora.includes('afasta a multa'), null);
+await page.uncheck('#moraDoEmpregado');
+await page.fill('#outrasParcelas', '');
+
 await page.check('#multa467');
 await page.fill('#valorIncontroverso', '5.000,00');
 await page.waitForTimeout(350);
@@ -296,6 +317,22 @@ checar('as duas multas somam R$ 5.000,00', (await texto()).includes('R$ 5.000,00
 // voltar ao primeiro pedido devolve os campos próprios dele
 await page.click('[data-pedido="horas_extras"]');
 checar('volta às horas extras com os campos certos', (await page.locator('#quantidadeHoras').count()) === 1, null);
+
+// prescrição bienal: contrato extinto há mais de dois anos barra tudo
+await dadosBase();
+await page.fill('#quantidadeHoras', '30');
+await page.fill('#dataAjuizamento', '19/09/2026');
+await page.waitForTimeout(350);
+checar('quinquênio não barra o período de 2024', (await page.locator('#resultado .impedimento').count()) === 0, null);
+await page.fill('#dataExtincao', '10/01/2024');
+await page.waitForTimeout(350);
+const bienal = await texto();
+checar('prescrição bienal barra o cálculo', bienal.includes('bienal'), bienal.slice(0, 60));
+checar('bienal bloqueia o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('data de extinção segue editável', !(await page.locator('#dataExtincao').isDisabled()), null);
+await page.fill('#dataExtincao', '');
+await page.waitForTimeout(350);
+checar('apagar a extinção libera o cálculo', (await page.locator('.liquido b').count()) > 0, null);
 
 await browser.close();
 console.log(checagens.join('\n'));
