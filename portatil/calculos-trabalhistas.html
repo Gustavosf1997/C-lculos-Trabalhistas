@@ -1,0 +1,4292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cálculos Trabalhistas</title>
+<!--
+  Versão portátil — esboço v0.1 · atualizada em 21/09/2026
+
+  Arquivo único: abra com dois cliques, em qualquer navegador. Não instala
+  nada, não precisa de internet e não envia dado nenhum para servidor — todo
+  o cálculo acontece nesta página.
+
+  Gerado por ferramenta/empacotar.mjs a partir do código-fonte. Não edite à
+  mão: a próxima geração desfaz a edição, e o teste acusa a diferença.
+-->
+<style>
+:root {
+  /* Amarelo da marca. Sobre branco ele não tem contraste para texto, então
+     serve de fundo e de borda, sempre com tinta escura por cima; para texto
+     em fundo claro usamos --destaque-texto. */
+  --destaque: #ffc600;
+  --destaque-escuro: #c9a227;   /* dourado acinzentado, para bordas */
+  --destaque-claro: #fdf6e0;    /* creme fosco, para fundos */
+  --destaque-texto: #6b5400;
+
+  --tinta: #1c1a17;
+  --tinta-media: #57534e;
+  --tinta-fraca: #a8a29e;
+  --linha: #e7e5e4;
+  --fundo: #faf8f4;
+  --papel: #ffffff;
+  --verde: #047857;
+  --verde-claro: #ecfdf5;
+  --vermelho: #b91c1c;
+  --raio: 12px;
+  --sombra: 0 1px 2px rgba(28, 26, 23, .05), 0 6px 18px -14px rgba(28, 26, 23, .18);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------ topo */
+.topo {
+  background: var(--destaque);
+  color: var(--tinta);
+  padding: 20px 24px;
+}
+.topo__conteudo {
+  max-width: 1220px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.topo__marca { display: flex; align-items: center; gap: 14px; }
+.topo__logo {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(28,26,23,.1); border: 1px solid rgba(28,26,23,.18);
+  display: grid; place-items: center; font-size: 24px; font-weight: 700;
+}
+.topo h1 { margin: 0; font-size: 20px; letter-spacing: -.2px; }
+.topo p { margin: 2px 0 0; font-size: 13px; color: rgba(28,26,23,.66); }
+.abas {
+  max-width: 1220px; margin: 16px auto -20px; display: flex; gap: 4px;
+}
+.aba {
+  color: rgba(28,26,23,.6); text-decoration: none; font-size: 13.5px; font-weight: 600;
+  padding: 9px 16px; border-radius: 10px 10px 0 0; border: 1px solid transparent; border-bottom: none;
+}
+.aba:hover { background: rgba(28,26,23,.07); color: var(--tinta); }
+.aba--ativa { background: var(--fundo); color: var(--tinta); border-color: var(--linha); }
+
+.badge {
+  background: rgba(28,26,23,.06); border: 1px solid rgba(28,26,23,.16);
+  color: var(--destaque-texto); padding: 6px 12px; border-radius: 999px; font-size: 12px; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- página */
+.pagina { max-width: 1220px; margin: 0 auto; padding: 24px; }
+
+.aviso-cache {
+  background: #fef5f5; border: 1px solid #fecaca; color: #991b1b;
+  border-radius: var(--raio); padding: 12px 16px; margin: 0 0 20px; font-size: 13.5px;
+}
+
+.etapa {
+  background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio);
+  box-shadow: var(--sombra); padding: 20px 22px; margin-bottom: 20px;
+}
+.etapa h2 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.etapa__num {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--destaque); color: var(--tinta);
+  border: 1px solid var(--destaque-escuro);
+  display: grid; place-items: center; font-size: 13px;
+}
+.etapa__ajuda { margin: 0 0 16px; color: var(--tinta-media); font-size: 13.5px; }
+
+/* --------------------------------------------------------- cards de tipo */
+.tipos-grupos { display: flex; flex-direction: column; gap: 18px; }
+.grupo-tipos__titulo {
+  margin: 0 0 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--tinta-fraca);
+}
+.grupo-tipos__ajuda { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.tipo {
+  text-align: left; cursor: pointer; background: var(--papel);
+  border: 1.5px solid var(--linha); border-radius: var(--raio); padding: 14px;
+  font: inherit; color: inherit; transition: .15s;
+}
+.tipo:hover { border-color: var(--destaque-escuro); background: #fdfbf5; }
+.tipo[aria-checked="true"] { border-color: var(--destaque-escuro); background: var(--destaque-claro); box-shadow: 0 0 0 3px rgba(201,162,39,.22); }
+.tipo:disabled { cursor: default; }
+.tipo--breve { background: #fbfaf8; border-style: dashed; opacity: .65; }
+.tipo--breve:hover { border-color: var(--linha); background: #fbfaf8; }
+.tipo--breve .tipo__tag { text-transform: uppercase; letter-spacing: .5px; font-size: 10.5px; }
+.tipo__icone { font-size: 20px; }
+.tipo__nome { display: block; font-weight: 650; margin: 6px 0 2px; font-size: 14.5px; }
+.tipo__tag { display: block; font-size: 12px; color: var(--tinta-media); }
+
+.resumo-tipo {
+  margin-top: 16px; border: 1px solid var(--linha); border-left: 3px solid var(--destaque);
+  background: #fdfbf3; border-radius: 10px; padding: 14px 16px;
+}
+.resumo-tipo p { margin: 0 0 10px; font-size: 13.5px; color: var(--tinta-media); }
+.verbas { display: flex; flex-wrap: wrap; gap: 8px; }
+.verba {
+  font-size: 12.5px; padding: 5px 10px; border-radius: 999px;
+  background: var(--verde-claro); color: var(--verde); border: 1px solid #a7f3d0;
+}
+.verba--nao { background: #fef2f2; color: var(--vermelho); border-color: #fecaca; text-decoration: none; }
+.verba small { opacity: .8; }
+
+/* --------------------------------------------------------------- colunas */
+.colunas { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(330px, .8fr); gap: 20px; align-items: start; }
+
+/* ------------------------------------------------------------ formulário */
+.grupo { border: none; border-top: 1px solid var(--linha); padding: 16px 0 4px; margin: 0; }
+.grupo:first-of-type { border-top: none; padding-top: 4px; }
+.grupo legend {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--destaque-texto); padding: 0;
+}
+.campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+.campo { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.campo--largo { grid-column: 1 / -1; }
+.campo__rotulo { font-size: 13px; font-weight: 600; color: var(--tinta); }
+.campo__rotulo b { color: var(--vermelho); }
+.campo__dica { font-size: 11.5px; color: var(--tinta-fraca); }
+.campo input {
+  font: inherit; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 9px;
+  background: #fff; color: var(--tinta); width: 100%;
+}
+.campo select {
+  font: inherit; padding: 9px 11px; border: 1px solid #d6d3d1; border-radius: 9px;
+  background: #fff; color: var(--tinta); width: 100%;
+}
+.campo select:focus, .campo input:focus { outline: none; border-color: var(--destaque-escuro); box-shadow: 0 0 0 3px rgba(201,162,39,.22); }
+.campo--erro input { border-color: #dc2626; background: #fff7f7; }
+.campo--erro input:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.14); border-color: #dc2626; }
+.campo__erro { font-size: 11.5px; color: var(--vermelho); font-weight: 600; }
+
+.campo__moeda { position: relative; display: block; }
+.campo__moeda i {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  font-style: normal; font-size: 13px; color: var(--tinta-fraca);
+}
+.campo__moeda input { padding-left: 36px; }
+.campo__moeda--sufixo i { left: auto; right: 12px; }
+.campo__moeda--sufixo input { padding-left: 11px; padding-right: 32px; }
+
+.opcoes { border: none; padding: 0; margin: 0; }
+.opcoes__lista { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; }
+.opcao {
+  display: flex; align-items: center; gap: 7px; font-size: 13px; white-space: nowrap;
+  border: 1.5px solid var(--linha); border-radius: 9px; padding: 8px 12px; cursor: pointer; background: #fff;
+}
+.opcao:has(input:checked) { border-color: var(--destaque-escuro); background: var(--destaque-claro); color: var(--tinta); font-weight: 600; }
+.opcao input { accent-color: var(--destaque-escuro); margin: 0; }
+
+.checkbox { flex-direction: row; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--tinta-media); cursor: pointer; }
+.checkbox input { width: auto; margin-top: 2px; accent-color: var(--destaque-escuro); }
+.checkbox b { color: var(--tinta); }
+
+.nota-remuneracao {
+  margin: 12px 0 0; font-size: 13px; color: var(--tinta-media);
+  background: var(--destaque-claro); border-radius: 9px; padding: 8px 12px; display: inline-block;
+}
+.nota-remuneracao b { color: var(--destaque-texto); }
+
+.acoes { display: flex; gap: 12px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+.acoes__nota { font-size: 12.5px; color: var(--tinta-fraca); }
+.botao {
+  font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 9px;
+  border: 1px solid var(--linha); background: #fff; color: var(--tinta-media); cursor: pointer;
+}
+.botao--primario { background: var(--destaque); border-color: var(--destaque-escuro); color: var(--tinta); }
+.botao--primario:hover { background: var(--destaque-escuro); }
+.botao:disabled { opacity: .45; cursor: not-allowed; }
+.botao:disabled:hover { background: var(--destaque); }
+
+/* ---------------------------------------------------------------- painel */
+.painel {
+  background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio);
+  box-shadow: var(--sombra); padding: 18px 20px; position: sticky; top: 20px;
+}
+.painel__topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.painel__topo h2 { margin: 0; font-size: 16px; }
+.painel__tag {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+  background: var(--destaque-claro); color: var(--destaque-texto); border: 1px solid var(--destaque);
+  padding: 3px 9px; border-radius: 999px;
+}
+.alerta {
+  background: #fdfbf3; border: 1px solid var(--linha); border-left: 3px solid var(--destaque-escuro);
+  color: var(--tinta-media); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-top: 12px;
+}
+
+/* Recorte: o cálculo acontece, mas só sobre o período imprescrito. */
+.recorte {
+  background: #fff7ed; border: 1px solid #fdba74; border-left: 4px solid #c2410c;
+  color: #7c2d12; border-radius: 10px; padding: 12px 14px; margin-top: 12px;
+}
+.recorte b { display: block; margin-bottom: 4px; font-size: 13.5px; }
+.recorte p { margin: 0; font-size: 12.5px; }
+
+/* Impedimento: o cálculo não acontece, e a tela precisa dizer isso sem meio-termo. */
+.impedimento {
+  background: #fef2f2; border: 1px solid var(--vermelho); border-left-width: 4px;
+  color: #7f1d1d; border-radius: 10px; padding: 14px 16px; margin-top: 12px;
+}
+.impedimento b { display: block; margin-bottom: 6px; font-size: 14px; }
+.impedimento p { margin: 0; font-size: 13px; }
+.impedimento__saida { margin-top: 8px !important; color: #991b1b; }
+
+.formulario--bloqueado .grupo:not(:first-of-type) { opacity: .5; }
+.campo input:disabled, .campo select:disabled { background: #f5f5f4; color: var(--tinta-fraca); cursor: not-allowed; }
+.opcao:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+
+.aviso-erro {
+  background: #fef5f5; border: 1px solid #fecaca; color: #991b1b;
+  border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-top: 12px;
+}
+.aviso-erro ul { margin: 6px 0 0; padding-left: 18px; }
+
+.contexto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+.contexto div { background: #faf9f7; border: 1px solid var(--linha); border-radius: 9px; padding: 8px 10px; }
+.contexto dt { font-size: 11px; color: var(--tinta-fraca); text-transform: uppercase; letter-spacing: .4px; }
+.contexto dd { margin: 2px 0 0; font-size: 13px; font-weight: 600; }
+
+.bloco-titulo {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--tinta-fraca); margin: 16px 0 6px;
+}
+.linhas { width: 100%; border-collapse: collapse; }
+.linhas td { padding: 6px 0; border-bottom: 1px dashed var(--linha); font-size: 13.5px; vertical-align: top; }
+.linhas td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.linhas small { display: block; color: var(--tinta-fraca); font-size: 11.5px; font-weight: 400; }
+.linhas .neg td:last-child { color: var(--vermelho); }
+.linhas tr.total td { border-bottom: none; padding-top: 10px; font-weight: 700; }
+
+.liquido {
+  margin-top: 14px; background: var(--destaque-claro); border: 1px solid var(--destaque);
+  border-radius: 10px; padding: 12px 14px; display: flex; align-items: baseline; justify-content: space-between;
+}
+.liquido span { font-size: 12.5px; color: var(--destaque-texto); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.liquido b { font-size: 22px; color: var(--tinta); font-variant-numeric: tabular-nums; }
+
+.fgts-card { margin-top: 14px; border: 1px solid var(--linha); border-radius: 10px; padding: 12px 14px; background: #faf9f7; }
+.fgts-card h3 { margin: 0 0 8px; font-size: 13px; }
+.fgts-card .linhas td { border-bottom: 1px dashed #ebe8e4; }
+.fgts-card p { margin: 8px 0 0; font-size: 11.5px; color: var(--tinta-fraca); }
+.fgts-card__nota { font-size: 12.5px !important; color: var(--tinta-media) !important; margin-top: 0 !important; }
+
+.vazio { color: var(--tinta-fraca); font-size: 13.5px; margin-top: 14px; }
+.observacao { margin: 10px 0 0; font-size: 11.5px; color: var(--tinta-fraca); }
+
+/* --------------------------------------------------------------- rodapé */
+.rodape { max-width: 1220px; margin: 0 auto; padding: 8px 24px 40px; color: var(--tinta-fraca); font-size: 12px; }
+.rodape p { margin: 4px 0; }
+
+@media (max-width: 1080px) {
+  .colunas { grid-template-columns: 1fr; }
+  .tipos { grid-template-columns: repeat(2, 1fr); }
+  .painel { position: static; }
+}
+@media (max-width: 620px) {
+  .tipos, .campos, .contexto { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------- memória de cálculo ---- */
+/* Bloco montado só para a impressão: invisível na tela, único visível no papel. */
+.memoria { display: none; }
+.memoria__topo { border-bottom: 2px solid var(--tinta); padding-bottom: 8px; margin-bottom: 16px; }
+.memoria__topo h1 { margin: 0; font-size: 18px; }
+.memoria__topo p { margin: 2px 0 0; font-size: 13px; }
+.memoria__data { color: var(--tinta-media); }
+.memoria h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+  margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--linha);
+}
+.memoria__dados { width: 100%; border-collapse: collapse; }
+.memoria__dados td { padding: 4px 0; font-size: 12.5px; border-bottom: 1px dotted var(--linha); }
+.memoria__dados td:last-child { text-align: right; font-weight: 600; }
+.memoria__rodape p { margin: 0 0 4px; }
+.memoria__rodape { margin-top: 18px; padding-top: 8px; border-top: 1px solid var(--linha); font-size: 11px; color: var(--tinta-media); }
+
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; font-size: 12px; }
+  .topo, .abas, .pagina, .rodape, .aviso-cache { display: none !important; }
+  .memoria { display: block; }
+  .memoria .contexto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .memoria .contexto div { border: 1px solid var(--linha); background: none; }
+  .memoria .liquido { border: 2px solid var(--tinta); background: none; }
+  .memoria .liquido b, .memoria .liquido span { color: var(--tinta); }
+  .memoria .alerta, .memoria .fgts-card { background: none; }
+  .memoria .bloco-titulo { color: var(--tinta); }
+  /* Cinza claro some no papel. */
+  .memoria .contexto dt, .memoria .linhas small, .memoria .fgts-card p { color: var(--tinta-media); }
+  .memoria table, .memoria .fgts-card, .memoria .liquido { break-inside: avoid; }
+  .memoria section { break-inside: avoid-page; }
+}
+</style>
+</head>
+<body></body>
+
+<template id="pagina-rescisao">
+<header class="topo">
+    <div class="topo__conteudo">
+      <div class="topo__marca">
+        <span class="topo__logo">§</span>
+        <div>
+          <h1>Cálculos Trabalhistas</h1>
+          <p id="versao">Ferramenta de cálculos trabalhistas</p>
+        </div>
+      </div>
+      <span class="badge" id="badge-vigencia">tabelas</span>
+    </div>
+    <nav class="abas" aria-label="Módulos">
+      <a class="aba aba--ativa" href="#rescisao" data-pagina="rescisao" aria-current="page">Verbas rescisórias</a>
+      <a class="aba" href="#pedidos" data-pagina="pedidos">Cálculo de pedidos</a>
+    </nav>
+  </header>
+
+  <main class="pagina">
+    <section class="etapa">
+      <h2><span class="etapa__num">1</span> Tipo de rescisão</h2>
+      <p class="etapa__ajuda">Selecione a modalidade: os campos e as verbas devidas mudam conforme a escolha.</p>
+      <div class="tipos-grupos" id="tipos" data-dinamico role="radiogroup" aria-label="Tipo de rescisão"></div>
+      <div class="resumo-tipo" id="resumo-tipo" hidden></div>
+    </section>
+
+    <div class="colunas">
+      <section class="etapa etapa--form" id="etapa-dados" hidden>
+        <h2><span class="etapa__num">2</span> Dados para o cálculo</h2>
+        <form id="formulario" autocomplete="off">
+          <fieldset class="grupo">
+            <legend>Contrato de trabalho</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Data de admissão <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAdmissao" />
+              </label>
+              <label class="campo" id="campo-termo-final" hidden>
+                <span class="campo__rotulo">Data do termo final previsto <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataTermoFinal" />
+                <span class="campo__dica">Data combinada para o fim do contrato (experiência: até 90 dias).</span>
+              </label>
+              <label class="campo" id="campo-data-aviso">
+                <span class="campo__rotulo" id="rotulo-data-aviso">Data do aviso prévio / desligamento <b>*</b></span>
+                <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAviso" />
+                <span class="campo__dica" id="dica-data-aviso">Data da comunicação da rescisão.</span>
+              </label>
+              <label class="campo campo--largo checkbox" id="campo-clausula" hidden>
+                <input type="checkbox" id="clausulaAssecuratoria" />
+                <span>Contrato com <b>cláusula assecuratória</b> do direito recíproco de rescisão antecipada (art. 481 da CLT)</span>
+              </label>
+            </div>
+            <div class="campos" id="grupo-aviso" hidden>
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo" id="rotulo-aviso">Aviso prévio</legend>
+                <div class="opcoes__lista" id="opcoes-aviso"></div>
+                <span class="campo__dica" id="dica-aviso"></span>
+              </fieldset>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Remuneração</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Último salário base <b>*</b></span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="salarioBase" placeholder="0,00" /></span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Divisor da jornada</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="1" data-max="999" id="divisor" placeholder="220" value="220" />
+                <span class="campo__dica">220 para 44h semanais, 200 para 40h (Súmula 431 do TST). Usado no salário-hora.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Horas extras</span>
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="horasExtras" placeholder="0" />
+                <span class="campo__dica">Horas prestadas no mês da rescisão e ainda não pagas.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Adicional de hora extra</span>
+                <span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="adicionalHoraExtra" placeholder="50" value="50" /><i>%</i></span>
+                <span class="campo__dica">Mínimo de 50% (art. 7º, XVI, da CF). A hora sai do divisor informado.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Média de comissões, gorjetas e prêmios</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaComissoes" placeholder="0,00" /></span>
+                <span class="campo__dica">Média que integra aviso, 13º e férias.</span>
+              </label>
+            </div>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">Adicionais recebidos</legend>
+                <div class="opcoes__lista" id="opcoes-adicionais" data-dinamico></div>
+                <span class="campo__dica">Insalubridade e periculosidade não se acumulam (art. 193, §2º). A insalubridade incide sobre o salário mínimo (art. 192 da CLT).</span>
+              </fieldset>
+              <label class="campo" id="campo-horas-noturnas" hidden>
+                <span class="campo__rotulo">Horas noturnas por mês</span>
+                <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="horasNoturnas" placeholder="0" />
+                <span class="campo__dica">20% sobre a hora normal, já integrada pelos demais adicionais (Súmula 60, I, do TST). Não considera a hora noturna reduzida (art. 73, §1º).</span>
+              </label>
+            </div>
+            <p class="nota-remuneracao" id="nota-remuneracao">Remuneração para cálculo: <b>R$ 0,00</b></p>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Férias</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Períodos de férias vencidas (não gozadas)</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="20" id="periodosFeriasVencidas" placeholder="0" />
+                <span class="campo__dica" id="dica-periodos">Preencha as datas para ver os períodos aquisitivos completos.</span>
+              </label>
+              <label class="campo">
+                <span class="campo__rotulo">Faltas injustificadas no período aquisitivo</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="365" id="faltasInjustificadas" placeholder="0" />
+                <span class="campo__dica">Acima de 5 faltas, reduz os dias de férias (art. 130 da CLT).</span>
+              </label>
+              <label class="campo campo--largo checkbox">
+                <input type="checkbox" id="feriasDobro" />
+                <span>Pagar as férias vencidas <b>em dobro</b> (período concessivo expirado — art. 137 da CLT)</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo" id="grupo-fgts">
+            <legend>FGTS</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Saldo do FGTS depositado</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="saldoFgts" placeholder="0,00" /></span>
+                <span class="campo__dica">Extrato da conta vinculada, sem os depósitos da rescisão (base da multa).</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Descontos</legend>
+            <div class="campos">
+              <fieldset class="campo campo--largo opcoes">
+                <legend class="campo__rotulo">Descontos aplicáveis</legend>
+                <div class="opcoes__lista" id="opcoes-descontos" data-dinamico></div>
+                <span class="campo__dica">INSS, IRRF e aviso prévio não cumprido entram sozinhos, conforme o caso.</span>
+              </fieldset>
+            </div>
+            <div class="campos" id="campos-descontos" data-dinamico></div>
+          </fieldset>
+
+          <fieldset class="grupo">
+            <legend>Dados fiscais</legend>
+            <div class="campos">
+              <label class="campo">
+                <span class="campo__rotulo">Dependentes para IRRF</span>
+                <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="30" id="dependentes" placeholder="0" />
+                <span class="campo__dica">Cada dependente reduz a base do imposto.</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="acoes">
+            <button type="button" class="botao botao--primario" id="gerar-pdf">Gerar PDF</button>
+            <button type="reset" class="botao">Limpar</button>
+            <span class="acoes__nota">O resultado é recalculado a cada campo preenchido.</span>
+          </div>
+        </form>
+      </section>
+
+      <aside class="painel" id="painel" hidden>
+        <div class="painel__topo">
+          <h2>Resultado</h2>
+          <span class="painel__tag">estimativa</span>
+        </div>
+        <div id="resultado"></div>
+      </aside>
+    </div>
+  </main>
+
+  <section id="memoria" class="memoria" aria-hidden="true"></section>
+
+  <footer class="rodape">
+    <p><b>Uso orientativo.</b> Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.</p>
+    <p id="rodape-vigencia"></p>
+  </footer>
+</template>
+
+<template id="pagina-pedidos">
+<header class="topo">
+    <div class="topo__conteudo">
+      <div class="topo__marca">
+        <span class="topo__logo">§</span>
+        <div>
+          <h1>Cálculos Trabalhistas</h1>
+          <p id="versao">Ferramenta de cálculos trabalhistas</p>
+        </div>
+      </div>
+      <span class="badge" id="badge-vigencia">tabelas</span>
+    </div>
+    <nav class="abas" aria-label="Módulos">
+      <a class="aba" href="#rescisao" data-pagina="rescisao">Verbas rescisórias</a>
+      <a class="aba aba--ativa" href="#pedidos" data-pagina="pedidos" aria-current="page">Cálculo de pedidos</a>
+    </nav>
+  </header>
+
+  <main class="pagina">
+    <section class="etapa">
+      <h2><span class="etapa__num">1</span> Pedido</h2>
+      <p class="etapa__ajuda">Escolha o pedido a calcular. Cada um pede os dados que lhe são próprios.</p>
+      <div class="tipos" id="pedidos" data-dinamico></div>
+      <div class="resumo-tipo" id="resumo-pedido" hidden></div>
+    </section>
+
+    <div class="colunas">
+      <section class="etapa etapa--form">
+        <h2><span class="etapa__num">2</span> Dados do pedido</h2>
+        <form id="formulario" autocomplete="off">
+          <div id="grupos-do-pedido" data-dinamico></div>
+
+          <div class="acoes">
+            <button type="button" class="botao botao--primario" id="gerar-pdf">Gerar PDF</button>
+            <button type="reset" class="botao">Limpar</button>
+            <span class="acoes__nota">O resultado é recalculado a cada campo preenchido.</span>
+          </div>
+        </form>
+      </section>
+
+      <aside class="painel">
+        <div class="painel__topo">
+          <h2>Resultado</h2>
+          <span class="painel__tag">estimativa</span>
+        </div>
+        <div id="resultado"></div>
+      </aside>
+    </div>
+  </main>
+
+  <section id="memoria" class="memoria" aria-hidden="true"></section>
+
+  <footer class="rodape">
+    <p><b>Uso orientativo.</b> Os valores são estimativas e não substituem a memória de cálculo do processo. Não há aplicação de juros nem de correção monetária.</p>
+    <p id="rodape-vigencia"></p>
+  </footer>
+</template>
+
+<script>
+(function () {
+  'use strict';
+  const __modulos = {};
+  const __paginas = {};
+
+  /* src/tipos.js */
+  __modulos['src/tipos.js'] = (function () {
+/**
+ * Catálogo dos tipos de rescisão.
+ *
+ * Cada tipo declara:
+ *  - `grupo`   : contrato por prazo indeterminado ou determinado;
+ *  - `verbas`  : o que é (ou não) devido — usado para montar o resumo da tela;
+ *  - `aviso`   : as opções de aviso prévio aplicáveis;
+ *  - `campos`  : quais grupos de campos o formulário deve exibir;
+ *  - `fgts`    : regras de multa/saque/seguro-desemprego.
+ *
+ * As regras de cálculo em `calculo.js` leem deste mesmo objeto, de modo que
+ * incluir um novo tipo de rescisão significa acrescentar uma entrada aqui.
+ */
+
+const GRUPOS = {
+  indeterminado: {
+    id: 'indeterminado',
+    titulo: 'Contrato por prazo indeterminado',
+  },
+  determinado: {
+    id: 'determinado',
+    titulo: 'Contrato por prazo determinado (inclusive experiência)',
+    ajuda: 'Tem data de término combinada. A experiência dura no máximo 90 dias (art. 445, parágrafo único).',
+  },
+};
+
+const TIPOS = {
+  sem_justa_causa: {
+    id: 'sem_justa_causa',
+    grupo: 'indeterminado',
+    nome: 'Iniciativa do empregador',
+    tag: 'Dispensa sem justa causa',
+    icone: '🏢',
+    descricao: 'A empresa decide encerrar o contrato sem motivo disciplinar (arts. 477 e 487 da CLT).',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: 'Aviso prévio (indenizado ou trabalhado)', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Multa de 40% do FGTS', devida: true },
+      { label: 'Saque do FGTS e seguro-desemprego', devida: true },
+    ],
+    aviso: {
+      rotulo: 'Cumprimento do aviso prévio',
+      ajuda: '30 dias + 3 dias por ano completo de serviço, limitado a 90 dias (Lei 12.506/2011). O aviso indenizado projeta o contrato.',
+      opcoes: [
+        { valor: 'indenizado', label: 'Indenizado' },
+        { valor: 'trabalhado', label: 'Trabalhado' },
+      ],
+    },
+    campos: { fgts: true, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true },
+    fgts: {
+      multa: 0.4,
+      rotuloMulta: 'Multa rescisória de 40%',
+      saque: 'Saque integral do saldo (código 01)',
+      seguroDesemprego: 'Sim, se preenchidos os requisitos legais',
+    },
+  },
+
+  pedido_demissao: {
+    id: 'pedido_demissao',
+    grupo: 'indeterminado',
+    nome: 'Pedido de demissão',
+    tag: 'Iniciativa do empregado',
+    icone: '🙋',
+    descricao: 'O empregado pede para sair. Deve conceder aviso prévio de 30 dias ao empregador (art. 487, §2º).',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Aviso prévio a receber', devida: false, nota: 'o aviso é devido pelo empregado' },
+      { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
+    ],
+    aviso: {
+      rotulo: 'Aviso prévio dado pelo empregado',
+      diasFixos: 30,
+      ajuda: 'São 30 dias. Se não cumprido, o empregador pode descontar o valor equivalente (art. 487, §2º).',
+      opcoes: [
+        { valor: 'trabalhado', label: 'Cumprido' },
+        { valor: 'dispensado', label: 'Dispensado (sem desconto)' },
+        { valor: 'nao_cumprido', label: 'Não cumprido (desconto de 30 dias)' },
+      ],
+    },
+    campos: { fgts: false, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true },
+    fgts: {
+      multa: 0,
+      rotuloMulta: 'Sem multa rescisória',
+      saque: 'Não há saque do FGTS',
+      seguroDesemprego: 'Não',
+    },
+  },
+
+  comum_acordo: {
+    id: 'comum_acordo',
+    grupo: 'indeterminado',
+    nome: 'Comum acordo',
+    tag: 'Art. 484-A da CLT',
+    icone: '🤝',
+    descricao: 'Rescisão por acordo entre as partes: aviso e multa pela metade, saque de 80% do FGTS.',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: 'Aviso prévio pela metade (se indenizado)', devida: true },
+      { label: '13º salário proporcional (integral)', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3 (integrais)', devida: true },
+      { label: 'Multa de 20% do FGTS', devida: true },
+      { label: 'Saque de 80% do FGTS', devida: true },
+      { label: 'Seguro-desemprego', devida: false },
+    ],
+    aviso: {
+      rotulo: 'Aviso prévio',
+      ajuda: 'Se indenizado, é devido pela metade. Se trabalhado, é integral (art. 484-A, I).',
+      opcoes: [
+        { valor: 'indenizado_metade', label: 'Indenizado (metade)' },
+        { valor: 'trabalhado', label: 'Trabalhado (integral)' },
+        { valor: 'dispensado', label: 'Dispensado' },
+      ],
+    },
+    campos: { fgts: true, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true },
+    fgts: {
+      multa: 0.2,
+      rotuloMulta: 'Multa rescisória de 20%',
+      saque: 'Saque de até 80% do saldo',
+      seguroDesemprego: 'Não (art. 484-A, §2º)',
+    },
+  },
+
+  justa_causa: {
+    id: 'justa_causa',
+    grupo: 'indeterminado',
+    nome: 'Justa causa',
+    tag: 'Falta grave do empregado (art. 482)',
+    icone: '⚖️',
+    descricao: 'Dispensa motivada por falta grave. O empregado perde as verbas indenizatórias. Vale também para o contrato por prazo determinado, sem indenização dos arts. 479/480.',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: '13º salário proporcional', devida: false },
+      { label: 'Férias proporcionais + 1/3', devida: false, nota: 'Súmula 171 do TST' },
+      { label: 'Aviso prévio', devida: false },
+      { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
+    ],
+    aviso: null,
+    campos: { fgts: false, decimoTerceiro: false, feriasProporcionais: false, feriasVencidas: true },
+    fgts: {
+      multa: 0,
+      rotuloMulta: 'Sem multa rescisória',
+      saque: 'Não há saque do FGTS',
+      seguroDesemprego: 'Não',
+    },
+  },
+
+  determinado_termo_final: {
+    id: 'determinado_termo_final',
+    grupo: 'determinado',
+    nome: 'Término no prazo',
+    tag: 'Chegada ao termo final',
+    icone: '📅',
+    descricao: 'O contrato chega à data combinada e se encerra naturalmente. Não há aviso prévio nem indenização.',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Saque do FGTS (código 04)', devida: true },
+      { label: 'Aviso prévio', devida: false },
+      { label: 'Multa de 40% do FGTS', devida: false },
+      { label: 'Seguro-desemprego', devida: false },
+    ],
+    aviso: null,
+    campos: {
+      fgts: false, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true,
+      termoFinal: true, termoEncerraContrato: true,
+    },
+    fgts: {
+      multa: 0,
+      rotuloMulta: 'Sem multa rescisória',
+      saque: 'Saque integral do saldo (código 04 — término do contrato)',
+      seguroDesemprego: 'Não',
+    },
+  },
+
+  determinado_antecipada_empregador: {
+    id: 'determinado_antecipada_empregador',
+    grupo: 'determinado',
+    nome: 'Rescisão antecipada pelo empregador',
+    tag: 'Art. 479 da CLT',
+    icone: '⏹️',
+    descricao: 'A empresa encerra o contrato antes do termo final e paga metade da remuneração que faltava até lá.',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: 'Indenização do art. 479 (metade dos salários restantes)', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Multa de 40% do FGTS e saque', devida: true },
+      { label: 'Aviso prévio', devida: false, nota: 'salvo cláusula assecuratória' },
+      { label: 'Seguro-desemprego', devida: false, nota: 'regra geral' },
+    ],
+    // Com a cláusula do art. 481 o contrato passa a seguir as regras do prazo
+    // indeterminado: entra o aviso prévio e sai a indenização do art. 479.
+    verbasComClausula: [
+      { label: 'Saldo de salário', devida: true },
+      { label: 'Aviso prévio (indenizado ou trabalhado)', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Multa de 40% do FGTS e saque', devida: true },
+      { label: 'Seguro-desemprego', devida: true, nota: 'se preenchidos os requisitos' },
+      { label: 'Indenização do art. 479', devida: false, nota: 'substituída pelo aviso prévio' },
+    ],
+    aviso: {
+      rotulo: 'Aviso prévio (cláusula assecuratória)',
+      somenteComClausula: true,
+      ajuda: 'Com a cláusula do art. 481, aplicam-se as regras do contrato por prazo indeterminado: há aviso prévio e o art. 479 deixa de incidir.',
+      opcoes: [
+        { valor: 'indenizado', label: 'Indenizado' },
+        { valor: 'trabalhado', label: 'Trabalhado' },
+      ],
+    },
+    campos: {
+      fgts: true, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true,
+      termoFinal: true, clausulaAssecuratoria: true,
+    },
+    indenizacaoAntecipada: { artigo: 479, natureza: 'provento', label: 'Indenização do art. 479' },
+    rotuloDataAviso: 'Data da rescisão antecipada',
+    dicaDataAviso: 'Último dia efetivamente trabalhado.',
+    fgts: {
+      multa: 0.4,
+      rotuloMulta: 'Multa rescisória de 40%',
+      saque: 'Saque integral do saldo',
+      seguroDesemprego: 'Não, em regra',
+      seguroDesempregoComClausula: 'Sim, se preenchidos os requisitos legais',
+    },
+  },
+
+  determinado_antecipada_empregado: {
+    id: 'determinado_antecipada_empregado',
+    grupo: 'determinado',
+    nome: 'Rescisão antecipada pelo empregado',
+    tag: 'Art. 480 da CLT',
+    icone: '↩️',
+    descricao: 'O empregado sai antes do termo final e indeniza a empresa pelos prejuízos, limitado ao valor do art. 479.',
+    verbas: [
+      { label: 'Saldo de salário', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Indenização ao empregador (art. 480)', devida: false, nota: 'descontada do acerto' },
+      { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
+    ],
+    verbasComClausula: [
+      { label: 'Saldo de salário', devida: true },
+      { label: '13º salário proporcional', devida: true },
+      { label: 'Férias vencidas + 1/3', devida: true },
+      { label: 'Férias proporcionais + 1/3', devida: true },
+      { label: 'Indenização do art. 480', devida: false, nota: 'substituída pelo aviso prévio de 30 dias' },
+      { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
+    ],
+    aviso: {
+      rotulo: 'Aviso prévio (cláusula assecuratória)',
+      somenteComClausula: true,
+      diasFixos: 30,
+      ajuda: 'Com a cláusula do art. 481, o empregado deve aviso prévio de 30 dias e o art. 480 deixa de incidir.',
+      opcoes: [
+        { valor: 'trabalhado', label: 'Cumprido' },
+        { valor: 'dispensado', label: 'Dispensado (sem desconto)' },
+        { valor: 'nao_cumprido', label: 'Não cumprido (desconto de 30 dias)' },
+      ],
+    },
+    campos: {
+      fgts: false, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true,
+      termoFinal: true, clausulaAssecuratoria: true,
+    },
+    indenizacaoAntecipada: {
+      artigo: 480,
+      natureza: 'desconto',
+      label: 'Indenização ao empregador (art. 480)',
+      detalhe: 'limitada ao valor do art. 479',
+    },
+    rotuloDataAviso: 'Data da saída antecipada',
+    dicaDataAviso: 'Último dia efetivamente trabalhado.',
+    fgts: {
+      multa: 0,
+      rotuloMulta: 'Sem multa rescisória',
+      saque: 'Não há saque do FGTS',
+      seguroDesemprego: 'Não',
+    },
+  },
+};
+
+const ORDEM_TIPOS = [
+  'sem_justa_causa', 'pedido_demissao', 'comum_acordo', 'justa_causa',
+  'determinado_termo_final', 'determinado_antecipada_empregador', 'determinado_antecipada_empregado',
+];
+
+const ORDEM_GRUPOS = ['indeterminado', 'determinado'];
+
+const tiposDoGrupo = (grupo) => ORDEM_TIPOS.filter((id) => TIPOS[id].grupo === grupo);
+
+    return { GRUPOS, TIPOS, ORDEM_TIPOS, ORDEM_GRUPOS, tiposDoGrupo };
+  })();
+
+  /* src/tabelas.js */
+  __modulos['src/tabelas.js'] = (function () {
+/**
+ * Tabelas e parâmetros legais usados nos cálculos.
+ *
+ * ATENÇÃO: os valores abaixo precisam ser revisados a cada competência.
+ * Mantenha `VIGENCIA` sempre coerente com as faixas cadastradas — ela é
+ * exibida na interface para que o usuário saiba qual tabela foi aplicada.
+ */
+
+/** Rótulo curto, para a etiqueta do cabeçalho. */
+const VIGENCIA = 'Tabelas de 2026';
+
+/** Fonte de cada tabela, para o rodapé e para a memória de cálculo. */
+const VIGENCIA_DETALHE =
+  'INSS: Portaria Interministerial MPS/MF nº 13, de 09/01/2026 · '
+  + 'IRRF: tabela progressiva com o redutor da Lei 15.270/2025 · '
+  + 'Salário mínimo: R$ 1.621,00';
+
+/** Salário mínimo nacional de 2026. Base da insalubridade (art. 192 da CLT). */
+const SALARIO_MINIMO = 1621.0;
+
+/**
+ * Faixas progressivas do INSS do segurado empregado, vigentes desde a
+ * competência de janeiro de 2026 (Portaria Interministerial MPS/MF nº 13,
+ * de 09/01/2026). Teto do salário de contribuição: R$ 8.475,55.
+ */
+const INSS = {
+  faixas: [
+    { limite: 1621.0, aliquota: 0.075 },
+    { limite: 2902.84, aliquota: 0.09 },
+    { limite: 4354.27, aliquota: 0.12 },
+    { limite: 8475.55, aliquota: 0.14 },
+  ],
+};
+
+/**
+ * Tabela progressiva mensal do IRRF vigente em 2026. As faixas em si não
+ * mudaram na virada do ano: o que entrou foi o redutor da Lei 15.270/2025,
+ * que zera o imposto até R$ 5.000,00 de rendimento mensal e decresce
+ * linearmente até se anular em R$ 7.350,00.
+ */
+const IRRF = {
+  faixas: [
+    { limite: 2428.8, aliquota: 0, deducao: 0 },
+    { limite: 2826.65, aliquota: 0.075, deducao: 182.16 },
+    { limite: 3751.05, aliquota: 0.15, deducao: 394.16 },
+    { limite: 4664.68, aliquota: 0.225, deducao: 675.49 },
+    { limite: Infinity, aliquota: 0.275, deducao: 908.73 },
+  ],
+  deducaoPorDependente: 189.59,
+  descontoSimplificado: 607.2,
+  /** Redutor da Lei 15.270/2025, aplicado sobre o imposto apurado. */
+  redutor: {
+    isencaoAte: 5000.0,
+    limite: 7350.0,
+    constante: 978.62,
+    fator: 0.133145,
+  },
+};
+
+const FGTS = {
+  aliquotaDeposito: 0.08,
+  multaSemJustaCausa: 0.4,
+  multaComumAcordo: 0.2,
+};
+
+    return { VIGENCIA, VIGENCIA_DETALHE, SALARIO_MINIMO, INSS, IRRF, FGTS };
+  })();
+
+  /* src/formato.js */
+  __modulos['src/formato.js'] = (function () {
+/**
+ * Leitura e escrita de números e datas no padrão brasileiro.
+ *
+ * Números: vírgula decimal e ponto de milhar ("1.234,56").
+ * Datas: dd/mm/aaaa na tela, ISO (aaaa-mm-dd) nos motores de cálculo.
+ */
+
+const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/**
+ * Normaliza um texto numérico para dígitos com, no máximo, uma vírgula.
+ *
+ * A vírgula manda: havendo vírgula, os pontos são separadores de milhar.
+ * Sem vírgula, um ponto seguido de três dígitos também é milhar ("1.234");
+ * nos demais casos o ponto é o separador decimal que a pessoa digitou
+ * ("12.5" vira "12,5").
+ */
+function normalizarNumero(texto) {
+  let limpo = String(texto ?? '').replace(/[^\d.,]/g, '');
+
+  if (limpo.includes(',')) {
+    limpo = limpo.replace(/\./g, '');
+  } else {
+    const ultimoPonto = limpo.lastIndexOf('.');
+    if (ultimoPonto >= 0) {
+      const casas = limpo.length - ultimoPonto - 1;
+      limpo =
+        casas === 3
+          ? limpo.replace(/\./g, '')
+          : `${limpo.slice(0, ultimoPonto).replace(/\./g, '')},${limpo.slice(ultimoPonto + 1)}`;
+    }
+  }
+
+  const partes = limpo.split(',');
+  return partes.length <= 2 ? limpo : `${partes[0]},${partes.slice(1).join('')}`;
+}
+
+/**
+ * Lê "1.234,56", "1234,56", "12,5" ou "1234" como número.
+ * Devolve NaN quando o texto tem qualquer coisa além de números e separadores
+ * — quem chama decide se isso é erro de preenchimento ou campo vazio.
+ */
+function parseNumeroBR(texto) {
+  if (texto == null) return NaN;
+  const bruto = String(texto).trim();
+  if (bruto === '' || /[^\d.,\s]/.test(bruto)) return NaN;
+  const normalizado = normalizarNumero(bruto).replace(',', '.');
+  if (normalizado === '' || normalizado === '.') return NaN;
+  const valor = Number(normalizado);
+  return Number.isFinite(valor) ? valor : NaN;
+}
+
+function formatarNumeroBR(valor, casas = 2) {
+  return Number(valor).toLocaleString('pt-BR', {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  });
+}
+
+/** Formata sem casas decimais quando o número é inteiro. */
+function formatarQuantidade(valor) {
+  return Number.isInteger(valor) ? formatarNumeroBR(valor, 0) : formatarNumeroBR(valor, 2);
+}
+
+/**
+ * Converte "15/09/2026" em "2026-09-15". Devolve null quando a data não
+ * existe no calendário (31/02, por exemplo) ou está incompleta.
+ */
+function parseDataBR(texto) {
+  const combinacao = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(texto ?? '').trim());
+  if (!combinacao) return null;
+  const [, dia, mes, ano] = combinacao.map(Number);
+  if (mes < 1 || mes > 12 || dia < 1 || ano < 1900 || ano > 2199) return null;
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+  if (data.getUTCDate() !== dia || data.getUTCMonth() !== mes - 1) return null; // 31/02 e afins
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/** Converte "2026-09-15" em "15/09/2026". */
+function formatarDataBR(iso) {
+  const combinacao = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+  return combinacao ? `${combinacao[3]}/${combinacao[2]}/${combinacao[1]}` : '';
+}
+
+/**
+ * Máscara progressiva dd/mm/aaaa: descarta tudo que não for dígito.
+ *
+ * Uma data colada no formato ISO (aaaa-mm-dd ou aaaa/mm/dd) é virada antes de
+ * a máscara agir. Sem isso, "2024-03-15" viraria "20/24/0315" — recusado
+ * depois como data inválida, mas sem que a pessoa entenda por quê.
+ */
+function mascararData(texto) {
+  const bruto = String(texto ?? '').trim();
+  const iso = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(bruto);
+  const fonte = iso ? `${iso[3]}${iso[2]}${iso[1]}` : bruto;
+
+  const digitos = fonte.replace(/\D/g, '').slice(0, 8);
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 4) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+  return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+}
+
+/** Mantém apenas dígitos. */
+function mascararInteiro(texto) {
+  return String(texto ?? '').replace(/\D/g, '');
+}
+
+/** Mantém dígitos e uma única vírgula decimal, descartando letras. */
+function mascararDecimal(texto) {
+  return normalizarNumero(texto);
+}
+
+    return { moeda, parseNumeroBR, formatarNumeroBR, formatarQuantidade, parseDataBR, formatarDataBR, mascararData, mascararInteiro, mascararDecimal };
+  })();
+
+  /* src/adicionais.js */
+  __modulos['src/adicionais.js'] = (function () {
+/**
+ * Adicionais legais que integram a remuneração para o cálculo das verbas.
+ *
+ * Cada um traz o seu percentual e a base sobre a qual incide, de modo que a
+ * tela só precisa perguntar quais o empregado recebia.
+ */
+
+  const { SALARIO_MINIMO } = __modulos['src/tabelas.js'];
+  const { formatarQuantidade } = __modulos['src/formato.js'];
+
+/** Divisor mensal padrão (44h semanais). Cada tela pode informar o seu. */
+const DIVISOR_PADRAO = 220;
+
+const SEM_ADICIONAIS = 'nenhum';
+
+const ADICIONAIS = [
+  {
+    id: 'insalubridade_10',
+    label: 'Insalubridade 10%',
+    detalhe: 'grau mínimo, sobre o salário mínimo',
+    percentual: 0.1,
+    base: 'salario_minimo',
+    exclusivo: 'risco',
+  },
+  {
+    id: 'insalubridade_20',
+    label: 'Insalubridade 20%',
+    detalhe: 'grau médio, sobre o salário mínimo',
+    percentual: 0.2,
+    base: 'salario_minimo',
+    exclusivo: 'risco',
+  },
+  {
+    id: 'insalubridade_40',
+    label: 'Insalubridade 40%',
+    detalhe: 'grau máximo, sobre o salário mínimo',
+    percentual: 0.4,
+    base: 'salario_minimo',
+    exclusivo: 'risco',
+  },
+  {
+    id: 'periculosidade_30',
+    label: 'Periculosidade 30%',
+    detalhe: 'sobre o salário base (art. 193, §1º)',
+    percentual: 0.3,
+    base: 'salario_base',
+    exclusivo: 'risco',
+  },
+  {
+    id: 'transferencia_25',
+    label: 'Transferência 25%',
+    detalhe: 'sobre o salário base (art. 469, §3º)',
+    percentual: 0.25,
+    base: 'salario_base',
+  },
+  {
+    id: 'noturno_20',
+    label: 'Adicional noturno 20%',
+    detalhe: 'sobre as horas noturnas (art. 73)',
+    percentual: 0.2,
+    base: 'horas_noturnas',
+    pedeHoras: true,
+  },
+];
+
+const adicionalPorId = (id) => ADICIONAIS.find((a) => a.id === id) ?? null;
+
+function arredondar(valor) {
+  return Math.round((valor + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Soma os adicionais marcados.
+ *
+ * @param {object} dados
+ * @param {string[]} dados.selecionados ids marcados na tela
+ * @param {number} dados.salarioBase
+ * @param {number} [dados.horasNoturnas] usadas apenas pelo adicional noturno
+ * @returns {{itens: object[], total: number}}
+ */
+function calcularAdicionais({
+  selecionados = [],
+  salarioBase = 0,
+  horasNoturnas = 0,
+  divisor = DIVISOR_PADRAO,
+} = {}) {
+  const itens = [];
+
+  // O adicional noturno incide sobre a hora normal, que já vem integrada pelos
+  // adicionais de natureza salarial (Súmulas 60, I, e 264 do TST). Por isso ele
+  // é calculado por último, sobre a base acumulada.
+  const porHora = (id) => (adicionalPorId(id)?.base === 'horas_noturnas' ? 1 : 0);
+  const ordenados = [...selecionados].sort((a, b) => porHora(a) - porHora(b));
+  let baseHora = salarioBase;
+
+  for (const id of ordenados) {
+    const adicional = adicionalPorId(id);
+    if (!adicional) continue;
+
+    let valor = 0;
+    if (adicional.base === 'salario_minimo') valor = SALARIO_MINIMO * adicional.percentual;
+    else if (adicional.base === 'salario_base') valor = salarioBase * adicional.percentual;
+    else if (adicional.base === 'horas_noturnas') {
+      valor = (baseHora / divisor) * horasNoturnas * adicional.percentual;
+    }
+    if (adicional.base !== 'horas_noturnas') baseHora += valor;
+
+    itens.push({
+      id,
+      label: adicional.label,
+      detalhe: adicional.base === 'horas_noturnas'
+        ? `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`
+        : adicional.detalhe,
+      valor: arredondar(valor),
+    });
+  }
+
+  itens.sort((a, b) => ADICIONAIS.findIndex((x) => x.id === a.id) - ADICIONAIS.findIndex((x) => x.id === b.id));
+  return { itens, total: arredondar(itens.reduce((soma, i) => soma + i.valor, 0)) };
+}
+
+/**
+ * Aplica as regras de exclusão entre os adicionais, dado o que acabou de ser
+ * marcado. Insalubridade e periculosidade não se acumulam (art. 193, §2º) e
+ * "não recebia adicionais" exclui todos.
+ *
+ * @param {string[]} selecionados
+ * @param {string} alterado id que acabou de ser marcado
+ * @returns {string[]} seleção já consistente
+ */
+function aplicarExclusoes(selecionados, alterado) {
+  if (alterado === SEM_ADICIONAIS) return [];
+
+  const grupo = adicionalPorId(alterado)?.exclusivo;
+  return selecionados.filter((id) => {
+    if (id === SEM_ADICIONAIS) return false;
+    if (id === alterado) return true;
+    return !grupo || adicionalPorId(id)?.exclusivo !== grupo;
+  });
+}
+
+    return { DIVISOR_PADRAO, SEM_ADICIONAIS, ADICIONAIS, adicionalPorId, calcularAdicionais, aplicarExclusoes };
+  })();
+
+  /* src/descontos.js */
+  __modulos['src/descontos.js'] = (function () {
+/**
+ * Descontos que podem incidir sobre o acerto rescisório.
+ *
+ * Cada entrada diz o campo que a tela deve mostrar quando o desconto é
+ * marcado e como o valor é apurado. INSS, IRRF e o aviso prévio não cumprido
+ * não entram aqui: decorrem da lei e do próprio cálculo, não de uma escolha.
+ */
+
+const SEM_DESCONTOS = 'nenhum';
+
+const DESCONTOS = [
+  {
+    id: 'horas_negativas',
+    label: 'Horas negativas',
+    campo: 'horasNegativas',
+    tipo: 'horas',
+    rotulo: 'Horas negativas',
+    dica: 'Descontadas pela mesma hora normal das extras: salário e adicionais ÷ divisor.',
+  },
+  {
+    id: 'adiantamento_salario',
+    label: 'Adiantamento de salário',
+    campo: 'adiantamentoSalario',
+    tipo: 'valor',
+    rotulo: 'Adiantamento de salário',
+  },
+  {
+    id: 'adiantamento_13',
+    label: 'Adiantamento do 13º',
+    campo: 'adiantamento13',
+    tipo: 'valor',
+    rotulo: 'Adiantamento do 13º',
+  },
+  {
+    id: 'pensao',
+    label: 'Pensão alimentícia',
+    campo: 'pensaoPercentual',
+    tipo: 'percentual',
+    rotulo: 'Pensão alimentícia',
+    dica: 'Percentual incidente sobre as verbas rescisórias.',
+  },
+  {
+    id: 'outros',
+    label: 'Outros descontos',
+    campo: 'outrosDescontos',
+    tipo: 'valor',
+    rotulo: 'Outros descontos (VT, VR, empréstimos)',
+  },
+];
+
+const descontoPorId = (id) => DESCONTOS.find((d) => d.id === id) ?? null;
+
+/** Marcar "não há descontos" limpa os demais, e vice-versa. */
+function aplicarExclusoesDesconto(selecionados, alterado) {
+  if (alterado === SEM_DESCONTOS) return [];
+  return selecionados.filter((id) => id !== SEM_DESCONTOS);
+}
+
+/**
+ * Salário-hora: a mesma hora que remunera, agora descontando (art. 64 da CLT).
+ * A base mensal é salário mais adicionais — os de natureza salarial integram a
+ * hora normal (Súmula 139 do TST).
+ */
+function salarioHora(baseMensal, divisor) {
+  if (!divisor || divisor <= 0) return 0;
+  return baseMensal / divisor;
+}
+
+    return { SEM_DESCONTOS, DESCONTOS, descontoPorId, aplicarExclusoesDesconto, salarioHora };
+  })();
+
+  /* src/calculo.js */
+  __modulos['src/calculo.js'] = (function () {
+/**
+ * Motor de cálculo das verbas rescisórias.
+ *
+ * É um módulo puro (sem DOM): recebe os dados do formulário e devolve a
+ * memória de cálculo. Todos os valores são estimativas — convenção coletiva,
+ * acordo individual e jurisprudência local podem alterar o resultado.
+ */
+
+  const { INSS, IRRF, FGTS } = __modulos['src/tabelas.js'];
+  const { TIPOS } = __modulos['src/tipos.js'];
+  const { calcularAdicionais, DIVISOR_PADRAO } = __modulos['src/adicionais.js'];
+  const { salarioHora } = __modulos['src/descontos.js'];
+  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+
+/* ------------------------------------------------------------------ datas */
+
+function parseData(iso) {
+  if (!iso) return null;
+  const [ano, mes, dia] = String(iso).split('-').map(Number);
+  if (!ano || !mes || !dia) return null;
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+function formatarData(data) {
+  if (!data) return '—';
+  return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+}
+
+const DIA_MS = 86400000;
+
+/**
+ * Teto de dias de aviso prévio que o empregado pode ser obrigado a cumprir em
+ * serviço. A proporcionalidade da Lei 12.506/2011 é benefício do trabalhador,
+ * de modo que o excedente é indenizado (Nota Técnica 184/2012 da SRT/MTE).
+ */
+const DIAS_AVISO_TRABALHAVEIS = 30;
+
+function addDias(data, dias) {
+  return new Date(data.getTime() + dias * DIA_MS);
+}
+
+/** Soma meses mantendo o dia; dia inexistente no mês de destino encosta no último. */
+function addMeses(data, meses) {
+  const ano = data.getUTCFullYear();
+  const mes = data.getUTCMonth() + meses;
+  const ultimoDia = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(ano, mes, Math.min(data.getUTCDate(), ultimoDia)));
+}
+
+function addAnos(data, anos) {
+  return new Date(Date.UTC(data.getUTCFullYear() + anos, data.getUTCMonth(), data.getUTCDate()));
+}
+
+function diffDias(inicio, fim) {
+  return Math.round((fim - inicio) / DIA_MS);
+}
+
+/** Dias entre duas datas, contando as duas pontas. */
+function diasEntre(inicio, fim) {
+  return diffDias(inicio, fim) + 1;
+}
+
+function anosCompletos(admissao, fim) {
+  let anos = fim.getUTCFullYear() - admissao.getUTCFullYear();
+  const aniversario = new Date(
+    Date.UTC(fim.getUTCFullYear(), admissao.getUTCMonth(), admissao.getUTCDate()),
+  );
+  if (fim < aniversario) anos -= 1;
+  return Math.max(0, anos);
+}
+
+/** Meses completos entre duas datas (para contratos com menos de um ano). */
+function mesesCompletos(inicio, fim) {
+  let meses =
+    (fim.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (fim.getUTCMonth() - inicio.getUTCMonth());
+  if (fim.getUTCDate() < inicio.getUTCDate()) meses -= 1;
+  return Math.max(0, meses);
+}
+
+/** Conta os meses de competência com 15 dias ou mais trabalhados. */
+function contarMeses(inicio, fim) {
+  if (!inicio || !fim || fim < inicio) return 0;
+  let meses = 0;
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const primeiro = cursor;
+    const ultimo = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > primeiro ? inicio : primeiro;
+    const ate = fim < ultimo ? fim : ultimo;
+    if (diffDias(de, ate) + 1 >= 15) meses += 1;
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+  return meses;
+}
+
+/** Avos do 13º: meses de competência do ano, limitados a 12. */
+function contarAvos(inicio, fim) {
+  return Math.min(contarMeses(inicio, fim), 12);
+}
+
+/**
+ * Avos de férias: contados em ciclos mensais a partir do dia da admissão, e
+ * não por mês de calendário (art. 130 c/c art. 146, parágrafo único, da CLT).
+ *
+ * O ciclo em curso na saída só vira avo se tiver 15 dias ou mais trabalhados
+ * dentro dele — a fração superior a 14 dias —, pouco importando quantos dias
+ * do mês de calendário foram cumpridos.
+ *
+ * @param {Date} inicioPeriodo início do período aquisitivo em curso
+ * @param {Date} fim último dia do contrato, já projetado quando há aviso
+ */
+function contarAvosFerias(inicioPeriodo, fim) {
+  if (!inicioPeriodo || !fim || fim < inicioPeriodo) return 0;
+
+  let avos = 0;
+  for (let ciclo = 0; ciclo < 12; ciclo += 1) {
+    const inicioCiclo = addMeses(inicioPeriodo, ciclo);
+    const fimCiclo = addDias(addMeses(inicioPeriodo, ciclo + 1), -1);
+
+    if (fim >= fimCiclo) {
+      avos += 1; // ciclo mensal completo
+      continue;
+    }
+    if (diffDias(inicioCiclo, fim) + 1 >= 15) avos += 1; // fração superior a 14 dias
+    break;
+  }
+  return Math.min(avos, 12);
+}
+
+/** Períodos aquisitivos de férias já completados e início do período em curso. */
+function periodosAquisitivos(admissao, fim) {
+  let completos = 0;
+  let inicio = admissao;
+  while (true) {
+    const fimPeriodo = addDias(addAnos(inicio, 1), -1);
+    if (fimPeriodo <= fim) {
+      completos += 1;
+      inicio = addAnos(inicio, 1);
+    } else {
+      break;
+    }
+  }
+  return { completos, inicioPeriodoAtual: inicio };
+}
+
+/**
+ * Valor das horas extras do mês: hora normal — salário e adicionais divididos
+ * pelo divisor da jornada (Súmula 264 do TST) — acrescida do adicional.
+ */
+function valorHorasExtras(remuneracaoFixa, divisor, horas, percentual = 50) {
+  if (!divisor || divisor <= 0 || !horas || horas <= 0) return 0;
+  return arredondar((remuneracaoFixa / divisor) * (1 + percentual / 100) * horas);
+}
+
+/** Dias de férias a que o empregado faz jus conforme faltas (art. 130 da CLT). */
+function diasDeFeriasPorFaltas(faltas = 0) {
+  if (faltas <= 5) return 30;
+  if (faltas <= 14) return 24;
+  if (faltas <= 23) return 18;
+  if (faltas <= 32) return 12;
+  return 0;
+}
+
+/* ------------------------------------------------------------- tributação */
+
+function calcularINSS(base) {
+  if (base <= 0) return 0;
+  let contribuicao = 0;
+  let anterior = 0;
+  for (const faixa of INSS.faixas) {
+    if (base > anterior) {
+      const parcela = Math.min(base, faixa.limite) - anterior;
+      contribuicao += parcela * faixa.aliquota;
+      anterior = faixa.limite;
+    }
+  }
+  return arredondar(contribuicao);
+}
+
+function impostoPelaTabela(base) {
+  const faixa = IRRF.faixas.find((f) => base <= f.limite) ?? IRRF.faixas.at(-1);
+  return Math.max(0, base * faixa.aliquota - faixa.deducao);
+}
+
+/**
+ * Redutor da Lei 15.270/2025: zera o imposto até R$ 5.000,00 de rendimento
+ * mensal e decresce linearmente até se anular em R$ 7.350,00.
+ *
+ * @param {number} rendimento rendimento tributável bruto do mês
+ * @param {number} imposto imposto apurado pela tabela
+ */
+function calcularRedutorIRRF(rendimento, imposto) {
+  const { isencaoAte, limite, constante, fator } = IRRF.redutor;
+  if (rendimento <= isencaoAte) return imposto; // isenção integral
+  if (rendimento > limite) return 0;
+  return Math.max(0, constante - fator * rendimento);
+}
+
+/**
+ * IRRF pelo modelo mais favorável — deduções legais x desconto simplificado —,
+ * já descontado o redutor da Lei 15.270/2025.
+ */
+function calcularIRRF(rendimento, { inss = 0, dependentes = 0, pensao = 0 } = {}) {
+  if (rendimento <= 0) return 0;
+  const baseLegal = rendimento - inss - dependentes * IRRF.deducaoPorDependente - pensao;
+  // O desconto simplificado é valor fixo e substitui todas as deduções legais.
+  const baseSimplificada = rendimento - IRRF.descontoSimplificado;
+  const imposto = Math.min(impostoPelaTabela(baseLegal), impostoPelaTabela(baseSimplificada));
+  return arredondar(Math.max(0, imposto - calcularRedutorIRRF(rendimento, imposto)));
+}
+
+/* ---------------------------------------------------------------- cálculo */
+
+function arredondar(valor) {
+  return Math.round((valor + Number.EPSILON) * 100) / 100;
+}
+
+function num(valor) {
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * @param {object} dados campos do formulário (ver `campos.js` / `app.js`)
+ * @returns {{erros:string[], contexto:object, proventos:object[], descontos:object[], fgts:object, totais:object}}
+ */
+function calcularRescisao(dados) {
+  const tipo = TIPOS[dados.tipo];
+  const erros = [];
+  if (!tipo) erros.push('Selecione o tipo de rescisão.');
+
+  const campos = tipo?.campos ?? {};
+  const admissao = parseData(dados.dataAdmissao);
+  const termoFinal = parseData(dados.dataTermoFinal);
+  // No término no prazo, o próprio termo final encerra o contrato.
+  const dataAviso = campos.termoEncerraContrato ? termoFinal : parseData(dados.dataAviso);
+
+  if (!admissao) erros.push('Informe a data de admissão.');
+  if (campos.termoFinal && !termoFinal) erros.push('Informe a data do termo final previsto.');
+  if (!dataAviso && !campos.termoEncerraContrato) erros.push('Informe a data do aviso prévio / desligamento.');
+  if (admissao && dataAviso && dataAviso < admissao) {
+    erros.push('A data do desligamento não pode ser anterior à admissão.');
+  }
+  if (admissao && termoFinal && termoFinal <= admissao) {
+    erros.push('O termo final deve ser posterior à data de admissão.');
+  }
+  if (campos.termoFinal && !campos.termoEncerraContrato && dataAviso && termoFinal && dataAviso >= termoFinal) {
+    erros.push('A rescisão antecipada deve ocorrer antes do termo final previsto.');
+  }
+
+  const salarioBase = num(dados.salarioBase);
+  if (salarioBase <= 0) erros.push('Informe o último salário base.');
+
+  if (erros.length) {
+    return { erros, alertas: [], proventos: [], descontos: [], totais: null, contexto: null, fgts: null };
+  }
+  const alertas = [];
+
+  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
+
+  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual.
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais ?? [],
+    salarioBase,
+    horasNoturnas: num(dados.horasNoturnas),
+    divisor,
+  });
+  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
+  // que o saldo de salário é rateado. As médias de variáveis servem para
+  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
+  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
+  const medias = num(dados.mediaComissoes);
+  const remuneracao = arredondar(remuneracaoFixa + medias);
+
+  /* --- aviso prévio --- */
+  const anos = anosCompletos(admissao, dataAviso);
+
+  // A cláusula assecuratória (art. 481) faz o contrato a termo seguir as regras
+  // do contrato por prazo indeterminado: há aviso prévio e não incidem os
+  // arts. 479/480.
+  const clausulaAtiva = Boolean(campos.clausulaAssecuratoria && dados.clausulaAssecuratoria);
+  const avisoAplicavel = Boolean(tipo.aviso && (!tipo.aviso.somenteComClausula || clausulaAtiva));
+  const opcoesAviso = avisoAplicavel ? tipo.aviso.opcoes.map((o) => o.valor) : [];
+  const tipoAviso = avisoAplicavel
+    ? (opcoesAviso.includes(dados.tipoAviso) ? dados.tipoAviso : opcoesAviso[0])
+    : 'nenhum';
+
+  const diasAvisoLegais = avisoAplicavel
+    ? (tipo.aviso.diasFixos ?? Math.min(30 + 3 * anos, 90))
+    : 0;
+
+  let diasAvisoDevidos = diasAvisoLegais;
+  if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = Math.round(diasAvisoLegais / 2);
+  if (tipoAviso === 'nenhum' || tipoAviso === 'dispensado') diasAvisoDevidos = 0;
+
+  const avisoIndenizado = tipoAviso === 'indenizado' || tipoAviso === 'indenizado_metade';
+  const avisoTrabalhado = tipoAviso === 'trabalhado';
+
+  // A proporcionalidade da Lei 12.506/2011 existe em favor do empregado: ele
+  // não pode ser obrigado a trabalhar mais de 30 dias de aviso, e o que passar
+  // disso é indenizado (Nota Técnica 184/2012 da SRT/MTE).
+  const diasAvisoTrabalhados = avisoTrabalhado
+    ? Math.min(diasAvisoLegais, DIAS_AVISO_TRABALHAVEIS)
+    : 0;
+  const excedenteTrabalhado = avisoTrabalhado ? diasAvisoLegais - diasAvisoTrabalhados : 0;
+  // Dias pagos em dinheiro: o aviso indenizado por inteiro, ou só o excedente
+  // quando o aviso é cumprido em serviço.
+  const diasAvisoPagos = avisoIndenizado ? diasAvisoDevidos : excedenteTrabalhado;
+
+  // Último dia do contrato e data projetada (o aviso indenizado integra o
+  // tempo de serviço — OJ 82 da SDI-1 e Súmula 305 do TST).
+  const ultimoDiaTrabalhado = avisoTrabalhado ? addDias(dataAviso, diasAvisoTrabalhados) : dataAviso;
+  const dataProjetada = diasAvisoPagos > 0
+    ? addDias(ultimoDiaTrabalhado, diasAvisoPagos)
+    : ultimoDiaTrabalhado;
+
+  if (excedenteTrabalhado > 0) {
+    alertas.push(
+      `O aviso proporcional é de ${diasAvisoLegais} dias, mas o empregado só pode ser obrigado a `
+        + `cumprir ${DIAS_AVISO_TRABALHAVEIS} em serviço: os ${excedenteTrabalhado} dias restantes foram `
+        + 'lançados como indenizados e projetam o contrato (Nota Técnica 184/2012 da SRT/MTE).',
+    );
+  }
+
+  /* --- proventos --- */
+  const proventos = [];
+  const descontosAntecipados = [];
+  // Dias do último mês: conta a partir da admissão quando ela cai nesse mesmo
+  // mês, e paga o mês cheio (30/30) quando ele foi trabalhado por inteiro —
+  // inclusive em fevereiro, que tem menos de 30 dias.
+  const anoSaldo = ultimoDiaTrabalhado.getUTCFullYear();
+  const mesSaldo = ultimoDiaTrabalhado.getUTCMonth();
+  const primeiroDoMes = new Date(Date.UTC(anoSaldo, mesSaldo, 1));
+  const ultimoDoMes = new Date(Date.UTC(anoSaldo, mesSaldo + 1, 0));
+  const inicioNoMes = admissao > primeiroDoMes ? admissao : primeiroDoMes;
+  const mesInteiro = admissao <= primeiroDoMes && ultimoDiaTrabalhado >= ultimoDoMes;
+  const diasSaldo = mesInteiro ? 30 : Math.min(diffDias(inicioNoMes, ultimoDiaTrabalhado) + 1, 30);
+
+  const saldoSalario = arredondar((remuneracaoFixa / 30) * diasSaldo);
+  proventos.push({
+    chave: 'saldo_salario',
+    label: 'Saldo de salário',
+    detalhe: `${diasSaldo} dia(s) de ${formatarData(ultimoDiaTrabalhado).slice(3)} · salário e adicionais`,
+    valor: saldoSalario,
+  });
+
+  // Horas extras efetivamente prestadas no mês da rescisão: verba do mês, e
+  // não média de integração.
+  const horasExtras = num(dados.horasExtras);
+  const percentualHoraExtra = num(dados.adicionalHoraExtra) || 50;
+  const valorHoras = valorHorasExtras(remuneracaoFixa, divisor, horasExtras, percentualHoraExtra);
+  if (valorHoras > 0) {
+    proventos.push({
+      chave: 'horas_extras',
+      label: 'Horas extras',
+      detalhe: `${formatarQuantidade(horasExtras)} h x ${moeda.format(
+        arredondar((remuneracaoFixa / divisor) * (1 + percentualHoraExtra / 100)),
+      )} (hora + ${formatarQuantidade(percentualHoraExtra)}%)`,
+      valor: valorHoras,
+    });
+  }
+
+  let valorAviso = 0;
+  if (diasAvisoPagos > 0) {
+    valorAviso = arredondar((remuneracao / 30) * diasAvisoPagos);
+    const rotuloAviso = excedenteTrabalhado > 0
+      ? 'Aviso prévio indenizado (excedente dos 30 dias trabalhados)'
+      : (tipoAviso === 'indenizado_metade' ? 'Aviso prévio indenizado (50%)' : 'Aviso prévio indenizado');
+    const detalheAviso = excedenteTrabalhado > 0
+      ? `${diasAvisoPagos} dias além dos ${diasAvisoTrabalhados} cumpridos (de ${diasAvisoLegais} proporcionais)`
+      : `${diasAvisoPagos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
+    proventos.push({
+      chave: 'aviso_previo',
+      label: rotuloAviso,
+      detalhe: detalheAviso,
+      valor: valorAviso,
+    });
+  }
+
+  /* --- rescisão antecipada do contrato a termo (arts. 479 e 480) --- */
+  const diasRestantes = termoFinal ? Math.max(0, diffDias(ultimoDiaTrabalhado, termoFinal)) : 0;
+  const regraIndenizacao = tipo.indenizacaoAntecipada;
+  let indenizacaoAntecipada = 0;
+  if (regraIndenizacao && !clausulaAtiva && diasRestantes > 0) {
+    indenizacaoAntecipada = arredondar(((remuneracao / 30) * diasRestantes) / 2);
+    const lancamento = {
+      chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+      label: regraIndenizacao.label,
+      detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}${
+        regraIndenizacao.detalhe ? ` — ${regraIndenizacao.detalhe}` : ''
+      }`,
+      valor: indenizacaoAntecipada,
+    };
+    if (regraIndenizacao.natureza === 'provento') proventos.push(lancamento);
+    else descontosAntecipados.push(lancamento);
+  }
+
+  /* --- 13º proporcional --- */
+  let decimoTerceiro = 0;
+  let avos13 = 0;
+  let avos13AnoSeguinte = 0;
+  // Cada ano tem o seu 13º, tributado como fato próprio.
+  const decimosPorAno = [];
+  if (tipo.campos.decimoTerceiro) {
+    const ano = ultimoDiaTrabalhado.getUTCFullYear();
+    const inicioAno = new Date(Date.UTC(ano, 0, 1));
+    const fimAno = new Date(Date.UTC(ano, 11, 31));
+    const inicio13 = admissao > inicioAno ? admissao : inicioAno;
+    const fim13 = dataProjetada < fimAno ? dataProjetada : fimAno;
+
+    avos13 = contarAvos(inicio13, fim13);
+    decimoTerceiro = arredondar((remuneracao / 12) * avos13);
+    if (decimoTerceiro > 0) decimosPorAno.push(decimoTerceiro);
+    proventos.push({
+      chave: 'decimo_terceiro',
+      label: `13º salário proporcional (${ano})`,
+      detalhe: `${avos13}/12 avos`,
+      valor: decimoTerceiro,
+    });
+
+    // Aviso indenizado no fim do ano projeta o contrato para o ano seguinte,
+    // que rende avos próprios de 13º.
+    if (dataProjetada > fimAno) {
+      avos13AnoSeguinte = contarAvos(new Date(Date.UTC(ano + 1, 0, 1)), dataProjetada);
+      if (avos13AnoSeguinte > 0) {
+        const valor = arredondar((remuneracao / 12) * avos13AnoSeguinte);
+        decimosPorAno.push(valor);
+        decimoTerceiro = arredondar(decimoTerceiro + valor);
+        proventos.push({
+          chave: 'decimo_terceiro_ano_seguinte',
+          label: `13º salário proporcional (${ano + 1})`,
+          detalhe: `${avos13AnoSeguinte}/12 avos`,
+          valor,
+        });
+      }
+    }
+  }
+
+  /* --- férias --- */
+  const diasFerias = diasDeFeriasPorFaltas(num(dados.faltasInjustificadas));
+  const fatorFaltas = diasFerias / 30;
+  const { completos, inicioPeriodoAtual } = periodosAquisitivos(admissao, dataProjetada);
+  const periodosInformados = num(dados.periodosFeriasVencidas);
+  const periodosVencidos = Math.min(periodosInformados, completos);
+  if (periodosInformados > completos) {
+    alertas.push(
+      `Foram informados ${periodosInformados} períodos de férias vencidas, mas o contrato completou `
+        + `${completos}. O cálculo usou ${completos}.`,
+    );
+  }
+  const emDobro = Boolean(dados.feriasDobro);
+
+  let feriasVencidas = 0;
+  if (periodosVencidos > 0 && fatorFaltas === 0) {
+    alertas.push(
+      `Com ${num(dados.faltasInjustificadas)} faltas injustificadas o empregado perde o direito às `
+        + 'férias do período (art. 130 da CLT), e por isso os períodos vencidos não foram pagos.',
+    );
+  }
+  if (periodosVencidos > 0 && fatorFaltas > 0) {
+    feriasVencidas = arredondar(remuneracao * fatorFaltas * periodosVencidos * (emDobro ? 2 : 1));
+    proventos.push({
+      chave: 'ferias_vencidas',
+      label: emDobro ? 'Férias vencidas em dobro' : 'Férias vencidas',
+      detalhe: `${periodosVencidos} período(s) não gozado(s)${emDobro ? ' — art. 137 da CLT' : ''}`,
+      valor: feriasVencidas,
+    });
+    proventos.push({
+      chave: 'terco_vencidas',
+      label: '1/3 sobre férias vencidas',
+      detalhe: 'art. 7º, XVII, da CF',
+      valor: arredondar(feriasVencidas / 3),
+    });
+  }
+
+  let feriasProporcionais = 0;
+  let avosFerias = 0;
+  if (tipo.campos.feriasProporcionais) {
+    avosFerias = contarAvosFerias(inicioPeriodoAtual, dataProjetada);
+    feriasProporcionais = arredondar((remuneracao / 12) * avosFerias * fatorFaltas);
+    if (feriasProporcionais > 0) {
+      proventos.push({
+        chave: 'ferias_proporcionais',
+        label: 'Férias proporcionais',
+        detalhe: `${avosFerias}/12 avos`,
+        valor: feriasProporcionais,
+      });
+      proventos.push({
+        chave: 'terco_proporcionais',
+        label: '1/3 sobre férias proporcionais',
+        detalhe: 'art. 7º, XVII, da CF',
+        valor: arredondar(feriasProporcionais / 3),
+      });
+    }
+  }
+
+  /* --- descontos --- */
+  const descontos = [...descontosAntecipados];
+
+  // O mês é tributado por inteiro: saldo somado às horas extras nele pagas.
+  const baseMensal = arredondar(saldoSalario + valorHoras);
+  const rotuloMensal = valorHoras > 0 ? 'saldo de salário e horas extras' : 'saldo de salário';
+
+  const inssSalario = calcularINSS(baseMensal);
+  if (inssSalario > 0) {
+    descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
+  }
+  const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
+  if (inss13 > 0) {
+    descontos.push({
+      chave: 'inss_13',
+      label: 'INSS sobre 13º salário',
+      detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
+      valor: inss13,
+    });
+  }
+
+  // Só desconta o que foi marcado na tela; o resto decorre da lei.
+  const marcados = dados.descontos ?? [];
+  const aplica = (id) => marcados.includes(id);
+
+  // Mesma hora normal que remunera a extra: salário e adicionais ÷ divisor.
+  const valorHora = salarioHora(remuneracaoFixa, divisor);
+  const horasNegativas = aplica('horas_negativas') ? num(dados.horasNegativas) : 0;
+  if (horasNegativas > 0) {
+    descontos.push({
+      chave: 'horas_negativas',
+      label: 'Horas negativas',
+      detalhe: `${formatarQuantidade(horasNegativas)} h x ${moeda.format(arredondar(valorHora))} (salário-hora)`,
+      valor: arredondar(valorHora * horasNegativas),
+    });
+  }
+
+  const dependentes = num(dados.dependentes);
+  const pensaoPercentual = aplica('pensao') ? num(dados.pensaoPercentual) : 0;
+  const fatorPensao = pensaoPercentual / 100;
+  const irrfSalario = calcularIRRF(baseMensal, {
+    inss: inssSalario,
+    dependentes,
+    pensao: baseMensal * fatorPensao,
+  });
+  if (irrfSalario > 0) {
+    descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
+  }
+  const irrf13 = arredondar(
+    decimosPorAno.reduce(
+      (soma, valor) => soma + calcularIRRF(valor, {
+        inss: calcularINSS(valor),
+        dependentes,
+        pensao: valor * fatorPensao,
+      }),
+      0,
+    ),
+  );
+  if (irrf13 > 0) {
+    descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
+  }
+
+  if (tipoAviso === 'nao_cumprido') {
+    descontos.push({
+      chave: 'aviso_nao_cumprido',
+      label: 'Aviso prévio não cumprido',
+      detalhe: '30 dias (art. 487, §2º)',
+      valor: arredondar(remuneracao),
+    });
+  }
+
+  const totalProventosBrutos = proventos.reduce((s, p) => s + p.valor, 0);
+  if (pensaoPercentual > 0) {
+    descontos.push({
+      chave: 'pensao',
+      label: 'Pensão alimentícia',
+      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
+      valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
+    });
+  }
+
+  for (const [id, chave, label] of [
+    ['adiantamento_salario', 'adiantamentoSalario', 'Adiantamento de salário'],
+    ['adiantamento_13', 'adiantamento13', 'Adiantamento do 13º salário'],
+    ['outros', 'outrosDescontos', 'Outros descontos'],
+  ]) {
+    const valor = aplica(id) ? num(dados[chave]) : 0;
+    if (valor > 0) descontos.push({ chave, label, detalhe: 'informado', valor: arredondar(valor) });
+  }
+
+  /* --- alertas (não bloqueiam o cálculo) --- */
+  if (clausulaAtiva) {
+    alertas.push(
+      'Com a cláusula assecuratória (art. 481), valem as regras do contrato por prazo indeterminado: '
+        + 'há aviso prévio e não incide a indenização dos arts. 479/480.',
+    );
+  }
+  if (campos.termoFinal && termoFinal && diffDias(admissao, termoFinal) + 1 > 90) {
+    alertas.push(
+      'O contrato dura mais de 90 dias: não pode ser de experiência (art. 445, parágrafo único). '
+        + 'Confirme se é contrato por prazo determinado comum.',
+    );
+  }
+
+  /* --- FGTS --- */
+  const saldoFgtsInformado = num(dados.saldoFgts);
+  const baseFgtsRescisao = saldoSalario + valorHoras + decimoTerceiro + valorAviso;
+  const fgtsRescisao = arredondar(baseFgtsRescisao * FGTS.aliquotaDeposito);
+  const baseMulta = arredondar(saldoFgtsInformado + fgtsRescisao);
+  const percentualMulta = tipo.fgts.multa;
+  const multa = arredondar(baseMulta * percentualMulta);
+
+  const totalDescontos = arredondar(descontos.reduce((s, d) => s + d.valor, 0));
+  const totalProventos = arredondar(totalProventosBrutos);
+
+  return {
+    erros: [],
+    alertas,
+    contexto: {
+      remuneracao,
+      remuneracaoFixa,
+      horasExtras,
+      valorHorasExtras: valorHoras,
+      medias: arredondar(medias),
+      adicionais: adicionais.itens,
+      totalAdicionais: adicionais.total,
+      divisor,
+      valorHora: arredondar(valorHora),
+      anos,
+      meses: mesesCompletos(admissao, ultimoDiaTrabalhado),
+      diasContrato: diffDias(admissao, ultimoDiaTrabalhado) + 1,
+      tipoAviso,
+      avisoAplicavel,
+      clausulaAtiva,
+      termoFinal,
+      diasRestantes,
+      diasAvisoLegais,
+      diasAvisoDevidos,
+      diasAvisoTrabalhados,
+      diasAvisoPagos,
+      excedenteTrabalhado,
+      ultimoDiaTrabalhado,
+      dataProjetada,
+      avos13,
+      avos13AnoSeguinte,
+      avosFerias,
+      periodosVencidos,
+      periodosInformados,
+      emDobro,
+      periodosCompletosCalculados: completos,
+      diasFerias,
+      diasSaldo,
+    },
+    proventos,
+    descontos,
+    fgts: {
+      informado: arredondar(saldoFgtsInformado),
+      rescisao: fgtsRescisao,
+      baseMulta,
+      percentualMulta,
+      multa,
+      rotuloMulta: tipo.fgts.rotuloMulta,
+      saque: tipo.fgts.saque,
+      seguroDesemprego:
+        clausulaAtiva && tipo.fgts.seguroDesempregoComClausula
+          ? tipo.fgts.seguroDesempregoComClausula
+          : tipo.fgts.seguroDesemprego,
+    },
+    totais: {
+      proventos: totalProventos,
+      descontos: totalDescontos,
+      liquido: arredondar(totalProventos - totalDescontos),
+    },
+  };
+}
+
+    return { parseData, formatarData, DIAS_AVISO_TRABALHAVEIS, diasEntre, anosCompletos, mesesCompletos, contarMeses, contarAvos, contarAvosFerias, periodosAquisitivos, valorHorasExtras, diasDeFeriasPorFaltas, calcularINSS, calcularRedutorIRRF, calcularIRRF, calcularRescisao };
+  })();
+
+  /* src/versao.js */
+  __modulos['src/versao.js'] = (function () {
+/**
+ * Carimbo de versão da ferramenta.
+ *
+ * O rótulo é escrito na tela pelo próprio módulo, e não pelo HTML: se a data
+ * que aparece no cabeçalho não for esta, o navegador (ou o servidor) está
+ * entregando um JavaScript antigo — é o jeito mais rápido de separar "código
+ * desatualizado" de "cálculo errado".
+ *
+ * Atualize ATUALIZADO_EM a cada publicação.
+ */
+
+const VERSAO = '0.1';
+const ATUALIZADO_EM = '21/09/2026';
+const CARIMBO = `esboço v${VERSAO} · atualizada em ${ATUALIZADO_EM}`;
+
+    return { VERSAO, ATUALIZADO_EM, CARIMBO };
+  })();
+
+  /* src/campos.js */
+  __modulos['src/campos.js'] = (function () {
+/**
+ * Comportamento dos campos do formulário: máscara de digitação, formatação
+ * ao sair do campo, leitura tipada e marcação de erro.
+ *
+ * Um campo declara o seu tipo no HTML com `data-campo`:
+ *   data-campo="data"     dd/mm/aaaa
+ *   data-campo="moeda"    valor em reais
+ *   data-campo="decimal"  número com vírgula decimal
+ *   data-campo="inteiro"  número inteiro
+ *
+ * Limites opcionais: `data-min` e `data-max`.
+ * Letras e qualquer outro caractere são descartados na digitação, de modo que
+ * o campo nunca chega ao cálculo com conteúdo inválido.
+ */
+
+  const { parseNumeroBR, parseDataBR, formatarNumeroBR, formatarQuantidade, mascararData, mascararDecimal, mascararInteiro } = __modulos['src/formato.js'];
+
+const MASCARAS = {
+  data: mascararData,
+  inteiro: mascararInteiro,
+  decimal: mascararDecimal,
+  moeda: mascararDecimal,
+};
+
+/** Reaplica a máscara preservando, na medida do possível, a posição do cursor. */
+function aplicarMascara(input, mascara) {
+  const antes = input.value;
+  const depois = mascara(antes);
+  if (antes === depois) return;
+  const cursor = input.selectionStart ?? antes.length;
+  const descartados = cursor - mascara(antes.slice(0, cursor)).length;
+  input.value = depois;
+  const posicao = Math.max(0, Math.min(depois.length, cursor - descartados));
+  input.setSelectionRange(posicao, posicao);
+}
+
+function formatarAoSair(input) {
+  const tipo = input.dataset.campo;
+  const texto = input.value.trim();
+  if (!texto || tipo === 'data') return;
+
+  const valor = parseNumeroBR(texto);
+  if (!Number.isFinite(valor)) return;
+  if (tipo === 'moeda') input.value = formatarNumeroBR(valor, 2);
+  else if (tipo === 'decimal') input.value = formatarQuantidade(valor);
+  // Inteiros aqui são contadores (dias, dependentes, divisor): sem separador
+  // de milhar, que só traria ambiguidade na releitura do campo.
+  else input.value = String(Math.trunc(valor));
+}
+
+/**
+ * Lê um campo já validado.
+ * @returns {{valor: number|string, vazio: boolean, erro: string|null}}
+ */
+function lerCampo(input) {
+  const tipo = input.dataset.campo;
+  const texto = input.value.trim();
+  const vazio = texto === '';
+
+  if (tipo === 'data') {
+    if (vazio) return { valor: '', vazio, erro: null };
+    const iso = parseDataBR(texto);
+    return iso
+      ? { valor: iso, vazio, erro: null }
+      : { valor: '', vazio, erro: 'Data inválida. Use dd/mm/aaaa.' };
+  }
+
+  if (vazio) return { valor: 0, vazio, erro: null };
+
+  const valor = parseNumeroBR(texto);
+  if (!Number.isFinite(valor)) return { valor: 0, vazio, erro: 'Informe apenas números.' };
+
+  const min = input.dataset.min === undefined ? null : Number(input.dataset.min);
+  const max = input.dataset.max === undefined ? null : Number(input.dataset.max);
+  if (min !== null && valor < min) {
+    return { valor, vazio, erro: `O mínimo é ${formatarQuantidade(min)}.` };
+  }
+  if (max !== null && valor > max) {
+    return { valor, vazio, erro: `O máximo é ${formatarQuantidade(max)}.` };
+  }
+  return { valor, vazio, erro: null };
+}
+
+/** Mostra (ou apaga) a mensagem de erro logo abaixo do campo. */
+function marcarErro(input, mensagem) {
+  const campo = input.closest('.campo');
+  if (!campo) return;
+  campo.classList.toggle('campo--erro', Boolean(mensagem));
+  input.setAttribute('aria-invalid', mensagem ? 'true' : 'false');
+
+  let aviso = campo.querySelector('.campo__erro');
+  if (!mensagem) {
+    aviso?.remove();
+    return;
+  }
+  if (!aviso) {
+    aviso = document.createElement('span');
+    aviso.className = 'campo__erro';
+    campo.append(aviso);
+  }
+  aviso.textContent = mensagem;
+}
+
+/**
+ * Lê vários campos por id, marcando os que estiverem inválidos.
+ * @returns {{valores: object, erros: string[]}}
+ */
+function lerCampos(ids) {
+  const valores = {};
+  const erros = [];
+  for (const id of ids) {
+    const input = document.getElementById(id);
+    if (!input) continue;
+
+    // Campo que não está na tela não entra no cálculo nem bloqueia por erro:
+    // seria um valor que a pessoa não tem como corrigir.
+    if (input.closest('[hidden]')) {
+      valores[id] = input.dataset.campo === 'data' ? '' : 0;
+      marcarErro(input, null);
+      continue;
+    }
+
+    const { valor, erro } = lerCampo(input);
+    valores[id] = valor;
+    marcarErro(input, erro);
+    if (erro) {
+      const rotulo = input.closest('.campo')?.querySelector('.campo__rotulo')?.textContent.replace('*', '').trim();
+      erros.push(`${rotulo ?? id}: ${erro.charAt(0).toLowerCase()}${erro.slice(1)}`);
+    }
+  }
+  return { valores, erros };
+}
+
+/** Liga máscara e formatação em todos os campos marcados com `data-campo`. */
+function inicializarCampos(raiz = document) {
+  for (const input of raiz.querySelectorAll('[data-campo]')) {
+    const mascara = MASCARAS[input.dataset.campo];
+    if (!mascara) continue;
+    input.addEventListener('input', () => aplicarMascara(input, mascara));
+    input.addEventListener('blur', () => formatarAoSair(input));
+  }
+}
+
+    return { lerCampo, marcarErro, lerCampos, inicializarCampos };
+  })();
+
+  /* src/memoria.js */
+  __modulos['src/memoria.js'] = (function () {
+/**
+ * Memória de cálculo para impressão e PDF.
+ *
+ * Em vez de mandar o formulário para a impressora, monta um documento próprio:
+ * os dados informados, o resultado e o aviso legal. A geração do PDF fica a
+ * cargo do próprio navegador ("Salvar como PDF" na janela de impressão), o que
+ * dispensa qualquer biblioteca externa.
+ */
+
+  const { VIGENCIA_DETALHE } = __modulos['src/tabelas.js'];
+  const { CARIMBO } = __modulos['src/versao.js'];
+
+const texto = (el) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+/** O asterisco de campo obrigatório não faz sentido fora do formulário. */
+const rotuloLimpo = (el) => texto(el).replace(/\s*\*$/, '');
+
+/** Devolve o valor com o R$ ou o % que, na tela, moram fora do campo. */
+function valorComUnidade(entrada) {
+  const valor = entrada.value.trim();
+  const moldura = entrada.closest('.campo__moeda');
+  const unidade = texto(moldura?.querySelector('i'));
+  if (!unidade) return valor;
+  return moldura.classList.contains('campo__moeda--sufixo') ? `${valor}${unidade}` : `${unidade} ${valor}`;
+}
+
+/** Campo escondido pela modalidade escolhida não entra na memória. */
+const visivel = (el) => !el.closest('[hidden]') && el.offsetParent !== null;
+
+/**
+ * Varre o formulário e devolve o que foi de fato preenchido.
+ * @returns {{rotulo: string, valor: string}[]}
+ */
+function coletarDadosInformados(formulario) {
+  const itens = [];
+
+  for (const campo of formulario.querySelectorAll('.campo')) {
+    if (!visivel(campo)) continue;
+
+    // Grupo de marcações (tipo de aviso, adicionais, descontos).
+    const marcadas = [...campo.querySelectorAll('.opcao input:checked')];
+    if (marcadas.length) {
+      itens.push({
+        rotulo: rotuloLimpo(campo.querySelector('.campo__rotulo')),
+        valor: marcadas.map((i) => texto(i.closest('.opcao'))).join(', '),
+      });
+      continue;
+    }
+
+    // Marcação solta (férias em dobro, cláusula assecuratória).
+    const solta = campo.querySelector(':scope > input[type="checkbox"]');
+    if (solta) {
+      if (solta.checked) itens.push({ rotulo: texto(campo.querySelector('span')), valor: 'Sim' });
+      continue;
+    }
+
+    const entrada = campo.querySelector('input[type="text"], select');
+    if (!entrada || !entrada.value.trim()) continue;
+    const valor = entrada.tagName === 'SELECT'
+      ? texto(entrada.selectedOptions[0])
+      : valorComUnidade(entrada);
+    itens.push({ rotulo: rotuloLimpo(campo.querySelector('.campo__rotulo')), valor });
+  }
+
+  return itens;
+}
+
+/**
+ * Preenche o bloco de impressão com o que está na tela.
+ *
+ * @param {object} secoes
+ * @param {string} secoes.titulo módulo (verbas rescisórias, pedido)
+ * @param {string} secoes.subtitulo modalidade escolhida
+ * @param {HTMLElement} secoes.formulario
+ * @param {HTMLElement} secoes.resultado painel já renderizado
+ * @param {string} secoes.rodape aviso legal
+ */
+function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape }) {
+  const alvo = document.getElementById('memoria');
+  if (!alvo) return;
+
+  const emitidoEm = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  const dados = coletarDadosInformados(formulario);
+
+  alvo.innerHTML = `
+    <header class="memoria__topo">
+      <h1>Memória de cálculo</h1>
+      <p>${titulo}${subtitulo ? ` — ${subtitulo}` : ''}</p>
+      <p class="memoria__data">Emitida em ${emitidoEm}</p>
+    </header>
+
+    <section>
+      <h2>Dados informados</h2>
+      <table class="memoria__dados">
+        ${dados.map((d) => `<tr><td>${d.rotulo}</td><td>${d.valor}</td></tr>`).join('')}
+      </table>
+    </section>
+
+    <section>
+      <h2>Resultado</h2>
+      ${resultado.innerHTML}
+    </section>
+
+    <footer class="memoria__rodape">
+      <p>${VIGENCIA_DETALHE}</p>
+      <p>Gerada pela ferramenta de cálculos trabalhistas — ${CARIMBO}</p>
+      <p>${rodape}</p>
+    </footer>`;
+}
+
+/**
+ * Título verdadeiro da página, guardado enquanto a impressão o empresta.
+ *
+ * Fica fora da função de propósito: gerar dois PDFs seguidos, antes que o
+ * primeiro devolva o título, faria a segunda chamada guardar "Memória de
+ * cálculo — ..." como se fosse o original, e a aba ficaria com esse nome até
+ * a página ser recarregada.
+ */
+let tituloDaPagina = null;
+let devolucaoAgendada = null;
+
+/**
+ * Abre a janela de impressão. O nome sugerido para o arquivo vem do título da
+ * página, então ele é trocado durante a impressão e devolvido em seguida.
+ */
+function imprimir(nomeArquivo) {
+  if (tituloDaPagina === null) tituloDaPagina = document.title;
+  clearTimeout(devolucaoAgendada);
+
+  document.title = nomeArquivo;
+  const restaurar = () => {
+    clearTimeout(devolucaoAgendada);
+    if (tituloDaPagina === null) return; // já devolvido por outra chamada
+    document.title = tituloDaPagina;
+    tituloDaPagina = null;
+  };
+  addEventListener('afterprint', restaurar, { once: true });
+  print();
+  // Navegador que não dispara afterprint não deixa o título trocado.
+  devolucaoAgendada = setTimeout(restaurar, 1000);
+}
+
+    return { coletarDadosInformados, montarMemoria, imprimir };
+  })();
+
+  /* src/pedidos/comum.js */
+  __modulos['src/pedidos/comum.js'] = (function () {
+/**
+ * Peças comuns aos cálculos de pedidos: prescrição, contagem do período,
+ * salário-hora, adicionais de risco e o fechamento do resultado com reflexos.
+ *
+ * Cada pedido monta as suas verbas mensais e chama `fecharResultado`, que
+ * cuida do que se repete: multiplicar pelo período, aplicar FGTS e multa,
+ * somar o aviso prévio e totalizar.
+ */
+
+  const { FGTS, SALARIO_MINIMO } = __modulos['src/tabelas.js'];
+  const { parseData, formatarData, diasEntre } = __modulos['src/calculo.js'];
+  const { formatarNumeroBR } = __modulos['src/formato.js'];
+
+/** Divisor mensal padrão (44h semanais). */
+const DIVISOR_PADRAO = 220;
+
+/** 52 semanas / 12 meses. */
+const SEMANAS_POR_MES = 52 / 12;
+
+/** Marco da nova redação da OJ 394 da SDI-1 (Tema 9 de repetitivos). */
+const MARCO_OJ_394 = '2023-03-20';
+
+/** Reforma Trabalhista: divide os regimes do intervalo intrajornada. */
+const MARCO_REFORMA = '2017-11-11';
+
+/** Último dia do regime anterior à Lei 13.467/2017, para os avisos de tela. */
+const VESPERA_REFORMA = '2017-11-10';
+
+/** Hora noturna reduzida: 52min30s (art. 73, §1º, da CLT). */
+const FATOR_HORA_NOTURNA = 60 / 52.5;
+
+const arredondar = (valor) => Math.round((valor + Number.EPSILON) * 100) / 100;
+const num = (valor) => (Number.isFinite(Number(valor)) ? Number(valor) : 0);
+
+/** Hora normal: base mensal dividida pelo divisor da jornada (art. 64 da CLT). */
+const valorHoraNormal = (baseMensal, divisor) =>
+  !divisor || divisor <= 0 ? 0 : baseMensal / divisor;
+
+/**
+ * Adicional de risco que integra a base de cálculo. Insalubridade e
+ * periculosidade não se acumulam (art. 193, §2º, da CLT).
+ */
+function calcularAdicionalRisco(dados) {
+  const salarioBase = num(dados.salarioBase);
+
+  if (dados.risco === 'insalubridade') {
+    const grau = num(dados.grauInsalubridade) / 100;
+    const base =
+      dados.baseInsalubridade === 'salario_base'
+        ? salarioBase
+        : dados.baseInsalubridade === 'valor_informado'
+          ? num(dados.baseInsalubridadeValor)
+          : SALARIO_MINIMO;
+    return {
+      nome: `Adicional de insalubridade (${num(dados.grauInsalubridade)}%)`,
+      detalhe: `${(grau * 100).toFixed(0)}% sobre ${
+        dados.baseInsalubridade === 'salario_base'
+          ? 'o salário base'
+          : dados.baseInsalubridade === 'valor_informado'
+            ? 'a base informada'
+            : 'o salário mínimo'
+      }`,
+      valor: arredondar(base * grau),
+    };
+  }
+
+  if (dados.risco === 'periculosidade') {
+    return {
+      nome: 'Adicional de periculosidade (30%)',
+      detalhe: '30% sobre o salário base (art. 193, §1º, da CLT)',
+      valor: arredondar(salarioBase * 0.3),
+    };
+  }
+
+  return { nome: null, detalhe: null, valor: 0 };
+}
+
+/**
+ * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
+ * reúne e que a Súmula 308 do TST harmoniza:
+ *
+ *  - **bienal**: extinto o contrato, a ação tem de ser ajuizada em dois anos.
+ *    Perdido esse prazo, nada resta a calcular, nem o quinquênio;
+ *  - **quinquenal**: respeitado o biênio, são exigíveis as parcelas dos cinco
+ *    anos imediatamente anteriores ao ajuizamento — contados dele, e não da
+ *    extinção do contrato (Súmula 308, I).
+ *
+ * @param {Date} inicio início do período pedido
+ * @param {Date} fim fim do período pedido
+ * @param {object} dados campos da tela (dataAjuizamento e dataExtincao)
+ * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date}}
+ */
+function apurarPrescricao(inicio, fim, dados = {}) {
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  if (!ajuizamento) return { impedimento: null, recorte: null, inicioCalculo: inicio };
+
+  const extincao = parseData(dados.dataExtincao);
+  if (extincao) {
+    const limiteBienal = new Date(
+      Date.UTC(extincao.getUTCFullYear() + 2, extincao.getUTCMonth(), extincao.getUTCDate()),
+    );
+    if (ajuizamento > limiteBienal) {
+      return {
+        inicioCalculo: inicio,
+        recorte: null,
+        impedimento: {
+          integral: true,
+          bienal: true,
+          marco: limiteBienal,
+          titulo: 'Pretensão atingida pela prescrição bienal',
+          mensagem: `O contrato foi extinto em ${formatarData(extincao)} e a ação só foi ajuizada em `
+            + `${formatarData(ajuizamento)}, depois do biênio que se encerrou em ${formatarData(limiteBienal)} `
+            + '(art. 7º, XXIX, da CF). Prescrita a pretensão como um todo, não há período imprescrito a calcular.',
+        },
+      };
+    }
+  }
+
+  const marco = new Date(
+    Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
+  );
+
+  if (fim < marco) {
+    return {
+      inicioCalculo: inicio,
+      recorte: null,
+      impedimento: {
+        integral: true,
+        marco,
+        titulo: 'Pedido integralmente prescrito',
+        mensagem: `Todo o período pedido é anterior a ${formatarData(marco)}, marco da prescrição `
+          + `quinquenal contado do ajuizamento em ${formatarData(ajuizamento)}. Não há parcela exigível a calcular.`,
+      },
+    };
+  }
+
+  if (inicio < marco) {
+    return {
+      impedimento: null,
+      inicioCalculo: marco,
+      recorte: {
+        marco,
+        inicioPedido: inicio,
+        titulo: 'Parte do período está prescrita',
+        mensagem: `As parcelas anteriores a ${formatarData(marco)} estão prescritas, contadas do `
+          + `ajuizamento em ${formatarData(ajuizamento)}. O cálculo abaixo considera apenas o período `
+          + `imprescrito, de ${formatarData(marco)} a ${formatarData(fim)}.`,
+      },
+    };
+  }
+
+  return { impedimento: null, recorte: null, inicioCalculo: inicio };
+}
+
+/**
+ * Avisos de coerência entre as datas informadas. Não barram o cálculo: são
+ * combinações possíveis, mas que quase sempre denunciam erro de digitação.
+ */
+function conferirDatas(inicio, fim, dados = {}) {
+  const avisos = [];
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const extincao = parseData(dados.dataExtincao);
+
+  if (ajuizamento && fim > ajuizamento) {
+    avisos.push(
+      `O período pedido vai até ${formatarData(fim)}, depois do ajuizamento em `
+        + `${formatarData(ajuizamento)}. Parcelas posteriores à inicial só entram por aditamento ou `
+        + 'como pedido de trato sucessivo — confira as datas.',
+    );
+  }
+  if (extincao && fim > extincao) {
+    avisos.push(
+      `O contrato foi extinto em ${formatarData(extincao)} e o período pedido vai até `
+        + `${formatarData(fim)}. Não há parcela devida depois do fim do contrato.`,
+    );
+  }
+  if (extincao && inicio > extincao) {
+    avisos.push(
+      `O período pedido começa em ${formatarData(inicio)}, depois da extinção do contrato em `
+        + `${formatarData(extincao)}. Confira as datas.`,
+    );
+  }
+  return avisos;
+}
+
+/**
+ * Quantos meses o período vale, para multiplicar uma verba mensal.
+ *
+ * Conta competência a competência: mês inteiro vale 1, mês partido vale a
+ * fração dos seus próprios dias. Um período de 01/01 a 31/12 dá 12 exatos;
+ * 20/01 a 10/03 dá 1,71, e não 1.
+ *
+ * A regra dos 15 dias não serve aqui: ela conta *avos* de 13º e de férias, que
+ * são direitos adquiridos por mês de serviço. Uma verba que se repete todo mês
+ * — hora extra, adicional, intervalo — é devida na proporção do tempo, sob
+ * pena de pagar mês cheio por quinze dias ou de engolir cinquenta dias como se
+ * fossem trinta.
+ */
+function contarPeriodo(inicio, fim) {
+  const diasPeriodo = diasEntre(inicio, fim);
+
+  let proporcao = 0;
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const primeiroDoMes = cursor;
+    const ultimoDoMes = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > primeiroDoMes ? inicio : primeiroDoMes;
+    const ate = fim < ultimoDoMes ? fim : ultimoDoMes;
+    proporcao += diasEntre(de, ate) / ultimoDoMes.getUTCDate();
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+
+  const meses = Math.round(proporcao * 100) / 100;
+  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses) };
+}
+
+/** Enumera em português: "a", "a e b", "a, b e c". */
+function listar(nomes) {
+  if (nomes.length <= 1) return nomes[0] ?? '';
+  return `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`;
+}
+
+/** Alíquota em porcentagem, sem casas desnecessárias: 0,08 -> "8%". */
+function porcentagem(fracao) {
+  return `${formatarNumeroBR(fracao * 100, 0)}%`;
+}
+
+/** Reflexos mensais em 13º e férias sobre uma verba de natureza salarial. */
+function reflexosMensais(base, dados) {
+  const itens = [];
+  if (base <= 0) return itens;
+
+  if (dados.reflexo13 !== false) {
+    itens.push({
+      chave: 'reflexo_13',
+      label: 'Reflexo no 13º salário',
+      nomeCurto: '13º',
+      detalhe: '1/12 por mês',
+      valor: arredondar(base / 12),
+    });
+  }
+  if (dados.reflexoFerias !== false) {
+    itens.push({
+      chave: 'reflexo_ferias',
+      label: 'Reflexo em férias + 1/3',
+      nomeCurto: 'férias + 1/3',
+      detalhe: '1/12 por mês, acrescido do terço',
+      valor: arredondar((base / 12) * (4 / 3)),
+    });
+  }
+  return itens;
+}
+
+/**
+ * Fecha o resultado: multiplica as verbas mensais pelo período, acrescenta o
+ * reflexo no aviso prévio e o FGTS, e totaliza.
+ *
+ * @param {object} p
+ * @param {object[]} p.mensais verbas apuradas por mês
+ * @param {number} p.baseAviso base mensal do reflexo no aviso (0 desliga)
+ * @param {string[]} p.chavesFgts verbas mensais que compõem a base do FGTS
+ */
+function fecharResultado({
+  mensais, meses, mesesFracionados, diasPeriodo, contexto, dados, alertas = [],
+  recorte = null, baseAviso = 0, chavesFgts = [],
+}) {
+  const totalMensal = arredondar(mensais.reduce((soma, m) => soma + m.valor, 0));
+  const periodo = mensais.map((m) => ({ ...m, valor: arredondar(m.valor * meses) }));
+
+  const diasAviso = dados.reflexoAviso && baseAviso > 0 ? num(dados.diasAviso) || 30 : 0;
+  const valorAviso = diasAviso ? arredondar((baseAviso / 30) * diasAviso) : 0;
+  if (valorAviso > 0) {
+    periodo.push({
+      chave: 'reflexo_aviso',
+      label: 'Reflexo no aviso prévio indenizado',
+      nomeCurto: 'aviso prévio',
+      detalhe: `${diasAviso} dias sobre a média mensal`,
+      valor: valorAviso,
+    });
+  }
+
+  const totalPeriodo = arredondar(periodo.reduce((soma, p) => soma + p.valor, 0));
+
+  // A base do FGTS é a soma das verbas de natureza salarial que o cálculo
+  // apurou — nunca todas: as parcelas indenizatórias ficam de fora. Cada
+  // pedido diz quais entram pela chave da verba.
+  //
+  // As férias são o ponto que depende do caso: gozadas no curso do contrato,
+  // elas e o terço integram a base (art. 15 da Lei 8.036/90, sem exclusão
+  // legal); indenizadas, não. Só quem calcula sabe qual foi, então a escolha
+  // fica na tela — ligada por padrão, que é o que acontece num período dentro
+  // do contrato.
+  const chaves = chavesFgts.length && dados.fgtsSobreFerias !== false
+    ? [...chavesFgts, 'reflexo_ferias']
+    : chavesFgts;
+  const parcelasFgts = mensais.filter((m) => chaves.includes(m.chave));
+  const baseFgtsMes = arredondar(parcelasFgts.reduce((soma, m) => soma + m.valor, 0));
+  const querFgts = dados.reflexoFGTS !== false && baseFgtsMes > 0;
+  const base = querFgts ? arredondar(baseFgtsMes * meses + valorAviso) : 0;
+  const fgtsDevido = arredondar(base * FGTS.aliquotaDeposito);
+  const multaFgts = dados.multaFGTS ? arredondar(fgtsDevido * FGTS.multaSemJustaCausa) : 0;
+  const nomes = parcelasFgts.map((m) => m.nomeCurto ?? m.label.toLowerCase());
+  if (valorAviso > 0) nomes.push('aviso prévio');
+  const detalheFgts = querFgts ? `${porcentagem(FGTS.aliquotaDeposito)} sobre ${listar(nomes)}` : null;
+
+  return {
+    erros: [],
+    alertas,
+    impedimento: null,
+    recorte,
+    contexto: { ...contexto, meses, mesesFracionados, diasPeriodo },
+    mensais,
+    periodo,
+    fgts: { base, valor: fgtsDevido, multa: multaFgts, detalhe: detalheFgts },
+    totais: {
+      mensal: totalMensal,
+      periodo: totalPeriodo,
+      fgts: arredondar(fgtsDevido + multaFgts),
+      geral: arredondar(totalPeriodo + fgtsDevido + multaFgts),
+    },
+  };
+}
+
+/** Resultado vazio, com os erros de preenchimento. */
+const resultadoComErros = (erros) => ({
+  erros, alertas: [], impedimento: null, recorte: null,
+  contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
+});
+
+/** Resultado barrado pela prescrição integral. */
+const resultadoImpedido = (impedimento) => ({
+  erros: [], alertas: [], impedimento, recorte: null,
+  contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
+});
+
+/** Validação comum a todo pedido com período. */
+function validarPeriodo(dados) {
+  const erros = [];
+  const inicio = parseData(dados.dataInicio);
+  const fim = parseData(dados.dataFim);
+  if (!inicio) erros.push('Informe o início do período pedido.');
+  if (!fim) erros.push('Informe o fim do período pedido.');
+  if (inicio && fim && fim < inicio) erros.push('O fim do período não pode ser anterior ao início.');
+  return { erros, inicio, fim };
+}
+
+    return { DIVISOR_PADRAO, SEMANAS_POR_MES, MARCO_OJ_394, MARCO_REFORMA, VESPERA_REFORMA, FATOR_HORA_NOTURNA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo };
+  })();
+
+  /* src/pedidos/horas-extras.js */
+  __modulos['src/pedidos/horas-extras.js'] = (function () {
+/**
+ * Horas extras: hora normal do divisor contratado, acrescida do adicional,
+ * com DSR (Lei 605/49) e reflexos.
+ */
+
+  const { parseData, formatarData } = __modulos['src/calculo.js'];
+  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+  const { MARCO_OJ_394, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+
+function calcularHorasExtras(dados) {
+  const { erros, inicio, fim } = validarPeriodo(dados);
+  const salarioBase = num(dados.salarioBase);
+  const divisor = num(dados.divisor);
+  const horasInformadas = num(dados.quantidadeHoras);
+
+  if (salarioBase <= 0) erros.push('Informe o salário base do período.');
+  if (divisor <= 0) erros.push('Informe o divisor da jornada (220 para 44h semanais).');
+  if (horasInformadas <= 0) erros.push('Informe a quantidade de horas extras.');
+  if (erros.length) return resultadoComErros(erros);
+
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
+  if (impedimento) return resultadoImpedido(impedimento);
+
+  const alertas = conferirDatas(inicio, fim, dados);
+  const risco = calcularAdicionalRisco(dados);
+  const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
+  const horaNormal = valorHoraNormal(baseCalculo, divisor);
+  const percentual = num(dados.adicionalHoraExtra) || 50;
+  const valorHoraExtra = horaNormal * (1 + percentual / 100);
+
+  const horasMes =
+    dados.modoQuantidade === 'semana' ? horasInformadas * SEMANAS_POR_MES : horasInformadas;
+  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+
+  const diasUteis = num(dados.diasUteis) || 25;
+  const diasRepouso = num(dados.diasRepouso) || 5;
+
+  const horasExtrasMes = arredondar(horasMes * valorHoraExtra);
+  const dsrMes = arredondar((horasExtrasMes / diasUteis) * diasRepouso);
+
+  const mensais = [{
+    chave: 'horas_extras',
+    label: 'Horas extras',
+    nomeCurto: 'horas extras',
+    detalhe: `${formatarQuantidade(horasMes)} h/mês x ${moeda.format(arredondar(valorHoraExtra))}`,
+    valor: horasExtrasMes,
+  }];
+
+  const querDSR = dados.reflexoDSR !== false;
+  if (querDSR) {
+    mensais.push({
+      chave: 'dsr',
+      label: 'DSR sobre horas extras',
+      nomeCurto: 'DSR',
+      detalhe: `${diasRepouso} repousos / ${diasUteis} dias úteis (Lei 605/49)`,
+      valor: dsrMes,
+    });
+  }
+
+  // OJ 394, II, da SDI-1: o DSR majorado só repercute nas demais verbas para as
+  // horas extras prestadas a partir de 20/03/2023. Antes disso a majoração não
+  // repercute — e o cálculo afasta o reflexo em vez de apenas avisar, sob pena
+  // de entregar um número que a própria orientação recusa.
+  const marcoOJ394 = parseData(MARCO_OJ_394);
+  const periodoTodoAnterior = fim < marcoOJ394;
+  const pediuDsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
+  const dsrNosReflexos = pediuDsrNosReflexos && !periodoTodoAnterior;
+  const baseReflexos = horasExtrasMes + (dsrNosReflexos ? dsrMes : 0);
+  if (pediuDsrNosReflexos && periodoTodoAnterior) {
+    alertas.push(
+      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}: pela OJ 394, II, da SDI-1 o DSR `
+        + 'majorado não repercute nas demais verbas nesse intervalo, e o cálculo afastou esse reflexo.',
+    );
+  } else if (dsrNosReflexos && inicioCalculo < marcoOJ394) {
+    alertas.push(
+      'O DSR majorado só repercute nas demais verbas para horas extras a partir de '
+        + `${formatarData(marcoOJ394)} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco: `
+        + 'calcule os dois trechos em separado para não estender o reflexo ao período anterior.',
+    );
+  }
+
+  mensais.push(...reflexosMensais(baseReflexos, dados));
+
+  return fecharResultado({
+    mensais,
+    meses,
+    mesesFracionados,
+    diasPeriodo,
+    dados,
+    alertas,
+    recorte,
+    baseAviso: horasExtrasMes + (querDSR ? dsrMes : 0),
+    chavesFgts: ['horas_extras', 'dsr', 'reflexo_13'],
+    contexto: {
+      inicio: inicioCalculo,
+      inicioPedido: inicio,
+      fim,
+      divisor,
+      baseCalculo,
+      risco,
+      valorHora: arredondar(horaNormal),
+      valorHoraExtra: arredondar(valorHoraExtra),
+      percentualAdicional: percentual,
+      horasMes: arredondar(horasMes),
+    },
+  });
+}
+
+    return { calcularHorasExtras };
+  })();
+
+  /* src/pedidos/noturno.js */
+  __modulos['src/pedidos/noturno.js'] = (function () {
+/**
+ * Adicional noturno (art. 73 da CLT).
+ *
+ * Trabalho urbano entre 22h e 5h rende adicional de 20% sobre a hora normal,
+ * e cada hora noturna vale 52min30s (§1º) — sete horas de relógio equivalem a
+ * oito horas fictas. O percentual é editável porque o rural tem 25% e a norma
+ * coletiva pode ser maior.
+ */
+
+  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+  const { FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+
+function calcularAdicionalNoturno(dados) {
+  const { erros, inicio, fim } = validarPeriodo(dados);
+  const salarioBase = num(dados.salarioBase);
+  const divisor = num(dados.divisor);
+  const horasInformadas = num(dados.horasNoturnas);
+
+  if (salarioBase <= 0) erros.push('Informe o salário base do período.');
+  if (divisor <= 0) erros.push('Informe o divisor da jornada.');
+  if (horasInformadas <= 0) erros.push('Informe a quantidade de horas noturnas.');
+  if (erros.length) return resultadoComErros(erros);
+
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
+  if (impedimento) return resultadoImpedido(impedimento);
+
+  const alertas = conferirDatas(inicio, fim, dados);
+
+  // A hora normal já vem integrada pelas parcelas salariais, entre elas o
+  // adicional de risco (Súmulas 60, I, e 264 do TST).
+  const risco = calcularAdicionalRisco(dados);
+  const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
+  const horaNormal = valorHoraNormal(baseCalculo, divisor);
+  const percentual = num(dados.adicionalNoturno) || 20;
+
+  const horasRelogio =
+    dados.modoQuantidade === 'semana' ? horasInformadas * SEMANAS_POR_MES : horasInformadas;
+  const horaReduzida = dados.horaReduzida !== false;
+  const horasFictas = horaReduzida ? horasRelogio * FATOR_HORA_NOTURNA : horasRelogio;
+
+  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const diasUteis = num(dados.diasUteis) || 25;
+  const diasRepouso = num(dados.diasRepouso) || 5;
+
+  const adicionalMes = arredondar(horasFictas * horaNormal * (percentual / 100));
+
+  const mensais = [{
+    chave: 'adicional_noturno',
+    nomeCurto: 'adicional noturno',
+    label: `Adicional noturno ${formatarQuantidade(percentual)}%`,
+    detalhe: horaReduzida
+      ? `${formatarQuantidade(horasRelogio)} h de relógio = ${formatarQuantidade(arredondar(horasFictas))} h fictas `
+        + `x ${moeda.format(arredondar(horaNormal))}`
+      : `${formatarQuantidade(horasRelogio)} h x ${moeda.format(arredondar(horaNormal))}`,
+    valor: adicionalMes,
+  }];
+
+  const querDSR = dados.reflexoDSR !== false;
+  const dsrMes = arredondar((adicionalMes / diasUteis) * diasRepouso);
+  if (querDSR) {
+    mensais.push({
+      chave: 'dsr',
+      nomeCurto: 'DSR',
+      label: 'DSR sobre o adicional noturno',
+      detalhe: `${diasRepouso} repousos / ${diasUteis} dias úteis (Lei 605/49)`,
+      valor: dsrMes,
+    });
+  }
+
+  const baseReflexos = adicionalMes + (querDSR ? dsrMes : 0);
+  mensais.push(...reflexosMensais(baseReflexos, dados));
+
+  return fecharResultado({
+    mensais,
+    meses,
+    mesesFracionados,
+    diasPeriodo,
+    dados,
+    alertas,
+    recorte,
+    baseAviso: baseReflexos,
+    chavesFgts: ['adicional_noturno', 'dsr', 'reflexo_13'],
+    contexto: {
+      inicio: inicioCalculo,
+      inicioPedido: inicio,
+      fim,
+      divisor,
+      baseCalculo,
+      risco,
+      valorHora: arredondar(horaNormal),
+      percentualAdicional: percentual,
+      horasRelogio: arredondar(horasRelogio),
+      horasFictas: arredondar(horasFictas),
+      horaReduzida,
+    },
+  });
+}
+
+    return { calcularAdicionalNoturno };
+  })();
+
+  /* src/pedidos/intervalo.js */
+  __modulos['src/pedidos/intervalo.js'] = (function () {
+/**
+ * Intervalo intrajornada (art. 71, §4º, da CLT).
+ *
+ * Dois regimes, e a diferença entre eles muda tudo:
+ *
+ * - até 10/11/2017 (Súmula 437, I, do TST): a não concessão gera o pagamento
+ *   do intervalo **integral**, com natureza salarial — logo, com reflexos;
+ * - a partir de 11/11/2017 (Lei 13.467/2017): paga-se **apenas o período
+ *   suprimido**, com acréscimo de 50%, e a natureza é indenizatória — sem
+ *   reflexos em outras verbas.
+ */
+
+  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+  const { MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+  const { parseData, formatarData } = __modulos['src/calculo.js'];
+
+function calcularIntervalo(dados) {
+  const { erros, inicio, fim } = validarPeriodo(dados);
+  const salarioBase = num(dados.salarioBase);
+  const divisor = num(dados.divisor);
+  const minutosSuprimidos = num(dados.minutosSuprimidos);
+
+  if (salarioBase <= 0) erros.push('Informe o salário base do período.');
+  if (divisor <= 0) erros.push('Informe o divisor da jornada.');
+  if (minutosSuprimidos <= 0) erros.push('Informe os minutos de intervalo suprimidos por dia.');
+  if (erros.length) return resultadoComErros(erros);
+
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
+  if (impedimento) return resultadoImpedido(impedimento);
+
+  const alertas = conferirDatas(inicio, fim, dados);
+  const risco = calcularAdicionalRisco(dados);
+  const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
+  const horaNormal = valorHoraNormal(baseCalculo, divisor);
+  const percentual = num(dados.adicionalIntervalo) || 50;
+
+  const indenizatorio = dados.regimeIntervalo !== 'anterior_reforma';
+  const intervaloIntegral = num(dados.intervaloIntegral) || 60;
+
+  // Antes da reforma paga-se o intervalo inteiro; depois, só o que foi suprimido.
+  const minutosDevidos = indenizatorio ? minutosSuprimidos : intervaloIntegral;
+  const diasNoMes = num(dados.diasComSupressao) || 22;
+  const horasMes = (minutosDevidos / 60) * diasNoMes;
+
+  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const valorMes = arredondar(horasMes * horaNormal * (1 + percentual / 100));
+
+  if (!indenizatorio && fim >= parseData(MARCO_REFORMA)) {
+    alertas.push(
+      `O regime anterior à reforma vale para fatos até ${formatarData(parseData(VESPERA_REFORMA))}. `
+        + 'Parte do período pedido é posterior: calcule os dois trechos em separado.',
+    );
+  }
+  if (indenizatorio && inicioCalculo < parseData(MARCO_REFORMA)) {
+    alertas.push(
+      `O regime indenizatório vale para fatos a partir de ${formatarData(parseData(MARCO_REFORMA))}. `
+        + 'Parte do período pedido é anterior: nele aplica-se a Súmula 437 do TST.',
+    );
+  }
+
+  const mensais = [{
+    chave: 'intervalo',
+    nomeCurto: 'intervalo',
+    label: indenizatorio
+      ? 'Intervalo suprimido (art. 71, §4º)'
+      : 'Intervalo integral (Súmula 437 do TST)',
+    detalhe: `${formatarQuantidade(minutosDevidos)} min x ${diasNoMes} dias x `
+      + `${moeda.format(arredondar(horaNormal * (1 + percentual / 100)))} a hora`,
+    valor: valorMes,
+  }];
+
+  // Natureza indenizatória não repercute em outras verbas.
+  if (!indenizatorio) mensais.push(...reflexosMensais(valorMes, dados));
+
+  return fecharResultado({
+    mensais,
+    meses,
+    mesesFracionados,
+    diasPeriodo,
+    dados,
+    alertas,
+    recorte,
+    baseAviso: indenizatorio ? 0 : valorMes,
+    chavesFgts: indenizatorio ? [] : ['intervalo', 'reflexo_13'],
+    contexto: {
+      inicio: inicioCalculo,
+      inicioPedido: inicio,
+      fim,
+      divisor,
+      baseCalculo,
+      valorHora: arredondar(horaNormal),
+      percentualAdicional: percentual,
+      minutosDevidos,
+      diasNoMes,
+      indenizatorio,
+    },
+  });
+}
+
+    return { calcularIntervalo };
+  })();
+
+  /* src/pedidos/insalubridade.js */
+  __modulos['src/pedidos/insalubridade.js'] = (function () {
+/**
+ * Insalubridade e periculosidade pedidas como verba própria.
+ *
+ * Insalubridade: 10%, 20% ou 40% sobre o salário mínimo (art. 192 da CLT),
+ * salvo base maior fixada em norma coletiva. Periculosidade: 30% sobre o
+ * salário base, sem os acréscimos de gratificações, prêmios ou participação
+ * nos lucros (art. 193, §1º). Os dois não se acumulam (art. 193, §2º).
+ *
+ * São parcelas mensais fixas: não geram DSR, mas repercutem em 13º, férias e
+ * FGTS.
+ */
+
+  const { arredondar, num, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+
+function calcularAdicionalRiscoPedido(dados) {
+  const { erros, inicio, fim } = validarPeriodo(dados);
+  const salarioBase = num(dados.salarioBase);
+
+  if (salarioBase <= 0) erros.push('Informe o salário base do período.');
+  if (!dados.risco || dados.risco === 'nenhum') {
+    erros.push('Escolha entre insalubridade e periculosidade.');
+  }
+  if (erros.length) return resultadoComErros(erros);
+
+  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
+  if (impedimento) return resultadoImpedido(impedimento);
+
+  const alertas = conferirDatas(inicio, fim, dados);
+  const risco = calcularAdicionalRisco(dados);
+  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+
+  const mensais = [{
+    chave: 'adicional_risco',
+    nomeCurto: 'adicional',
+    label: risco.nome,
+    detalhe: risco.detalhe,
+    valor: risco.valor,
+  }];
+  mensais.push(...reflexosMensais(risco.valor, dados));
+
+  return fecharResultado({
+    mensais,
+    meses,
+    mesesFracionados,
+    diasPeriodo,
+    dados,
+    alertas,
+    recorte,
+    baseAviso: risco.valor,
+    chavesFgts: ['adicional_risco', 'reflexo_13'],
+    contexto: {
+      inicio: inicioCalculo,
+      inicioPedido: inicio,
+      fim,
+      baseCalculo: salarioBase,
+      risco,
+      valorMensal: risco.valor,
+    },
+  });
+}
+
+    return { calcularAdicionalRiscoPedido };
+  })();
+
+  /* src/pedidos/multas.js */
+  __modulos['src/pedidos/multas.js'] = (function () {
+/**
+ * Multas dos arts. 477 e 467 da CLT.
+ *
+ * Art. 477, §6º e §8º: as verbas rescisórias devem ser pagas em até dez dias
+ * contados do término do contrato. Fora do prazo, é devida multa em favor do
+ * empregado — salvo quando ele mesmo deu causa à mora.
+ *
+ * A multa equivale a **um mês de remuneração**, e não ao salário base: o TST
+ * fixou a tese no Tema 142 de recursos repetitivos, mandando observar a
+ * remuneração dos arts. 457, §1º, e 458 da CLT. Por isso a tela pede o salário
+ * e as parcelas salariais habituais em separado, e soma as duas.
+ *
+ * Art. 467: as verbas rescisórias incontroversas não pagas até a primeira
+ * audiência são acrescidas de 50%.
+ */
+
+  const { parseData, formatarData, diasEntre } = __modulos['src/calculo.js'];
+  const { moeda } = __modulos['src/formato.js'];
+  const { arredondar, num, resultadoComErros } = __modulos['src/pedidos/comum.js'];
+
+/** Prazo do art. 477, §6º, da CLT. */
+const PRAZO_477_DIAS = 10;
+
+function calcularMultas(dados) {
+  const erros = [];
+  const pede477 = Boolean(dados.multa477);
+  const pede467 = Boolean(dados.multa467);
+
+  const salario = num(dados.salarioBase);
+  const parcelasHabituais = num(dados.outrasParcelas);
+  const remuneracao = arredondar(salario + parcelasHabituais);
+  const rescisao = parseData(dados.dataRescisao);
+  const pagamento = parseData(dados.dataPagamento);
+  const incontroverso = num(dados.valorIncontroverso);
+
+  if (!pede477 && !pede467) erros.push('Escolha ao menos uma das multas.');
+  if (pede477) {
+    if (salario <= 0) erros.push('Informe o salário do empregado para a multa do art. 477.');
+    if (!rescisao) erros.push('Informe a data do término do contrato.');
+  }
+  if (pede467 && incontroverso <= 0) {
+    erros.push('Informe o valor das verbas rescisórias incontroversas.');
+  }
+  if (erros.length) return resultadoComErros(erros);
+
+  const alertas = [];
+  const itens = [];
+  let prazo = null;
+  let diasAtraso = 0;
+
+  if (pede477) {
+    prazo = new Date(rescisao.getTime() + PRAZO_477_DIAS * 86400000);
+    const naoPago = !pagamento;
+    diasAtraso = pagamento ? Math.max(0, diasEntre(prazo, pagamento) - 1) : 0;
+    const foraDoPrazo = naoPago || diasAtraso > 0;
+    // A parte final do §8º exclui a multa quando o próprio empregado deu causa
+    // à mora: aí não há o que cobrar, e não apenas o que avisar.
+    const culpaDoEmpregado = Boolean(dados.moraDoEmpregado);
+
+    if (culpaDoEmpregado) {
+      alertas.push(
+        'Marcado que o empregado deu causa à mora: a parte final do art. 477, §8º, afasta a multa, '
+          + 'que por isso não foi incluída no cálculo.',
+      );
+    } else if (foraDoPrazo) {
+      itens.push({
+        chave: 'multa_477',
+        label: 'Multa do art. 477, §8º, da CLT',
+        detalhe: `${naoPago
+          ? `Sem pagamento comprovado; prazo venceu em ${formatarData(prazo)}`
+          : `${diasAtraso} dia(s) de atraso — prazo venceu em ${formatarData(prazo)}`
+        } · uma remuneração (Tema 142 do TST)`,
+        valor: remuneracao,
+      });
+    } else {
+      alertas.push(
+        `As verbas foram pagas em ${formatarData(pagamento)}, dentro do prazo de `
+          + `${PRAZO_477_DIAS} dias que venceu em ${formatarData(prazo)}. A multa do art. 477 não é devida.`,
+      );
+    }
+  }
+
+  if (pede467) {
+    itens.push({
+      chave: 'multa_467',
+      label: 'Multa do art. 467 da CLT',
+      detalhe: `50% sobre ${moeda.format(incontroverso)} de verbas incontroversas`,
+      valor: arredondar(incontroverso * 0.5),
+    });
+  }
+
+  const total = arredondar(itens.reduce((soma, i) => soma + i.valor, 0));
+
+  return {
+    erros: [],
+    alertas,
+    impedimento: null,
+    recorte: null,
+    contexto: {
+      semPeriodo: true,
+      rescisao,
+      pagamento,
+      prazo,
+      diasAtraso,
+      salario: arredondar(salario),
+      parcelasHabituais: arredondar(parcelasHabituais),
+      remuneracao,
+      incontroverso: arredondar(incontroverso),
+    },
+    mensais: [],
+    periodo: itens,
+    fgts: null,
+    totais: { mensal: 0, periodo: total, fgts: 0, geral: total },
+  };
+}
+
+    return { PRAZO_477_DIAS, calcularMultas };
+  })();
+
+  /* src/pedidos/catalogo.js */
+  __modulos['src/pedidos/catalogo.js'] = (function () {
+/**
+ * Catálogo dos pedidos: o que cada um calcula e quais campos pede.
+ *
+ * A tela é montada a partir daqui — acrescentar um pedido é acrescentar uma
+ * entrada com os seus grupos de campos e a função que faz a conta.
+ *
+ * Cada campo declara:
+ *   id, rotulo, tipo ('data'|'moeda'|'decimal'|'inteiro'|'percentual'|
+ *   'select'|'checkbox'|'radios'), e opcionalmente dica, valor inicial,
+ *   limites (min/max), opcoes e `aparece` — condição para ser exibido.
+ */
+
+  const { calcularHorasExtras } = __modulos['src/pedidos/horas-extras.js'];
+  const { calcularAdicionalNoturno } = __modulos['src/pedidos/noturno.js'];
+  const { calcularIntervalo } = __modulos['src/pedidos/intervalo.js'];
+  const { calcularAdicionalRiscoPedido } = __modulos['src/pedidos/insalubridade.js'];
+  const { calcularMultas } = __modulos['src/pedidos/multas.js'];
+  const { DIVISOR_PADRAO } = __modulos['src/pedidos/comum.js'];
+  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+  const { formatarData } = __modulos['src/calculo.js'];
+
+/** Linhas do resumo comuns aos pedidos apurados por período. */
+const resumoDoPeriodo = (c) => [
+  ['Período calculado', `${formatarData(c.inicio)} a ${formatarData(c.fim)}`],
+  ['Meses no período', c.mesesFracionados ? `${formatarQuantidade(c.meses)} (${c.diasPeriodo} dias)` : String(c.meses)],
+];
+
+/** Jornadas usuais e o divisor mensal correspondente (Súmula 431 do TST). */
+const JORNADAS = [
+  { valor: '44', divisor: 220, label: '44h semanais — divisor 220' },
+  { valor: '40', divisor: 200, label: '40h semanais — divisor 200' },
+  { valor: '36', divisor: 180, label: '36h semanais — divisor 180' },
+  { valor: '30', divisor: 150, label: '30h semanais — divisor 150' },
+  { valor: '20', divisor: 100, label: '20h semanais — divisor 100' },
+  { valor: 'outra', divisor: null, label: 'Outra (informar o divisor)' },
+];
+
+const grupoPeriodo = {
+  titulo: 'Período pedido',
+  campos: [
+    { id: 'dataInicio', rotulo: 'Início do período', tipo: 'data', obrigatorio: true,
+      dica: 'Primeiro mês do pedido.' },
+    { id: 'dataFim', rotulo: 'Fim do período', tipo: 'data', obrigatorio: true },
+    { id: 'dataAjuizamento', rotulo: 'Data do ajuizamento', tipo: 'data',
+      dica: 'Marco da prescrição quinquenal (Súmula 308, I, do TST).' },
+    { id: 'dataExtincao', rotulo: 'Extinção do contrato', tipo: 'data',
+      dica: 'Se informada, apura também a prescrição bienal: ajuizamento mais de dois anos '
+        + 'depois da extinção fulmina a pretensão inteira (art. 7º, XXIX, da CF).' },
+  ],
+};
+
+const camposRemuneracao = [
+  { id: 'salarioBase', rotulo: 'Salário base mensal', tipo: 'moeda', obrigatorio: true },
+  { id: 'jornada', rotulo: 'Jornada contratada', tipo: 'select', valor: '44',
+    opcoes: JORNADAS.map((j) => ({ valor: j.valor, label: j.label })),
+    dica: 'Define o divisor mensal (Súmula 431 do TST).' },
+  { id: 'divisor', rotulo: 'Divisor', tipo: 'inteiro', obrigatorio: true, valor: DIVISOR_PADRAO,
+    min: 1, max: 999, dica: 'Editável: categorias como a bancária usam 150 ou 180.' },
+  { id: 'outrasParcelas', rotulo: 'Outras parcelas salariais habituais', tipo: 'moeda',
+    dica: 'Comissões, prêmios e adicionais que integram a hora (Súmula 264 do TST).' },
+];
+
+const camposRisco = [
+  { id: 'risco', rotulo: 'O trabalho era insalubre ou perigoso?', tipo: 'radios', valor: 'nenhum', largo: true,
+    opcoes: [
+      { valor: 'nenhum', label: 'Nenhum' },
+      { valor: 'insalubridade', label: 'Insalubridade' },
+      { valor: 'periculosidade', label: 'Periculosidade' },
+    ],
+    dica: 'Não se acumulam (art. 193, §2º, da CLT). O adicional integra a base de cálculo (Súmulas 132 e 264 do TST).' },
+  { id: 'grauInsalubridade', rotulo: 'Grau', tipo: 'select', valor: '20',
+    aparece: (d) => d.risco === 'insalubridade',
+    opcoes: [
+      { valor: '10', label: 'Mínimo — 10%' },
+      { valor: '20', label: 'Médio — 20%' },
+      { valor: '40', label: 'Máximo — 40%' },
+    ] },
+  { id: 'baseInsalubridade', rotulo: 'Base de cálculo', tipo: 'select', valor: 'salario_minimo',
+    aparece: (d) => d.risco === 'insalubridade',
+    opcoes: [
+      { valor: 'salario_minimo', label: 'Salário mínimo (art. 192 da CLT)' },
+      { valor: 'salario_base', label: 'Salário base' },
+      { valor: 'valor_informado', label: 'Valor informado' },
+    ],
+    dica: 'A Súmula 228 do TST está suspensa; a norma coletiva pode fixar base maior.' },
+  { id: 'baseInsalubridadeValor', rotulo: 'Base informada', tipo: 'moeda',
+    aparece: (d) => d.risco === 'insalubridade' && d.baseInsalubridade === 'valor_informado' },
+];
+
+const camposDSR = [
+  { id: 'diasUteis', rotulo: 'Dias úteis no mês', tipo: 'inteiro', valor: 25, min: 1, max: 31,
+    dica: 'O sábado conta como dia útil não trabalhado (Súmula 113 do TST), salvo norma coletiva.' },
+  { id: 'diasRepouso', rotulo: 'Repousos no mês', tipo: 'inteiro', valor: 5, min: 0, max: 15,
+    dica: 'Domingos e feriados, para o DSR.' },
+];
+
+const reflexo = (id, label, marcado = true, extra = {}) =>
+  ({ id, rotulo: label, tipo: 'checkbox', valor: marcado, largo: true, ...extra });
+
+const grupoReflexos = (opcoes = {}) => ({
+  titulo: 'Reflexos',
+  campos: [
+    ...(opcoes.dsr === false ? [] : [
+      reflexo('reflexoDSR', 'DSR sobre a verba (Lei 605/49, Súmula 172 do TST)'),
+      reflexo('dsrNosReflexos', 'DSR majorado repercute nas demais verbas (OJ 394, II, da SDI-1 — a partir de 20/03/2023)',
+        true, { aparece: (d) => d.reflexoDSR !== false }),
+    ]),
+    reflexo('reflexo13', '13º salário'),
+    reflexo('reflexoFerias', 'Férias + 1/3'),
+    reflexo('reflexoFGTS', 'FGTS (8%)'),
+    reflexo('fgtsSobreFerias', 'FGTS também sobre o reflexo em férias + 1/3 (desmarque se forem indenizadas)',
+      true, { aparece: (d) => d.reflexoFGTS !== false && d.reflexoFerias !== false }),
+    reflexo('multaFGTS', 'Multa de 40% do FGTS (dispensa sem justa causa)', false),
+    reflexo('reflexoAviso', 'Aviso prévio indenizado', false),
+    { id: 'diasAviso', rotulo: 'Dias de aviso prévio', tipo: 'inteiro', valor: 30, min: 0, max: 90,
+      aparece: (d) => d.reflexoAviso },
+  ],
+});
+
+const PEDIDOS = [
+  {
+    id: 'horas_extras',
+    nome: 'Horas extras',
+    tag: 'Art. 7º, XVI, da CF',
+    icone: '⏱️',
+    descricao: 'Horas além da jornada, calculadas sobre a hora normal do divisor contratado e acrescidas do adicional.',
+    itens: [
+      { label: 'Base com insalubridade ou periculosidade', devida: true },
+      { label: 'DSR sobre as horas extras', devida: true },
+      { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
+      { label: 'Juros e correção monetária', devida: false },
+    ],
+    calcular: calcularHorasExtras,
+    resumo: (c) => [
+      ...resumoDoPeriodo(c),
+      ['Base de cálculo', moeda.format(c.baseCalculo)],
+      ['Divisor', String(c.divisor)],
+      ['Valor da hora', moeda.format(c.valorHora)],
+      [`Hora extra (+${formatarQuantidade(c.percentualAdicional)}%)`, moeda.format(c.valorHoraExtra)],
+      ['Horas por mês', formatarQuantidade(c.horasMes)],
+    ],
+    grupos: [
+      grupoPeriodo,
+      { titulo: 'Remuneração e jornada', campos: camposRemuneracao },
+      { titulo: 'Adicional de insalubridade ou periculosidade', campos: camposRisco },
+      {
+        titulo: 'Horas extras',
+        campos: [
+          { id: 'modoQuantidade', rotulo: 'Como informar a quantidade', tipo: 'radios', valor: 'mes', largo: true,
+            opcoes: [
+              { valor: 'mes', label: 'Horas por mês' },
+              { valor: 'semana', label: 'Horas por semana' },
+            ] },
+          { id: 'quantidadeHoras', rotulo: 'Quantidade de horas extras', tipo: 'decimal', obrigatorio: true,
+            min: 0, max: 400, dica: 'Média do período.' },
+          { id: 'adicionalHoraExtra', rotulo: 'Adicional de hora extra', tipo: 'percentual', valor: 50,
+            min: 0, max: 300, dica: 'Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior.' },
+          ...camposDSR,
+        ],
+      },
+      grupoReflexos(),
+    ],
+  },
+
+  {
+    id: 'adicional_noturno',
+    nome: 'Adicional noturno',
+    tag: 'Art. 73 da CLT',
+    icone: '🌙',
+    descricao: 'Trabalho entre 22h e 5h: adicional sobre a hora normal, com a hora noturna reduzida de 52min30s.',
+    itens: [
+      { label: 'Hora noturna reduzida (art. 73, §1º)', devida: true },
+      { label: 'Base integrada pelo adicional de risco', devida: true, nota: 'Súmulas 60, I, e 264' },
+      { label: 'DSR sobre o adicional', devida: true },
+      { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
+      { label: 'Prorrogação após as 5h (Súmula 60, II)', devida: false, nota: 'informe as horas já somadas' },
+    ],
+    calcular: calcularAdicionalNoturno,
+    resumo: (c) => [
+      ...resumoDoPeriodo(c),
+      ['Base de cálculo', moeda.format(c.baseCalculo)],
+      ['Valor da hora', moeda.format(c.valorHora)],
+      ['Horas de relógio', formatarQuantidade(c.horasRelogio)],
+      [c.horaReduzida ? 'Horas fictas (52min30s)' : 'Horas consideradas', formatarQuantidade(c.horasFictas)],
+    ],
+    grupos: [
+      grupoPeriodo,
+      { titulo: 'Remuneração e jornada', campos: camposRemuneracao },
+      { titulo: 'Adicional de insalubridade ou periculosidade', campos: camposRisco },
+      {
+        titulo: 'Horas noturnas',
+        campos: [
+          { id: 'modoQuantidade', rotulo: 'Como informar a quantidade', tipo: 'radios', valor: 'mes', largo: true,
+            opcoes: [
+              { valor: 'mes', label: 'Horas por mês' },
+              { valor: 'semana', label: 'Horas por semana' },
+            ] },
+          { id: 'horasNoturnas', rotulo: 'Horas noturnas trabalhadas', tipo: 'decimal', obrigatorio: true,
+            min: 0, max: 400, dica: 'Horas de relógio entre 22h e 5h.' },
+          { id: 'adicionalNoturno', rotulo: 'Adicional noturno', tipo: 'percentual', valor: 20, min: 0, max: 200,
+            dica: '20% no trabalho urbano (art. 73); 25% no rural (Lei 5.889/73).' },
+          { id: 'horaReduzida', rotulo: 'Aplicar a hora noturna reduzida de 52min30s (art. 73, §1º)',
+            tipo: 'checkbox', valor: true, largo: true },
+          ...camposDSR,
+        ],
+      },
+      grupoReflexos(),
+    ],
+  },
+
+  {
+    id: 'intervalo',
+    nome: 'Intervalo intrajornada',
+    tag: 'Art. 71, §4º, da CLT',
+    icone: '🍽️',
+    descricao: 'Intervalo não concedido ou reduzido, pago com acréscimo de 50% sobre a hora normal.',
+    itens: [
+      { label: 'Período suprimido + 50% (a partir de 11/11/2017)', devida: true },
+      { label: 'Intervalo integral e reflexos (até 10/11/2017)', devida: true, nota: 'Súmula 437 do TST' },
+      { label: 'Reflexos no regime indenizatório', devida: false, nota: 'art. 71, §4º' },
+    ],
+    calcular: calcularIntervalo,
+    resumo: (c) => [
+      ...resumoDoPeriodo(c),
+      ['Regime', c.indenizatorio ? 'Indenizatório (art. 71, §4º)' : 'Salarial (Súmula 437)'],
+      ['Base de cálculo', moeda.format(c.baseCalculo)],
+      ['Valor da hora', moeda.format(c.valorHora)],
+      ['Minutos por dia', `${formatarQuantidade(c.minutosDevidos)} min x ${c.diasNoMes} dias`],
+    ],
+    grupos: [
+      grupoPeriodo,
+      { titulo: 'Remuneração e jornada', campos: camposRemuneracao },
+      { titulo: 'Adicional de insalubridade ou periculosidade', campos: camposRisco },
+      {
+        titulo: 'Intervalo',
+        campos: [
+          { id: 'regimeIntervalo', rotulo: 'Regime aplicável', tipo: 'radios', valor: 'reforma', largo: true,
+            opcoes: [
+              { valor: 'reforma', label: 'A partir de 11/11/2017 — só o suprimido, indenizatório' },
+              { valor: 'anterior_reforma', label: 'Até 10/11/2017 — intervalo integral, salarial' },
+            ],
+            dica: 'A Lei 13.467/2017 limitou o pagamento ao período suprimido e lhe deu natureza indenizatória, sem reflexos.' },
+          { id: 'minutosSuprimidos', rotulo: 'Minutos suprimidos por dia', tipo: 'inteiro', obrigatorio: true,
+            min: 1, max: 120, dica: 'Quanto do intervalo deixou de ser usufruído.' },
+          { id: 'intervaloIntegral', rotulo: 'Intervalo integral do contrato (minutos)', tipo: 'inteiro',
+            valor: 60, min: 1, max: 240, aparece: (d) => d.regimeIntervalo === 'anterior_reforma',
+            dica: 'Pago por inteiro no regime da Súmula 437, ainda que a supressão seja parcial.' },
+          { id: 'diasComSupressao', rotulo: 'Dias com supressão no mês', tipo: 'inteiro', valor: 22, min: 1, max: 31 },
+          { id: 'adicionalIntervalo', rotulo: 'Acréscimo', tipo: 'percentual', valor: 50, min: 0, max: 200,
+            dica: '50% sobre a hora normal (art. 71, §4º).' },
+        ],
+      },
+      {
+        ...grupoReflexos({ dsr: false }),
+        aparece: (d) => d.regimeIntervalo === 'anterior_reforma',
+      },
+    ],
+  },
+
+  {
+    id: 'adicional_risco',
+    nome: 'Insalubridade / periculosidade',
+    tag: 'Arts. 192 e 193 da CLT',
+    icone: '☣️',
+    descricao: 'Adicional de risco pedido como verba própria, com reflexos nas demais parcelas.',
+    itens: [
+      { label: 'Insalubridade de 10%, 20% ou 40%', devida: true },
+      { label: 'Periculosidade de 30%', devida: true },
+      { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
+      { label: 'DSR', devida: false, nota: 'parcela mensal fixa' },
+    ],
+    calcular: calcularAdicionalRiscoPedido,
+    resumo: (c) => [
+      ...resumoDoPeriodo(c),
+      ['Adicional', c.risco.nome],
+      ['Valor mensal', moeda.format(c.valorMensal)],
+    ],
+    grupos: [
+      grupoPeriodo,
+      {
+        titulo: 'Remuneração',
+        campos: [{ id: 'salarioBase', rotulo: 'Salário base mensal', tipo: 'moeda', obrigatorio: true,
+          dica: 'Base da periculosidade (art. 193, §1º).' }],
+      },
+      { titulo: 'Adicional pedido', campos: camposRisco },
+      grupoReflexos({ dsr: false }),
+    ],
+  },
+
+  {
+    id: 'multas',
+    nome: 'Multas dos arts. 467 e 477',
+    tag: 'Atraso e verbas incontroversas',
+    icone: '📌',
+    descricao: 'Multa pelo pagamento das verbas rescisórias fora do prazo e acréscimo sobre as incontroversas.',
+    itens: [
+      { label: 'Art. 477: uma remuneração, se paga fora dos 10 dias', devida: true, nota: 'Tema 142 do TST' },
+      { label: 'Art. 467: 50% sobre as verbas incontroversas', devida: true },
+      { label: 'Reflexos e FGTS', devida: false, nota: 'natureza de penalidade' },
+      { label: 'Multa do art. 477 quando o empregado deu causa à mora', devida: false, nota: 'parte final do §8º' },
+    ],
+    calcular: calcularMultas,
+    semPeriodo: true,
+    resumo: (c) => [
+      ...(c.rescisao ? [['Término do contrato', formatarData(c.rescisao)]] : []),
+      ...(c.prazo ? [['Prazo do art. 477', formatarData(c.prazo)]] : []),
+      ...(c.pagamento ? [['Pagamento', formatarData(c.pagamento)]] : []),
+      ...(c.prazo ? [['Atraso', c.pagamento ? `${c.diasAtraso} dia(s)` : 'sem pagamento']] : []),
+      ...(c.remuneracao ? [['Remuneração base da multa', moeda.format(c.remuneracao)]] : []),
+      ...(c.incontroverso ? [['Incontroverso', moeda.format(c.incontroverso)]] : []),
+    ],
+    grupos: [
+      {
+        titulo: 'Multa do art. 477',
+        campos: [
+          { id: 'multa477', rotulo: 'Pedir a multa do art. 477, §8º', tipo: 'checkbox', valor: true, largo: true },
+          { id: 'salarioBase', rotulo: 'Salário base do empregado', tipo: 'moeda', obrigatorio: true,
+            aparece: (d) => d.multa477,
+            dica: 'A multa equivale a um mês de remuneração.' },
+          { id: 'outrasParcelas', rotulo: 'Parcelas salariais habituais', tipo: 'moeda',
+            aparece: (d) => d.multa477,
+            dica: 'Adicionais, horas extras, comissões e demais parcelas dos arts. 457, §1º, e 458 da CLT. '
+              + 'O TST fixou no Tema 142 que a base da multa é a remuneração, não o salário base.' },
+          { id: 'dataRescisao', rotulo: 'Término do contrato', tipo: 'data', obrigatorio: true,
+            aparece: (d) => d.multa477, dica: 'O prazo de 10 dias corre daí (art. 477, §6º).' },
+          { id: 'dataPagamento', rotulo: 'Data do pagamento', tipo: 'data',
+            aparece: (d) => d.multa477, dica: 'Em branco: não houve pagamento comprovado.' },
+          { id: 'moraDoEmpregado', rotulo: 'O empregado deu causa à mora (afasta a multa)',
+            tipo: 'checkbox', valor: false, largo: true, aparece: (d) => d.multa477 },
+        ],
+      },
+      {
+        titulo: 'Multa do art. 467',
+        campos: [
+          { id: 'multa467', rotulo: 'Pedir a multa do art. 467', tipo: 'checkbox', valor: false, largo: true },
+          { id: 'valorIncontroverso', rotulo: 'Verbas rescisórias incontroversas', tipo: 'moeda',
+            obrigatorio: true, aparece: (d) => d.multa467,
+            dica: 'Parcela reconhecida e não paga até a primeira audiência.' },
+        ],
+      },
+    ],
+  },
+];
+
+const pedidoPorId = (id) => PEDIDOS.find((p) => p.id === id) ?? null;
+
+    return { JORNADAS, PEDIDOS, pedidoPorId };
+  })();
+
+  /* src/app-rescisao.js */
+  __paginas['rescisao'] = function () {
+/**
+ * Camada de interface: monta os cartões de tipo de rescisão, mostra os campos
+ * pertinentes a cada um e apresenta a memória de cálculo.
+ */
+
+  const { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } = __modulos['src/tipos.js'];
+  const { calcularRescisao, formatarData, valorHorasExtras } = __modulos['src/calculo.js'];
+  const { VIGENCIA, VIGENCIA_DETALHE } = __modulos['src/tabelas.js'];
+  const { CARIMBO } = __modulos['src/versao.js'];
+  const { moeda } = __modulos['src/formato.js'];
+  const { lerCampos, inicializarCampos, marcarErro } = __modulos['src/campos.js'];
+  const { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } = __modulos['src/adicionais.js'];
+  const { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } = __modulos['src/descontos.js'];
+  const { montarMemoria, imprimir } = __modulos['src/memoria.js'];
+
+const $ = (seletor) => document.querySelector(seletor);
+
+/** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
+const CAMPOS = [
+  'dataAdmissao', 'dataAviso', 'dataTermoFinal',
+  'salarioBase', 'divisor', 'horasExtras', 'adicionalHoraExtra', 'mediaComissoes', 'horasNoturnas',
+  'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
+  'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
+];
+
+let tipoSelecionado = null;
+
+/* ------------------------------------------------------------ utilitários */
+
+function coletarDados() {
+  const { valores, erros } = lerCampos(CAMPOS);
+  return {
+    ...valores,
+    tipo: tipoSelecionado,
+    clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
+    feriasDobro: $('#feriasDobro').checked,
+    tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
+    adicionais: adicionaisMarcados(),
+    descontos: descontosMarcados(),
+    errosDeCampo: erros,
+  };
+}
+
+/* ------------------------------------------------- marcações em grupo ----- */
+
+let adicionaisMarcados = () => [];
+let descontosMarcados = () => [];
+
+/**
+ * Liga um grupo de marcações que tem uma opção "nenhum" e regras de exclusão
+ * entre as demais. Devolve a função que lê o que está marcado.
+ */
+function ligarGrupo(nome, nenhumId, resolverExclusoes) {
+  const inputs = () => [...document.querySelectorAll(`input[name="${nome}"]`)];
+  const opcaoNenhum = () => inputs().find((i) => i.value === nenhumId);
+  const marcados = () =>
+    inputs().filter((i) => i.checked).map((i) => i.value).filter((v) => v !== nenhumId);
+
+  for (const input of inputs()) {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        const permitidos = resolverExclusoes(marcados(), input.value);
+        for (const outro of inputs()) {
+          if (outro !== input) outro.checked = permitidos.includes(outro.value);
+        }
+        if (input.value !== nenhumId) opcaoNenhum().checked = false;
+      } else if (marcados().length === 0) {
+        // Desmarcar o último equivale a dizer que não havia nenhum.
+        opcaoNenhum().checked = true;
+      }
+      atualizar();
+    });
+  }
+  return marcados;
+}
+
+function montarMarcacoes(container, nome, nenhumRotulo, itens) {
+  const opcoes = [{ id: nenhumRotulo.id, label: nenhumRotulo.label }, ...itens];
+  $(container).innerHTML = opcoes
+    .map(
+      (o, i) => `
+      <label class="opcao">
+        <input type="checkbox" name="${nome}" value="${o.id}" ${i === 0 ? 'checked' : ''} />
+        ${o.label}
+      </label>`,
+    )
+    .join('');
+}
+
+const montarAdicionais = () =>
+  montarMarcacoes(
+    '#opcoes-adicionais',
+    'adicionais',
+    { id: SEM_ADICIONAIS, label: 'Não recebia adicionais' },
+    ADICIONAIS.map((a) => ({ id: a.id, label: a.label })),
+  );
+
+function montarDescontos() {
+  montarMarcacoes(
+    '#opcoes-descontos',
+    'descontos',
+    { id: SEM_DESCONTOS, label: 'Não há descontos' },
+    DESCONTOS.map((d) => ({ id: d.id, label: d.label })),
+  );
+
+  // Cada desconto marcado revela o seu próprio campo.
+  $('#campos-descontos').innerHTML = DESCONTOS.map((d) => {
+    const entrada =
+      d.tipo === 'valor'
+        ? `<span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="${d.campo}" placeholder="0,00" /></span>`
+        : d.tipo === 'percentual'
+          ? `<span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="${d.campo}" placeholder="0" /><i>%</i></span>`
+          : `<input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="${d.campo}" placeholder="0" />`;
+    return `
+      <label class="campo" id="campo-${d.id}" hidden>
+        <span class="campo__rotulo">${d.rotulo}</span>
+        ${entrada}
+        ${d.dica ? `<span class="campo__dica">${d.dica}</span>` : ''}
+      </label>`;
+  }).join('');
+}
+
+/* ------------------------------------------------------- tipos e formulário */
+
+function montarTipos() {
+  const container = $('#tipos');
+  container.innerHTML = '';
+  for (const idGrupo of ORDEM_GRUPOS) {
+    const grupo = GRUPOS[idGrupo];
+    const bloco = document.createElement('div');
+    bloco.className = 'grupo-tipos';
+    bloco.innerHTML = `<p class="grupo-tipos__titulo">${grupo.titulo}${
+      grupo.ajuda ? ` <span class="grupo-tipos__ajuda">— ${grupo.ajuda}</span>` : ''
+    }</p><div class="tipos"></div>`;
+    const cartoes = bloco.querySelector('.tipos');
+
+    for (const id of tiposDoGrupo(idGrupo)) {
+      const tipo = TIPOS[id];
+      const botao = document.createElement('button');
+      botao.type = 'button';
+      botao.className = 'tipo';
+      botao.role = 'radio';
+      botao.setAttribute('aria-checked', 'false');
+      botao.dataset.tipo = id;
+      botao.innerHTML = `
+        <span class="tipo__icone">${tipo.icone}</span>
+        <strong class="tipo__nome">${tipo.nome}</strong>
+        <span class="tipo__tag">${tipo.tag}</span>`;
+      botao.addEventListener('click', () => selecionarTipo(id));
+      cartoes.append(botao);
+    }
+    container.append(bloco);
+  }
+}
+
+function selecionarTipo(id) {
+  tipoSelecionado = id;
+  for (const botao of document.querySelectorAll('.tipo')) {
+    botao.setAttribute('aria-checked', String(botao.dataset.tipo === id));
+  }
+
+  const tipo = TIPOS[id];
+  renderResumoTipo(tipo);
+  montarOpcoesAviso(tipo);
+  aplicarVisibilidade(tipo);
+  $('#etapa-dados').hidden = false;
+  $('#painel').hidden = false;
+  atualizar();
+}
+
+/** Resumo das verbas devidas — muda quando há cláusula assecuratória. */
+function renderResumoTipo(tipo) {
+  const clausula = tipo.campos.clausulaAssecuratoria && $('#clausulaAssecuratoria').checked;
+  const verbas = (clausula && tipo.verbasComClausula) || tipo.verbas;
+  $('#resumo-tipo').hidden = false;
+  $('#resumo-tipo').innerHTML = `
+    <p>${tipo.descricao}</p>
+    <div class="verbas">${verbas
+      .map((v) => `<span class="verba ${v.devida ? '' : 'verba--nao'}">${v.devida ? '✓' : '✕'} ${v.label}${
+        v.nota ? ` <small>(${v.nota})</small>` : ''
+      }</span>`)
+      .join('')}</div>`;
+}
+
+/** Mostra apenas os campos que o tipo de rescisão selecionado exige. */
+function aplicarVisibilidade(tipo) {
+  const campos = tipo.campos;
+  $('#grupo-fgts').hidden = !campos.fgts;
+  $('#campo-termo-final').hidden = !campos.termoFinal;
+  $('#campo-clausula').hidden = !campos.clausulaAssecuratoria;
+  // No término no prazo é o próprio termo final que encerra o contrato.
+  $('#campo-data-aviso').hidden = Boolean(campos.termoEncerraContrato);
+  $('#rotulo-data-aviso').innerHTML = `${tipo.rotuloDataAviso ?? 'Data do aviso prévio / desligamento'} <b>*</b>`;
+  $('#dica-data-aviso').textContent = tipo.dicaDataAviso ?? 'Data da comunicação da rescisão.';
+
+  // O aviso prévio do contrato a termo só existe com a cláusula do art. 481.
+  const clausula = $('#clausulaAssecuratoria').checked && campos.clausulaAssecuratoria;
+  $('#grupo-aviso').hidden = !tipo.aviso || (tipo.aviso.somenteComClausula && !clausula);
+}
+
+function montarOpcoesAviso(tipo) {
+  if (!tipo.aviso) {
+    $('#opcoes-aviso').innerHTML = '';
+    return;
+  }
+  $('#rotulo-aviso').textContent = tipo.aviso.rotulo;
+  $('#dica-aviso').textContent = tipo.aviso.ajuda;
+  $('#opcoes-aviso').innerHTML = tipo.aviso.opcoes
+    .map(
+      (opcao, i) => `
+      <label class="opcao">
+        <input type="radio" name="tipoAviso" value="${opcao.valor}" ${i === 0 ? 'checked' : ''} />
+        ${opcao.label}
+      </label>`,
+    )
+    .join('');
+  for (const input of $('#opcoes-aviso').querySelectorAll('input')) {
+    input.addEventListener('change', atualizar);
+  }
+}
+
+/* -------------------------------------------------------------- resultado */
+
+function linha(item, negativo = false) {
+  return `<tr class="${negativo ? 'neg' : ''}">
+    <td>${item.label}${item.detalhe ? `<small>${item.detalhe}</small>` : ''}</td>
+    <td>${negativo ? '- ' : ''}${moeda.format(item.valor)}</td>
+  </tr>`;
+}
+
+/**
+ * Resume o aviso prévio em uma linha: quanto foi cumprido em serviço, quanto
+ * foi indenizado e quanto foi descontado. O excedente dos 30 dias trabalháveis
+ * aparece em separado porque muda a data projetada do contrato.
+ */
+function descreverAviso(c) {
+  if (!c.avisoAplicavel) return 'não devido';
+  if (c.tipoAviso === 'nao_cumprido') return `${c.diasAvisoLegais} dias descontados`;
+  if (c.tipoAviso === 'dispensado') return 'dispensado, sem desconto';
+  if (c.excedenteTrabalhado > 0) {
+    return `${c.diasAvisoTrabalhados} trabalhados + ${c.excedenteTrabalhado} indenizados`;
+  }
+  if (c.tipoAviso === 'trabalhado') return `${c.diasAvisoTrabalhados} dias trabalhados`;
+  return c.diasAvisoPagos ? `${c.diasAvisoPagos} dias indenizados` : 'não indenizado';
+}
+
+function renderResultado(resultado) {
+  const alvo = $('#resultado');
+
+  if (resultado.erros.length) {
+    atualizarDicaPeriodos(null);
+    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+      <ul>${resultado.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    return;
+  }
+
+  const { contexto: c, proventos, descontos, totais, fgts } = resultado;
+  const tipo = TIPOS[tipoSelecionado];
+  atualizarDicaPeriodos(c);
+
+  // Período vencido a mais do que o contrato comporta é erro do campo, não
+  // nota de rodapé: fica marcado onde foi digitado.
+  marcarErro(
+    $('#periodosFeriasVencidas'),
+    c.periodosInformados > c.periodosCompletosCalculados
+      ? `O contrato completou ${c.periodosCompletosCalculados} período(s) aquisitivo(s).`
+      : null,
+  );
+
+  const tempoDeServico =
+    c.anos >= 1 ? `${c.anos} ano(s)` : c.meses >= 1 ? `${c.meses} mês(es)` : `${c.diasContrato} dia(s)`;
+
+  const contexto = [
+    ['Tempo de serviço', tempoDeServico],
+    ['Último dia do contrato', formatarData(c.ultimoDiaTrabalhado)],
+  ];
+  if (tipo.campos.termoFinal) {
+    contexto.push(['Termo final previsto', formatarData(c.termoFinal)]);
+    // Só faz sentido no encerramento antecipado.
+    if (tipo.indenizacaoAntecipada) {
+      contexto.push(['Dias até o termo final', `${c.diasRestantes} dia(s)`]);
+    }
+  }
+  contexto.push(
+    ['Aviso prévio', descreverAviso(c)],
+    ['Data projetada', formatarData(c.dataProjetada)],
+    ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
+    ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
+    ['Férias vencidas', c.periodosVencidos ? `${c.periodosVencidos} período(s)` : 'nenhum computado'],
+  );
+
+  alvo.innerHTML = `
+    ${resultado.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+    <dl class="contexto">
+      ${contexto.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+    </dl>
+
+    <p class="bloco-titulo">Verbas a receber</p>
+    <table class="linhas">
+      ${proventos.map((p) => linha(p)).join('')}
+      <tr class="total"><td>Total bruto</td><td>${moeda.format(totais.proventos)}</td></tr>
+    </table>
+
+    <p class="bloco-titulo">Descontos</p>
+    <table class="linhas">
+      ${descontos.length ? descontos.map((d) => linha(d, true)).join('') : '<tr><td colspan="2"><small>Sem descontos.</small></td></tr>'}
+      <tr class="total"><td>Total de descontos</td><td>${moeda.format(totais.descontos)}</td></tr>
+    </table>
+
+    <div class="liquido"><span>Líquido a receber</span><b>${moeda.format(totais.liquido)}</b></div>
+
+    <div class="fgts-card">
+      <h3>FGTS</h3>
+      ${
+        fgts.percentualMulta > 0
+          ? `<table class="linhas">
+        <tr><td>Saldo informado</td><td>${moeda.format(fgts.informado)}</td></tr>
+        <tr><td>FGTS sobre as verbas rescisórias<small>8% sobre saldo, horas extras, 13º e aviso indenizado</small></td><td>${moeda.format(fgts.rescisao)}</td></tr>
+        <tr><td>${fgts.rotuloMulta}<small>base ${moeda.format(fgts.baseMulta)}</small></td><td>${moeda.format(fgts.multa)}</td></tr>
+      </table>
+      <p>Saque: ${fgts.saque} · Seguro-desemprego: ${fgts.seguroDesemprego}</p>
+      <p>Valores do FGTS não entram no líquido acima — são liberados pela conta vinculada.</p>`
+          : `<p class="fgts-card__nota">${fgts.rotuloMulta}. ${fgts.saque}. Seguro-desemprego: ${fgts.seguroDesemprego}.</p>
+      <p>O empregador continua recolhendo o FGTS sobre as verbas salariais, mas o saldo fica retido na conta vinculada.</p>`
+      }
+    </div>`;
+}
+
+/* ------------------------------------------------------------- atualização */
+
+function atualizarDicas(dados) {
+  // O divisor precisa vir junto: é ele que define a hora sobre a qual incide o
+  // adicional noturno. Sem passá-lo, a dica usava 220 e divergia do cálculo.
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais,
+    salarioBase: dados.salarioBase,
+    horasNoturnas: dados.horasNoturnas,
+    divisor: dados.divisor || undefined,
+  });
+  // Base das indenizações: salário, adicionais e médias de variáveis. As horas
+  // extras do mês são verba própria e aparecem à parte.
+  const remuneracaoFixa = dados.salarioBase + adicionais.total;
+  const remuneracao = remuneracaoFixa + dados.mediaComissoes;
+  const horasExtras = valorHorasExtras(
+    remuneracaoFixa,
+    dados.divisor || 220,
+    dados.horasExtras,
+    dados.adicionalHoraExtra || 50,
+  );
+
+  const detalhe = adicionais.itens.length
+    ? ` — inclui ${adicionais.itens.map((i) => `${i.label} (${moeda.format(i.valor)})`).join(' e ')}`
+    : '';
+  $('#nota-remuneracao').innerHTML =
+    `Remuneração para cálculo: <b>${moeda.format(remuneracao)}</b>${detalhe}`
+    + (horasExtras ? ` · Horas extras do mês: <b>${moeda.format(horasExtras)}</b>` : '');
+
+}
+
+/** Campos que só existem quando a marcação correspondente está ligada. */
+function aplicarVisibilidadeMarcacoes() {
+  $('#campo-horas-noturnas').hidden = !adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+
+  const marcados = descontosMarcados();
+  for (const desconto of DESCONTOS) {
+    $(`#campo-${desconto.id}`).hidden = !marcados.includes(desconto.id);
+  }
+}
+
+/** A contagem de períodos vem do cálculo, para não divergir dele. */
+function atualizarDicaPeriodos(contexto) {
+  $('#dica-periodos').textContent = contexto
+    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados.`
+    : 'Preencha as datas para ver os períodos aquisitivos completos.';
+}
+
+function atualizar() {
+  aplicarVisibilidadeMarcacoes();
+  const dados = coletarDados();
+  atualizarDicas(dados);
+  if (!tipoSelecionado) return;
+  aplicarVisibilidade(TIPOS[tipoSelecionado]);
+  renderResumoTipo(TIPOS[tipoSelecionado]);
+
+  // Campo com conteúdo inválido interrompe o cálculo: o valor seria chute.
+  if (dados.errosDeCampo.length) {
+    $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
+      <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+  } else {
+    renderResultado(calcularRescisao(dados));
+  }
+  // Só se gera PDF de um cálculo fechado.
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+}
+
+function gerarPdf() {
+  const tipo = TIPOS[tipoSelecionado];
+  montarMemoria({
+    titulo: 'Verbas rescisórias',
+    subtitulo: `${tipo.nome} — ${tipo.tag}`,
+    formulario: $('#formulario'),
+    resultado: $('#resultado'),
+    rodape: 'Uso orientativo. Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.',
+  });
+  imprimir(`Memoria de calculo - ${tipo.nome}`);
+}
+
+/* -------------------------------------------------------------- inicializa */
+
+montarTipos();
+montarAdicionais();
+montarDescontos();
+adicionaisMarcados = ligarGrupo('adicionais', SEM_ADICIONAIS, aplicarExclusoes);
+descontosMarcados = ligarGrupo('descontos', SEM_DESCONTOS, aplicarExclusoesDesconto);
+$('#badge-vigencia').textContent = VIGENCIA;
+$('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
+$('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
+$('#formulario').addEventListener('input', atualizar);
+// Não há botão de calcular: o resultado acompanha a digitação. O submit por
+// Enter é neutralizado para que a página nunca recarregue e perca os dados.
+$('#formulario').addEventListener('submit', (evento) => {
+  evento.preventDefault();
+  atualizar();
+});
+$('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
+
+inicializarCampos();
+$('#gerar-pdf').addEventListener('click', gerarPdf);
+$('#gerar-pdf').disabled = true;
+
+  };
+
+  /* src/app-pedidos.js */
+  __paginas['pedidos'] = function () {
+/**
+ * Interface do módulo de pedidos.
+ *
+ * O formulário é montado a partir do catálogo: cada pedido declara os seus
+ * grupos de campos e a função que faz a conta, e esta camada só desenha,
+ * lê e apresenta.
+ */
+
+  const { PEDIDOS, pedidoPorId, JORNADAS } = __modulos['src/pedidos/catalogo.js'];
+  const { VIGENCIA, VIGENCIA_DETALHE } = __modulos['src/tabelas.js'];
+  const { CARIMBO } = __modulos['src/versao.js'];
+  const { moeda } = __modulos['src/formato.js'];
+  const { lerCampos, inicializarCampos } = __modulos['src/campos.js'];
+  const { montarMemoria, imprimir } = __modulos['src/memoria.js'];
+
+const $ = (seletor) => document.querySelector(seletor);
+
+const TIPOS_DE_TEXTO = ['data', 'moeda', 'decimal', 'percentual', 'inteiro'];
+const MASCARA_POR_TIPO = { data: 'data', moeda: 'moeda', decimal: 'decimal', percentual: 'decimal', inteiro: 'inteiro' };
+
+let pedidoSelecionado = null;
+
+const pedidoAtual = () => pedidoPorId(pedidoSelecionado);
+const camposDoPedido = () => pedidoAtual()?.grupos.flatMap((g) => g.campos) ?? [];
+
+/* ------------------------------------------------------ cartões de pedido */
+
+function montarPedidos() {
+  const container = $('#pedidos');
+  container.innerHTML = '';
+  for (const pedido of PEDIDOS) {
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'tipo';
+    botao.role = 'radio';
+    botao.setAttribute('aria-checked', 'false');
+    botao.dataset.pedido = pedido.id;
+    botao.innerHTML = `
+      <span class="tipo__icone">${pedido.icone}</span>
+      <strong class="tipo__nome">${pedido.nome}</strong>
+      <span class="tipo__tag">${pedido.tag}</span>`;
+    botao.addEventListener('click', () => selecionarPedido(pedido.id));
+    container.append(botao);
+  }
+}
+
+/* --------------------------------------------------- montagem dos campos */
+
+function campoHtml(campo) {
+  const rotulo = `<span class="campo__rotulo">${campo.rotulo}${campo.obrigatorio ? ' <b>*</b>' : ''}</span>`;
+  const dica = campo.dica ? `<span class="campo__dica">${campo.dica}</span>` : '';
+  const classe = `campo${campo.largo ? ' campo--largo' : ''}`;
+
+  if (campo.tipo === 'checkbox') {
+    return `<label class="campo campo--largo checkbox" id="campo-${campo.id}">
+      <input type="checkbox" id="${campo.id}" ${campo.valor ? 'checked' : ''} />
+      <span>${campo.rotulo}</span>
+    </label>`;
+  }
+
+  if (campo.tipo === 'radios') {
+    return `<fieldset class="campo campo--largo opcoes" id="campo-${campo.id}">
+      <legend class="campo__rotulo">${campo.rotulo}</legend>
+      <div class="opcoes__lista">${campo.opcoes
+        .map((o) => `<label class="opcao">
+          <input type="radio" name="${campo.id}" value="${o.valor}" ${o.valor === campo.valor ? 'checked' : ''} />
+          ${o.label}
+        </label>`)
+        .join('')}</div>
+      ${dica}
+    </fieldset>`;
+  }
+
+  if (campo.tipo === 'select') {
+    return `<label class="${classe}" id="campo-${campo.id}">${rotulo}
+      <select id="${campo.id}">${campo.opcoes
+        .map((o) => `<option value="${o.valor}" ${o.valor === campo.valor ? 'selected' : ''}>${o.label}</option>`)
+        .join('')}</select>
+      ${dica}
+    </label>`;
+  }
+
+  const modo = campo.tipo === 'data' || campo.tipo === 'inteiro' ? 'numeric' : 'decimal';
+  const limites = (campo.min === undefined ? '' : ` data-min="${campo.min}"`)
+    + (campo.max === undefined ? '' : ` data-max="${campo.max}"`);
+  const valor = campo.valor === undefined ? '' : ` value="${campo.valor}"`;
+  const extras = campo.tipo === 'data'
+    ? ' maxlength="10" placeholder="dd/mm/aaaa"'
+    : ` placeholder="${campo.tipo === 'moeda' ? '0,00' : '0'}"`;
+
+  const entrada = `<input type="text" inputmode="${modo}" data-campo="${MASCARA_POR_TIPO[campo.tipo]}"`
+    + `${limites} id="${campo.id}"${valor}${extras} />`;
+
+  const embrulho = campo.tipo === 'moeda'
+    ? `<span class="campo__moeda"><i>R$</i>${entrada}</span>`
+    : campo.tipo === 'percentual'
+      ? `<span class="campo__moeda campo__moeda--sufixo">${entrada}<i>%</i></span>`
+      : entrada;
+
+  return `<label class="${classe}" id="campo-${campo.id}">${rotulo}${embrulho}${dica}</label>`;
+}
+
+function montarFormulario(pedido) {
+  $('#grupos-do-pedido').innerHTML = pedido.grupos
+    .map((grupo, indice) => `
+      <fieldset class="grupo" id="grupo-${indice}">
+        <legend>${grupo.titulo}</legend>
+        <div class="campos">${grupo.campos.map(campoHtml).join('')}</div>
+      </fieldset>`)
+    .join('');
+
+  inicializarCampos($('#formulario'));
+
+  // A jornada escolhida preenche o divisor, que segue editável.
+  const jornada = $('#jornada');
+  if (jornada) {
+    jornada.addEventListener('change', () => {
+      const escolhida = JORNADAS.find((j) => j.valor === jornada.value);
+      if (escolhida?.divisor) $('#divisor').value = escolhida.divisor;
+      atualizar();
+    });
+  }
+}
+
+/* --------------------------------------------------------- leitura da tela */
+
+/** Estado das escolhas, suficiente para decidir que campos aparecem. */
+function estadoDasEscolhas() {
+  const estado = {};
+  for (const campo of camposDoPedido()) {
+    if (campo.tipo === 'checkbox') estado[campo.id] = $(`#${campo.id}`)?.checked ?? false;
+    else if (campo.tipo === 'select') estado[campo.id] = $(`#${campo.id}`)?.value ?? '';
+    else if (campo.tipo === 'radios') {
+      estado[campo.id] = document.querySelector(`input[name="${campo.id}"]:checked`)?.value ?? campo.valor;
+    }
+  }
+  return estado;
+}
+
+function aplicarVisibilidade() {
+  const escolhas = estadoDasEscolhas();
+  const pedido = pedidoAtual();
+  if (!pedido) return;
+
+  pedido.grupos.forEach((grupo, indice) => {
+    const elemento = $(`#grupo-${indice}`);
+    if (elemento) elemento.hidden = grupo.aparece ? !grupo.aparece(escolhas) : false;
+  });
+
+  for (const campo of camposDoPedido()) {
+    const elemento = $(`#campo-${campo.id}`);
+    if (elemento) elemento.hidden = campo.aparece ? !campo.aparece(escolhas) : false;
+  }
+}
+
+function coletarDados() {
+  const campos = camposDoPedido();
+  const textuais = campos.filter((c) => TIPOS_DE_TEXTO.includes(c.tipo)).map((c) => c.id);
+  const { valores, erros } = lerCampos(textuais);
+
+  const dados = { ...valores, ...estadoDasEscolhas(), errosDeCampo: erros };
+  return dados;
+}
+
+/* ---------------------------------------------------------- apresentação */
+
+function linhas(itens) {
+  return itens
+    .map((i) => `<tr>
+      <td>${i.label}${i.detalhe ? `<small>${i.detalhe}</small>` : ''}</td>
+      <td>${moeda.format(i.valor)}</td>
+    </tr>`)
+    .join('');
+}
+
+function renderResultado(r) {
+  const alvo = $('#resultado');
+  const pedido = pedidoAtual();
+
+  if (r.impedimento) {
+    alvo.innerHTML = `<div class="impedimento" role="alert">
+      <b>${r.impedimento.titulo}</b>
+      <p>${r.impedimento.mensagem}</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. ${r.impedimento.bienal
+        ? 'Corrija a data de extinção do contrato ou a do ajuizamento'
+        : 'Corrija o período pedido ou a data do ajuizamento'} para liberar o cálculo.</p>
+    </div>`;
+    return;
+  }
+
+  if (r.erros.length) {
+    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+      <ul>${r.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    return;
+  }
+
+  const c = r.contexto;
+  const resumo = pedido.resumo(c).filter(([, valor]) => valor !== undefined && valor !== null);
+  const temMensais = r.mensais.length > 0;
+
+  alvo.innerHTML = `
+    ${r.recorte ? `<div class="recorte" role="alert">
+      <b>${r.recorte.titulo}</b>
+      <p>${r.recorte.mensagem}</p>
+    </div>` : ''}
+    ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+
+    <dl class="contexto">
+      ${resumo.map(([rotulo, valor]) => `<div><dt>${rotulo}</dt><dd>${valor}</dd></div>`).join('')}
+    </dl>
+
+    ${temMensais ? `<p class="bloco-titulo">Por mês</p>
+    <table class="linhas">
+      ${linhas(r.mensais)}
+      <tr class="total"><td>Total mensal</td><td>${moeda.format(r.totais.mensal)}</td></tr>
+    </table>` : ''}
+
+    <p class="bloco-titulo">${temMensais ? `No período (${c.meses} meses)` : 'Valores devidos'}</p>
+    <table class="linhas">
+      ${linhas(r.periodo)}
+      <tr class="total"><td>Total das verbas</td><td>${moeda.format(r.totais.periodo)}</td></tr>
+    </table>
+
+    ${r.fgts && r.fgts.valor > 0 ? `<div class="fgts-card">
+      <h3>FGTS</h3>
+      <table class="linhas">
+        <tr><td>FGTS sobre o período<small>${r.fgts.detalhe}</small></td><td>${moeda.format(r.fgts.valor)}</td></tr>
+        ${r.fgts.multa ? `<tr><td>Multa de 40%</td><td>${moeda.format(r.fgts.multa)}</td></tr>` : ''}
+      </table>
+    </div>` : ''}
+
+    <div class="liquido"><span>Total do pedido</span><b>${moeda.format(r.totais.geral)}</b></div>
+    <p class="observacao">Valores brutos: sem juros, sem correção monetária e sem os
+      descontos de INSS e IRRF, que são apurados na execução.</p>`;
+}
+
+function selecionarPedido(id) {
+  pedidoSelecionado = id;
+  const pedido = pedidoAtual();
+  for (const botao of document.querySelectorAll('.tipo')) {
+    botao.setAttribute('aria-checked', String(botao.dataset.pedido === id));
+  }
+
+  $('#resumo-pedido').hidden = false;
+  $('#resumo-pedido').innerHTML = `
+    <p>${pedido.descricao}</p>
+    <div class="verbas">${pedido.itens
+      .map((i) => `<span class="verba ${i.devida ? '' : 'verba--nao'}">${i.devida ? '✓' : '✕'} ${i.label}${
+        i.nota ? ` <small>(${i.nota})</small>` : ''
+      }</span>`)
+      .join('')}</div>`;
+
+  montarFormulario(pedido);
+  atualizar();
+}
+
+/* --------------------------------------------------------------- bloqueio */
+
+/** Campos que permanecem editáveis: são eles que afastam o impedimento. */
+const CAMPOS_DO_PERIODO = ['dataInicio', 'dataFim', 'dataAjuizamento', 'dataExtincao'];
+
+function bloquearEntrada(bloqueado) {
+  for (const campo of $('#formulario').querySelectorAll('input, select')) {
+    if (!CAMPOS_DO_PERIODO.includes(campo.id)) campo.disabled = bloqueado;
+  }
+  $('#formulario').classList.toggle('formulario--bloqueado', bloqueado);
+}
+
+/* ------------------------------------------------------------- atualização */
+
+function atualizar() {
+  if (!pedidoSelecionado) return;
+  aplicarVisibilidade();
+  const dados = coletarDados();
+
+  if (dados.errosDeCampo.length) {
+    $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
+      <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    bloquearEntrada(false);
+  } else {
+    const resultado = pedidoAtual().calcular(dados);
+    renderResultado(resultado);
+    bloquearEntrada(Boolean(resultado.impedimento));
+  }
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro, #resultado .impedimento'));
+}
+
+function gerarPdf() {
+  const pedido = pedidoAtual();
+  montarMemoria({
+    titulo: 'Cálculo de pedidos',
+    subtitulo: `${pedido.nome} — ${pedido.tag}`,
+    formulario: $('#formulario'),
+    resultado: $('#resultado'),
+    rodape: 'Uso orientativo. Os valores são estimativas e não substituem a memória de cálculo do processo. '
+      + 'Não há aplicação de juros nem de correção monetária.',
+  });
+  imprimir(`Memoria de calculo - ${pedido.nome}`);
+}
+
+/* -------------------------------------------------------------- inicializa */
+
+montarPedidos();
+$('#badge-vigencia').textContent = VIGENCIA;
+$('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
+$('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
+$('#formulario').addEventListener('input', atualizar);
+$('#formulario').addEventListener('change', atualizar);
+// Não há botão de calcular: o resultado acompanha a digitação. O submit por
+// Enter é neutralizado para que a página nunca recarregue e perca os dados.
+$('#formulario').addEventListener('submit', (evento) => {
+  evento.preventDefault();
+  atualizar();
+});
+$('#formulario').addEventListener('reset', () => setTimeout(() => selecionarPedido(pedidoSelecionado), 0));
+$('#gerar-pdf').addEventListener('click', gerarPdf);
+selecionarPedido('horas_extras');
+
+  };
+
+  /* ------------------------------------------------------------ roteador */
+  // Só uma aba existe no documento por vez: é isso que impede que os ids
+  // repetidos das duas telas se confundam (#formulario, #resultado e outros
+  // cinco existem nas duas).
+  const TITULOS = {"rescisao":"Verbas Rescisórias","pedidos":"Cálculo de Pedidos"};
+
+  // Os moldes saem do documento e ficam guardados aqui: trocar de aba
+  // substitui o corpo inteiro, e um <template> que morasse no corpo iria
+  // junto — a primeira troca funcionaria, e nenhuma depois dela.
+  const moldes = {};
+  for (const molde of document.querySelectorAll('template[id^="pagina-"]')) {
+    moldes[molde.id.slice('pagina-'.length)] = molde.content;
+    molde.remove();
+  }
+
+  let paginaAtual = null;
+
+  function abrir(id) {
+    if (!moldes[id] || id === paginaAtual) return;
+    paginaAtual = id;
+    document.body.replaceChildren(moldes[id].cloneNode(true));
+    document.title = TITULOS[id] + ' — Cálculos Trabalhistas';
+    if (location.hash.slice(1) !== id) location.hash = id;
+    __paginas[id]();
+  }
+
+  document.addEventListener('click', (evento) => {
+    const aba = evento.target.closest('[data-pagina]');
+    if (!aba) return;
+    evento.preventDefault();
+    abrir(aba.dataset.pagina);
+  });
+
+  // Voltar e avançar do navegador trocam de aba, como na versão web.
+  addEventListener('hashchange', () => abrir(location.hash.slice(1)));
+
+  abrir(moldes[location.hash.slice(1)] ? location.hash.slice(1) : 'rescisao');
+})();
+</script>
+</html>

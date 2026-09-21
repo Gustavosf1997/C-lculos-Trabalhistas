@@ -43,12 +43,55 @@ node tests/interface.mjs    # máscaras, validação, visibilidade e valores na 
 node tests/robustez.mjs     # uso adverso: troca de modalidade, lixo, limpar, PDF
 ```
 
+A versão portátil tem a sua própria verificação, que não precisa de servidor
+— ela abre o arquivo como o usuário abriria, por `file://`:
+
+```bash
+node tests/portatil.mjs
+```
+
 `robustez.mjs` não confere valores — confere que a ferramenta não quebra.
 Dirige o formulário como um usuário apressado (troca de modalidade no meio do
 preenchimento, digita letras, estoura limites, limpa, marca e desmarca tudo) e
 vigia três coisas: nenhuma exceção ou erro de console, nenhum `NaN`,
 `undefined` ou `[object Object]` na tela, e todo valor em reais no formato
 brasileiro com o total batendo com a soma das linhas.
+
+## Versão portátil (arquivo único)
+
+Além da versão web, há um **único arquivo `.html`** que roda sem instalação,
+sem servidor e sem internet:
+
+```
+portatil/calculos-trabalhistas.html
+```
+
+Dois cliques e ele abre no navegador que a pessoa já tem. Pode ir em pen
+drive, anexo de e-mail ou pasta de rede — não depende de nenhum outro
+arquivo. Nada é gravado fora dele: o que foi digitado se perde ao fechar a
+aba, e para guardar um cálculo usa-se o botão **Gerar PDF**.
+
+Para regerá-lo depois de mexer no código:
+
+```bash
+node ferramenta/empacotar.mjs
+```
+
+O empacotador resolve três coisas que separam a versão web da portátil:
+
+- **módulos ES não abrem por `file://`.** Os módulos são reunidos em um
+  script clássico, cada um dentro do seu próprio escopo — `arredondar` e
+  `num` existem em três arquivos e não podem se atropelar;
+- **as duas páginas repetem ids** (`#formulario`, `#resultado`, `#gerar-pdf`
+  e outros cinco). Cada aba vira um `<template>` e só uma está no documento
+  por vez, o que faz a colisão desaparecer em vez de ser contornada;
+- **as abas navegavam para outro arquivo.** Viram troca de template, com o
+  endereço (`#rescisao`, `#pedidos`) acompanhando, de modo que voltar e
+  avançar do navegador continuam funcionando.
+
+O arquivo gerado é versionado no repositório, para que se possa baixá-lo sem
+ter Node instalado. `tests/portatil.mjs` confere que ele ainda corresponde ao
+código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 
 ## Estrutura
 
@@ -78,6 +121,9 @@ brasileiro com o total batendo com a soma das linhas.
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
 | `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
 | `tests/robustez.mjs` | Uso adverso das duas telas no navegador (Playwright) |
+| `tests/portatil.mjs` | Abre o arquivo portátil por `file://` e confere que a conta dá o mesmo |
+| `ferramenta/empacotar.mjs` | Gera a versão portátil de arquivo único |
+| `portatil/calculos-trabalhistas.html` | A versão portátil, gerada — não editar à mão |
 | `tests/interface.mjs` | Verificação da interface no navegador (Playwright) |
 
 Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
