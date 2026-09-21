@@ -34,13 +34,21 @@ Os cálculos rodam no navegador — nenhum dado é enviado para servidor.
 node --test tests/*.test.mjs
 ```
 
-Há ainda uma verificação da interface no navegador (máscaras, validação e
-formato dos campos). Precisa do servidor no ar e do Playwright instalado:
+Há ainda duas verificações no navegador. Precisam do servidor no ar e do
+Playwright instalado:
 
 ```bash
 npx http-server -p 8080 -c-1 . &
-node tests/interface.mjs
+node tests/interface.mjs    # máscaras, validação, visibilidade e valores na tela
+node tests/robustez.mjs     # uso adverso: troca de modalidade, lixo, limpar, PDF
 ```
+
+`robustez.mjs` não confere valores — confere que a ferramenta não quebra.
+Dirige o formulário como um usuário apressado (troca de modalidade no meio do
+preenchimento, digita letras, estoura limites, limpa, marca e desmarca tudo) e
+vigia três coisas: nenhuma exceção ou erro de console, nenhum `NaN`,
+`undefined` ou `[object Object]` na tela, e todo valor em reais no formato
+brasileiro com o total batendo com a soma das linhas.
 
 ## Estrutura
 
@@ -68,6 +76,8 @@ node tests/interface.mjs
 | `src/app-pedidos.js` | Interface da aba de pedidos |
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
+| `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
+| `tests/robustez.mjs` | Uso adverso das duas telas no navegador (Playwright) |
 | `tests/interface.mjs` | Verificação da interface no navegador (Playwright) |
 
 Para acrescentar um tipo de rescisão (rescisão indireta, morte do empregado,
@@ -154,7 +164,8 @@ Todos os campos digitáveis são de texto com máscara, e não campos nativos de
 data ou número — assim o formato não depende do idioma do navegador:
 
 - **datas** em `dd/mm/aaaa`, com as barras inseridas durante a digitação;
-  data inexistente (31/02, por exemplo) é recusada;
+  data inexistente (31/02, por exemplo) é recusada. Data colada de outro
+  sistema no formato ISO (`2024-03-15`) é virada sozinha para `15/03/2024`;
 - **valores e quantidades** em padrão brasileiro: vírgula decimal e ponto de
   milhar (`3.500,75`). Quem digita `12.5` recebe `12,5`; quem cola `1.234`
   recebe mil duzentos e trinta e quatro, pela regra das três casas;
@@ -190,9 +201,23 @@ O que é comum a todos eles:
   ou outro;
 - **reflexos** em 13º, férias + 1/3, FGTS, multa de 40% e aviso prévio, cada um
   ligável e desligável. O FGTS incide só sobre as parcelas salariais que aquele
-  pedido apurou — a linha do resultado diz quais são;
-- **prescrição quinquenal**, apurada antes de qualquer conta quando a data do
-  ajuizamento é informada (veja abaixo).
+  pedido apurou — a linha do resultado diz quais são. As férias são o ponto que
+  depende do caso: **gozadas** no curso do contrato, elas e o terço integram a
+  base do FGTS (art. 15 da Lei 8.036/90, que não as exclui); **indenizadas**,
+  não. A escolha fica em uma marcação própria, ligada por padrão, que é o que
+  acontece num período dentro do contrato;
+- **prescrição**, apurada antes de qualquer conta quando a data do ajuizamento
+  é informada (veja abaixo);
+- **o período em meses**, contado competência a competência: mês inteiro vale
+  1, mês partido vale a fração dos seus próprios dias. De 01/01 a 31/12 dá 12
+  exatos; de 20/01 a 10/03 dá 1,71, e não 1. A regra dos 15 dias conta *avos*
+  de 13º e de férias, que são direitos adquiridos por mês de serviço — uma
+  verba que se repete todo mês é devida na proporção do tempo;
+- **avisos de coerência** entre as datas: período que avança para depois do
+  ajuizamento ou do fim do contrato é apontado, sem barrar o cálculo.
+
+Os valores são **brutos**: não há juros, correção monetária nem os descontos de
+INSS e IRRF, que se apuram na execução.
 
 ### Horas extras (art. 7º, XVI, da CF)
 
@@ -304,6 +329,9 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Periculosidade de 30% sobre o salário base, sem gratificações e prêmios | art. 193, §1º, da CLT | `calcularAdicionalRisco` |
 | Insalubridade e periculosidade não se acumulam | art. 193, §2º, da CLT | `aplicarExclusoes` |
 | Adicional de risco repercute em 13º, férias e FGTS | Súmulas 132 e 139 do TST | `insalubridade.js` |
+| FGTS sobre férias gozadas e o respectivo terço | art. 15 da Lei 8.036/90, sem exclusão legal | `fecharResultado` |
+| Aviso prévio indenizado e férias indenizadas não sofrem INSS nem IRRF | REsp repetitivo 1.230.957 do STJ e Súmula 386 do STJ | `calcularRescisao` |
+| 13º proporcional sofre INSS e IRRF, em cálculo separado | art. 7º da Lei 8.620/93 e tributação exclusiva na fonte | `calcularRescisao` |
 | Multa do art. 477: uma remuneração, e não o salário base | Tema 142 de repetitivos do TST | `multas.js` |
 | Prazo de 10 dias para pagar as verbas rescisórias | art. 477, §6º, da CLT | `PRAZO_477_DIAS` |
 | Multa afastada quando o empregado deu causa à mora | parte final do art. 477, §8º | `multas.js` |
@@ -359,11 +387,13 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   do art. 479.
 - Não aplica convenção coletiva (multa normativa, pisos, adicionais próprios).
 - Não gera TRCT nem guias (GRRF, DARF, GPS) e não persiste os cálculos.
-- Nos pedidos, não há juros nem correção monetária, e o período usa uma única
-  quantidade mensal e um único salário — períodos com jornadas ou salários
-  diferentes precisam ser calculados em separado. O cálculo também não faz a
-  evolução salarial ao longo do período: a base informada vale para todos os
-  meses.
+- Nos pedidos, não há juros, correção monetária nem desconto de INSS e IRRF, e
+  o período usa uma única quantidade mensal e um único salário — períodos com
+  jornadas ou salários diferentes precisam ser calculados em separado. O
+  cálculo também não faz a evolução salarial ao longo do período: a base
+  informada vale para todos os meses.
+- O reflexo no aviso prévio indenizado, nos pedidos, não gera avos próprios de
+  13º e de férias sobre o período projetado.
 - A pensão alimentícia é aplicada como percentual único sobre o total das
   verbas; casos reais dependem do que consta na decisão judicial.
 

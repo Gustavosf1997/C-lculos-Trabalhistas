@@ -230,7 +230,8 @@ function renderResultado(r) {
     </div>` : ''}
 
     <div class="liquido"><span>Total do pedido</span><b>${moeda.format(r.totais.geral)}</b></div>
-    <p class="observacao">Sem juros e sem correção monetária.</p>`;
+    <p class="observacao">Valores brutos: sem juros, sem correção monetária e sem os
+      descontos de INSS e IRRF, que são apurados na execução.</p>`;
 }
 
 function selecionarPedido(id) {

@@ -10,7 +10,7 @@
 import { moeda, formatarQuantidade } from '../formato.js';
 import {
   FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
-  apurarPrescricao, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
+  apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
   resultadoImpedido, validarPeriodo,
 } from './comum.js';
 
@@ -27,6 +27,8 @@ export function calcularAdicionalNoturno(dados) {
 
   const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
+
+  const alertas = conferirDatas(inicio, fim, dados);
 
   // A hora normal já vem integrada pelas parcelas salariais, entre elas o
   // adicional de risco (Súmulas 60, I, e 264 do TST).
@@ -78,6 +80,7 @@ export function calcularAdicionalNoturno(dados) {
     mesesFracionados,
     diasPeriodo,
     dados,
+    alertas,
     recorte,
     baseAviso: baseReflexos,
     chavesFgts: ['adicional_noturno', 'dsr', 'reflexo_13'],

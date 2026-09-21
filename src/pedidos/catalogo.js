@@ -108,6 +108,8 @@ const grupoReflexos = (opcoes = {}) => ({
     reflexo('reflexo13', '13º salário'),
     reflexo('reflexoFerias', 'Férias + 1/3'),
     reflexo('reflexoFGTS', 'FGTS (8%)'),
+    reflexo('fgtsSobreFerias', 'FGTS também sobre o reflexo em férias + 1/3 (desmarque se forem indenizadas)',
+      true, { aparece: (d) => d.reflexoFGTS !== false && d.reflexoFerias !== false }),
     reflexo('multaFGTS', 'Multa de 40% do FGTS (dispensa sem justa causa)', false),
     reflexo('reflexoAviso', 'Aviso prévio indenizado', false),
     { id: 'diasAviso', rotulo: 'Dias de aviso prévio', tipo: 'inteiro', valor: 30, min: 0, max: 90,

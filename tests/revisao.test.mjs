@@ -9,7 +9,7 @@ import { calcularRescisao, DIAS_AVISO_TRABALHAVEIS } from '../src/calculo.js';
 import { calcularMultas } from '../src/pedidos/multas.js';
 import { calcularAdicionalNoturno } from '../src/pedidos/noturno.js';
 import { calcularHorasExtras } from '../src/pedidos/horas-extras.js';
-import { apurarPrescricao } from '../src/pedidos/comum.js';
+import { apurarPrescricao, contarPeriodo, conferirDatas } from '../src/pedidos/comum.js';
 import { parseData } from '../src/calculo.js';
 
 const verba = (r, chave) => r.proventos.find((p) => p.chave === chave)?.valor ?? 0;
@@ -173,4 +173,86 @@ test('o pedido de demissão deve 30 dias, não o aviso proporcional', () => {
   });
   assert.equal(r.contexto.diasAvisoLegais, 30);
   assert.equal(r.descontos.find((d) => d.chave === 'aviso_nao_cumprido')?.valor, 3000);
+});
+
+
+/* ------------------- proporção do período em uma verba mensal ------------ */
+
+const periodoDe = (a, b) => contarPeriodo(parseData(a), parseData(b));
+
+test('meses fechados valem exatamente o número de meses', () => {
+  assert.equal(periodoDe('2024-01-01', '2024-12-31').meses, 12);
+  assert.equal(periodoDe('2023-06-01', '2024-05-31').meses, 12);
+  assert.equal(periodoDe('2024-02-01', '2024-02-29').meses, 1); // fevereiro bissexto
+  assert.equal(periodoDe('2024-01-01', '2024-03-31').meses, 3);
+});
+
+test('mês partido vale a fração dos seus próprios dias', () => {
+  // Meia competência não paga mês cheio de hora extra...
+  assert.equal(periodoDe('2024-01-01', '2024-01-15').meses, 0.48); // 15/31
+  // ...e cinquenta dias não são engolidos como se fossem trinta.
+  assert.equal(periodoDe('2024-01-20', '2024-03-10').meses, 1.71); // 12/31 + 1 + 10/31
+});
+
+test('a proporção cresce junto com o período', () => {
+  // A regra dos 15 dias dava saltos: 14 dias valiam zero e 15 valiam um mês.
+  let anterior = 0;
+  for (let dia = 1; dia <= 31; dia += 1) {
+    const meses = periodoDe('2024-01-01', `2024-01-${String(dia).padStart(2, '0')}`).meses;
+    assert.ok(meses >= anterior, `dia ${dia}: ${meses} < ${anterior}`);
+    assert.ok(meses <= 1, `dia ${dia}: ${meses} > 1`);
+    anterior = meses;
+  }
+  assert.equal(anterior, 1);
+});
+
+test('o período recortado pela prescrição rende o mesmo que o período certo', () => {
+  const comum = { salarioBase: 2200, divisor: 220, quantidadeHoras: 30 };
+  const recortado = calcularHorasExtras({
+    ...comum, dataInicio: '2017-01-10', dataFim: '2024-12-31', dataAjuizamento: '2026-03-15',
+  });
+  const direto = calcularHorasExtras({ ...comum, dataInicio: '2021-03-15', dataFim: '2024-12-31' });
+  assert.ok(recortado.recorte);
+  assert.equal(recortado.contexto.inicio.toISOString(), direto.contexto.inicio.toISOString());
+  assert.equal(recortado.totais.geral, direto.totais.geral);
+});
+
+
+/* ---------------------------- coerência entre as datas informadas -------- */
+
+test('período que passa do ajuizamento é apontado', () => {
+  const avisos = conferirDatas(parseData('2024-01-01'), parseData('2026-12-31'), {
+    dataAjuizamento: '2026-03-15',
+  });
+  assert.ok(avisos.some((a) => a.includes('depois do ajuizamento')));
+});
+
+test('período que passa da extinção do contrato é apontado', () => {
+  const avisos = conferirDatas(parseData('2024-01-01'), parseData('2026-12-31'), {
+    dataExtincao: '2025-06-30',
+  });
+  assert.ok(avisos.some((a) => a.includes('depois do fim do contrato')));
+});
+
+test('período que começa depois da extinção é apontado', () => {
+  const avisos = conferirDatas(parseData('2026-01-01'), parseData('2026-12-31'), {
+    dataExtincao: '2025-06-30',
+  });
+  assert.equal(avisos.length, 2); // começa depois e termina depois
+});
+
+test('datas coerentes não geram aviso nenhum', () => {
+  const avisos = conferirDatas(parseData('2022-01-01'), parseData('2024-12-31'), {
+    dataAjuizamento: '2025-03-15', dataExtincao: '2024-12-31',
+  });
+  assert.deepEqual(avisos, []);
+});
+
+test('o aviso de data chega ao resultado do pedido', () => {
+  const r = calcularHorasExtras({
+    salarioBase: 2200, divisor: 220, quantidadeHoras: 30,
+    dataInicio: '2024-01-01', dataFim: '2026-12-31', dataAjuizamento: '2026-03-15',
+  });
+  assert.ok(r.alertas.some((a) => a.includes('depois do ajuizamento')));
+  assert.ok(r.totais.geral > 0); // avisa, mas não barra
 });

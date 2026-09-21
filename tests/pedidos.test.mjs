@@ -149,7 +149,8 @@ test('sem data de ajuizamento não há impedimento a reconhecer', () => {
 
 test('FGTS e multa entram em bloco próprio', () => {
   const r = calcularHorasExtras({ ...base, multaFGTS: true });
-  const baseEsperada = Math.round((mensal(r, 'horas_extras') + mensal(r, 'dsr') + mensal(r, 'reflexo_13')) * 12 * 100) / 100;
+  const baseEsperada = Math.round((mensal(r, 'horas_extras') + mensal(r, 'dsr')
+    + mensal(r, 'reflexo_13') + mensal(r, 'reflexo_ferias')) * 12 * 100) / 100;
   assert.equal(r.fgts.base, baseEsperada);
   assert.equal(r.fgts.valor, Math.round(baseEsperada * 0.08 * 100) / 100);
   assert.equal(r.fgts.multa, Math.round(r.fgts.valor * 0.4 * 100) / 100);
@@ -165,7 +166,7 @@ test('período menor que uma competência vira fração de mês, não zero', () 
   const r = calcularHorasExtras({ ...base, dataInicio: '2024-01-20', dataFim: '2024-02-10' });
   assert.equal(r.contexto.diasPeriodo, 22);
   assert.ok(r.contexto.mesesFracionados);
-  assert.equal(r.contexto.meses, 0.73); // 22 / 30
+  assert.equal(r.contexto.meses, 0.73); // 12/31 de janeiro + 10/29 de fevereiro
   assert.ok(r.totais.periodo > 0);
 });
 

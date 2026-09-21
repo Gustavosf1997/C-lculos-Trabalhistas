@@ -8,7 +8,7 @@
  */
 
 import { FGTS, SALARIO_MINIMO } from '../tabelas.js';
-import { parseData, formatarData, contarMeses, diasEntre } from '../calculo.js';
+import { parseData, formatarData, diasEntre } from '../calculo.js';
 import { formatarNumeroBR } from '../formato.js';
 
 /** Divisor mensal padrão (44h semanais). */
@@ -152,16 +152,66 @@ export function apurarPrescricao(inicio, fim, dados = {}) {
   return { impedimento: null, recorte: null, inicioCalculo: inicio };
 }
 
-/** Meses de competência do período; período curto vira fração de mês. */
+/**
+ * Avisos de coerência entre as datas informadas. Não barram o cálculo: são
+ * combinações possíveis, mas que quase sempre denunciam erro de digitação.
+ */
+export function conferirDatas(inicio, fim, dados = {}) {
+  const avisos = [];
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const extincao = parseData(dados.dataExtincao);
+
+  if (ajuizamento && fim > ajuizamento) {
+    avisos.push(
+      `O período pedido vai até ${formatarData(fim)}, depois do ajuizamento em `
+        + `${formatarData(ajuizamento)}. Parcelas posteriores à inicial só entram por aditamento ou `
+        + 'como pedido de trato sucessivo — confira as datas.',
+    );
+  }
+  if (extincao && fim > extincao) {
+    avisos.push(
+      `O contrato foi extinto em ${formatarData(extincao)} e o período pedido vai até `
+        + `${formatarData(fim)}. Não há parcela devida depois do fim do contrato.`,
+    );
+  }
+  if (extincao && inicio > extincao) {
+    avisos.push(
+      `O período pedido começa em ${formatarData(inicio)}, depois da extinção do contrato em `
+        + `${formatarData(extincao)}. Confira as datas.`,
+    );
+  }
+  return avisos;
+}
+
+/**
+ * Quantos meses o período vale, para multiplicar uma verba mensal.
+ *
+ * Conta competência a competência: mês inteiro vale 1, mês partido vale a
+ * fração dos seus próprios dias. Um período de 01/01 a 31/12 dá 12 exatos;
+ * 20/01 a 10/03 dá 1,71, e não 1.
+ *
+ * A regra dos 15 dias não serve aqui: ela conta *avos* de 13º e de férias, que
+ * são direitos adquiridos por mês de serviço. Uma verba que se repete todo mês
+ * — hora extra, adicional, intervalo — é devida na proporção do tempo, sob
+ * pena de pagar mês cheio por quinze dias ou de engolir cinquenta dias como se
+ * fossem trinta.
+ */
 export function contarPeriodo(inicio, fim) {
   const diasPeriodo = diasEntre(inicio, fim);
-  const mesesInteiros = contarMeses(inicio, fim);
-  return {
-    diasPeriodo,
-    mesesInteiros,
-    meses: mesesInteiros > 0 ? mesesInteiros : Math.round((diasPeriodo / 30) * 100) / 100,
-    mesesFracionados: mesesInteiros === 0,
-  };
+
+  let proporcao = 0;
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const primeiroDoMes = cursor;
+    const ultimoDoMes = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > primeiroDoMes ? inicio : primeiroDoMes;
+    const ate = fim < ultimoDoMes ? fim : ultimoDoMes;
+    proporcao += diasEntre(de, ate) / ultimoDoMes.getUTCDate();
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+
+  const meses = Math.round(proporcao * 100) / 100;
+  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses) };
 }
 
 /** Enumera em português: "a", "a e b", "a, b e c". */
@@ -232,9 +282,18 @@ export function fecharResultado({
   const totalPeriodo = arredondar(periodo.reduce((soma, p) => soma + p.valor, 0));
 
   // A base do FGTS é a soma das verbas de natureza salarial que o cálculo
-  // apurou — nunca todas: férias indenizadas e parcelas indenizatórias ficam
-  // de fora. Cada pedido diz quais entram pela chave da verba.
-  const parcelasFgts = mensais.filter((m) => chavesFgts.includes(m.chave));
+  // apurou — nunca todas: as parcelas indenizatórias ficam de fora. Cada
+  // pedido diz quais entram pela chave da verba.
+  //
+  // As férias são o ponto que depende do caso: gozadas no curso do contrato,
+  // elas e o terço integram a base (art. 15 da Lei 8.036/90, sem exclusão
+  // legal); indenizadas, não. Só quem calcula sabe qual foi, então a escolha
+  // fica na tela — ligada por padrão, que é o que acontece num período dentro
+  // do contrato.
+  const chaves = chavesFgts.length && dados.fgtsSobreFerias !== false
+    ? [...chavesFgts, 'reflexo_ferias']
+    : chavesFgts;
+  const parcelasFgts = mensais.filter((m) => chaves.includes(m.chave));
   const baseFgtsMes = arredondar(parcelasFgts.reduce((soma, m) => soma + m.valor, 0));
   const querFgts = dados.reflexoFGTS !== false && baseFgtsMes > 0;
   const base = querFgts ? arredondar(baseFgtsMes * meses + valorAviso) : 0;

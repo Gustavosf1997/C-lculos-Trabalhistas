@@ -7,7 +7,7 @@ import { parseData, formatarData } from '../calculo.js';
 import { moeda, formatarQuantidade } from '../formato.js';
 import {
   MARCO_OJ_394, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
-  apurarPrescricao, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
+  apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
   resultadoImpedido, validarPeriodo,
 } from './comum.js';
 
@@ -25,7 +25,7 @@ export function calcularHorasExtras(dados) {
   const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
-  const alertas = [];
+  const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);

@@ -13,7 +13,7 @@
 import { moeda, formatarQuantidade } from '../formato.js';
 import {
   MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
-  apurarPrescricao, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
+  apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
   resultadoImpedido, validarPeriodo,
 } from './comum.js';
 import { parseData, formatarData } from '../calculo.js';
@@ -32,7 +32,7 @@ export function calcularIntervalo(dados) {
   const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
   if (impedimento) return resultadoImpedido(impedimento);
 
-  const alertas = [];
+  const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);

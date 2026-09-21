@@ -109,15 +109,33 @@ export function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape
 }
 
 /**
+ * Título verdadeiro da página, guardado enquanto a impressão o empresta.
+ *
+ * Fica fora da função de propósito: gerar dois PDFs seguidos, antes que o
+ * primeiro devolva o título, faria a segunda chamada guardar "Memória de
+ * cálculo — ..." como se fosse o original, e a aba ficaria com esse nome até
+ * a página ser recarregada.
+ */
+let tituloDaPagina = null;
+let devolucaoAgendada = null;
+
+/**
  * Abre a janela de impressão. O nome sugerido para o arquivo vem do título da
  * página, então ele é trocado durante a impressão e devolvido em seguida.
  */
 export function imprimir(nomeArquivo) {
-  const tituloOriginal = document.title;
+  if (tituloDaPagina === null) tituloDaPagina = document.title;
+  clearTimeout(devolucaoAgendada);
+
   document.title = nomeArquivo;
-  const restaurar = () => { document.title = tituloOriginal; };
+  const restaurar = () => {
+    clearTimeout(devolucaoAgendada);
+    if (tituloDaPagina === null) return; // já devolvido por outra chamada
+    document.title = tituloDaPagina;
+    tituloDaPagina = null;
+  };
   addEventListener('afterprint', restaurar, { once: true });
   print();
   // Navegador que não dispara afterprint não deixa o título trocado.
-  setTimeout(restaurar, 1000);
+  devolucaoAgendada = setTimeout(restaurar, 1000);
 }

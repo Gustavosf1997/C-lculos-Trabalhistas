@@ -329,10 +329,13 @@ function renderResultado(resultado) {
 /* ------------------------------------------------------------- atualização */
 
 function atualizarDicas(dados) {
+  // O divisor precisa vir junto: é ele que define a hora sobre a qual incide o
+  // adicional noturno. Sem passá-lo, a dica usava 220 e divergia do cálculo.
   const adicionais = calcularAdicionais({
     selecionados: dados.adicionais,
     salarioBase: dados.salarioBase,
     horasNoturnas: dados.horasNoturnas,
+    divisor: dados.divisor || undefined,
   });
   // Base das indenizações: salário, adicionais e médias de variáveis. As horas
   // extras do mês são verba própria e aparecem à parte.

@@ -82,9 +82,19 @@ export function formatarDataBR(iso) {
   return combinacao ? `${combinacao[3]}/${combinacao[2]}/${combinacao[1]}` : '';
 }
 
-/** Máscara progressiva dd/mm/aaaa: descarta tudo que não for dígito. */
+/**
+ * Máscara progressiva dd/mm/aaaa: descarta tudo que não for dígito.
+ *
+ * Uma data colada no formato ISO (aaaa-mm-dd ou aaaa/mm/dd) é virada antes de
+ * a máscara agir. Sem isso, "2024-03-15" viraria "20/24/0315" — recusado
+ * depois como data inválida, mas sem que a pessoa entenda por quê.
+ */
 export function mascararData(texto) {
-  const digitos = String(texto ?? '').replace(/\D/g, '').slice(0, 8);
+  const bruto = String(texto ?? '').trim();
+  const iso = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(bruto);
+  const fonte = iso ? `${iso[3]}${iso[2]}${iso[1]}` : bruto;
+
+  const digitos = fonte.replace(/\D/g, '').slice(0, 8);
   if (digitos.length <= 2) return digitos;
   if (digitos.length <= 4) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
   return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;

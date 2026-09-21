@@ -246,7 +246,14 @@ await page.waitForTimeout(350);
 const noturno = await texto();
 checar('30 h de relógio viram 34,29 h fictas', noturno.includes('34,29'), null);
 checar('adicional noturno de R$ 68,57', noturno.includes('R$ 68,57'), null);
-checar('FGTS descreve a base real', noturno.includes('8% sobre adicional noturno, DSR e 13º'), null);
+checar('FGTS descreve a base real',
+  noturno.includes('8% sobre adicional noturno, DSR, 13º e férias + 1/3'), null);
+// férias indenizadas saem da base, e a linha passa a dizer isso
+await page.uncheck('#fgtsSobreFerias');
+await page.waitForTimeout(350);
+checar('desmarcar férias encurta a base do FGTS',
+  (await texto()).includes('8% sobre adicional noturno, DSR e 13º'), null);
+await page.check('#fgtsSobreFerias');
 await page.check('input[name="risco"][value="periculosidade"]');
 await page.waitForTimeout(350);
 // hora de R$ 13,00 (2.200 + 30%) x 34,29 h fictas x 20%
