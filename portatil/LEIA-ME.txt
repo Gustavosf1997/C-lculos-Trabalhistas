@@ -35,6 +35,13 @@ DUAS ABAS
     Trocar de aba limpa a tela: cada cálculo começa do zero.
 
 
+PRESCRIÇÃO
+    Apurada nas três telas — rescisão, pedidos e multas. Informe a data do
+    ajuizamento: com ela a ferramenta aponta a prescrição bienal (contada do
+    fim do aviso, inclusive o projetado) e a quinquenal. Sem ela, o resumo
+    diz até quando se pode ajuizar e avisa se esse prazo já passou.
+
+
 TABELAS APLICADAS
     As de 2026. A data de atualização aparece no cabeçalho da própria
     ferramenta — se ela estiver velha, procure uma versão mais nova. Confira

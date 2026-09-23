@@ -12,11 +12,16 @@
  *
  * Art. 467: as verbas rescisórias incontroversas não pagas até a primeira
  * audiência são acrescidas de 50%.
+ *
+ * As duas nascem com a rescisão, de modo que só o biênio as alcança: o
+ * quinquênio contado do ajuizamento nunca chega antes dele. O biênio corre do
+ * fim do aviso, projetado quando indenizado (OJ 83 da SDI-1).
  */
 
 import { parseData, formatarData, diasEntre } from '../calculo.js';
 import { moeda } from '../formato.js';
-import { arredondar, num, resultadoComErros } from './comum.js';
+import { arredondar, num, resultadoComErros, resultadoImpedido } from './comum.js';
+import { apurarBienal, descreverPrescricao } from '../prescricao.js';
 
 /** Prazo do art. 477, §6º, da CLT. */
 export const PRAZO_477_DIAS = 10;
@@ -43,7 +48,16 @@ export function calcularMultas(dados) {
   }
   if (erros.length) return resultadoComErros(erros);
 
-  const alertas = [];
+  // O biênio corre do fim do aviso projetado, se houve; senão, do término.
+  const fimDoContrato = parseData(dados.dataFimAviso) ?? rescisao;
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const bienal = apurarBienal(fimDoContrato, ajuizamento, dados.dataReferencia);
+  if (bienal.impedimento) return resultadoImpedido(bienal.impedimento);
+
+  const alertas = bienal.alerta ? [bienal.alerta] : [];
+  if (ajuizamento && !fimDoContrato) {
+    alertas.push('Informe o término do contrato para apurar a prescrição bienal.');
+  }
   const itens = [];
   let prazo = null;
   let diasAtraso = 0;
@@ -106,6 +120,9 @@ export function calcularMultas(dados) {
       parcelasHabituais: arredondar(parcelasHabituais),
       remuneracao,
       incontroverso: arredondar(incontroverso),
+      prescricao: fimDoContrato
+        ? descreverPrescricao({ ajuizamento, limite: bienal.limite, marco: null })
+        : null,
     },
     mensais: [],
     periodo: itens,

@@ -22,8 +22,9 @@ export function calcularHorasExtras(dados) {
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas extras.');
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
-  if (impedimento) return resultadoImpedido(impedimento);
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
@@ -92,7 +93,7 @@ export function calcularHorasExtras(dados) {
     diasPeriodo,
     dados,
     alertas,
-    recorte,
+    prescricao,
     baseAviso: horasExtrasMes + (querDSR ? dsrMes : 0),
     chavesFgts: ['horas_extras', 'dsr', 'reflexo_13'],
     contexto: {

@@ -169,6 +169,61 @@ checar('memória traz o resultado', memoria.includes('Total bruto'), null);
 checar('memória fora da tela', await page.locator('#memoria').isHidden(), null);
 
 /* ------------------------------------------------------------- pedidos */
+/* --- prescrição na rescisão (OJ 83 e art. 149) --- */
+await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+await page.click('[data-tipo="sem_justa_causa"]');
+await page.fill('#dataAdmissao', '10/01/2014');
+await page.fill('#dataAviso', '10/01/2024');
+await page.fill('#salarioBase', '3.000,00');
+await page.waitForTimeout(300);
+const semAcao = (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ');
+checar('rescisão: resumo pede o ajuizamento', semAcao.includes('informe o ajuizamento'), null);
+checar('rescisão: biênio vencido vira aviso sem ajuizamento', semAcao.includes('10/03/2026'), null);
+
+await page.fill('#dataAjuizamento', '01/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: aviso projetado mantém a ação tempestiva (OJ 83)',
+  (await page.locator('#resultado .impedimento').count()) === 0
+  && (await page.locator('#resultado .liquido b').count()) === 1, null);
+
+await page.fill('#dataAjuizamento', '11/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: bienal em caixa vermelha',
+  (await page.locator('#resultado .impedimento').innerText().catch(() => '')).includes('bienal'), null);
+checar('rescisão: bienal bloqueia o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('rescisão: datas seguem editáveis', !(await page.locator('#dataAjuizamento').isDisabled()), null);
+checar('rescisão: tipo de aviso segue editável',
+  !(await page.locator('input[name="tipoAviso"]').first().isDisabled()), null);
+checar('rescisão: PDF bloqueado com a prescrição', await page.locator('#gerar-pdf').isDisabled(), null);
+
+// O que segue editável não pode parecer travado: o ajuizamento mora no
+// segundo grupo, e uma regra "esmaece todo grupo menos o primeiro" o apagava.
+const opacidade = (seletor) => page.evaluate((sel) => {
+  let el = document.querySelector(sel);
+  let total = 1;
+  while (el) { total *= Number(getComputedStyle(el).opacity); el = el.parentElement; }
+  return Math.round(total * 100) / 100;
+}, seletor);
+checar('rescisão: ajuizamento nítido sob bloqueio', (await opacidade('#dataAjuizamento')) === 1,
+  await opacidade('#dataAjuizamento'));
+checar('rescisão: tipo de aviso nítido sob bloqueio', (await opacidade('input[name="tipoAviso"]')) === 1, null);
+checar('rescisão: salário esmaecido sob bloqueio', (await opacidade('#salarioBase')) < 1, null);
+
+await page.fill('#dataAjuizamento', '');
+await page.waitForTimeout(300);
+checar('rescisão: apagar o ajuizamento desbloqueia', !(await page.locator('#salarioBase').isDisabled()), null);
+
+// férias vencidas prescritas: laranja, e o cálculo segue
+await page.fill('#dataAdmissao', '01/02/2015');
+await page.fill('#dataAviso', '01/08/2023');
+await page.fill('#periodosFeriasVencidas', '6');
+await page.fill('#dataAjuizamento', '01/02/2025');
+await page.waitForTimeout(300);
+const recorteFerias = await page.locator('#resultado .recorte').innerText().catch(() => '');
+checar('rescisão: férias prescritas em caixa laranja', recorteFerias.includes('art. 149'), recorteFerias.slice(0, 60));
+checar('rescisão: só as férias exigíveis entram',
+  (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ').includes('R$ 12.000,00'), null);
+
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');
 await page.locator('#divisor').pressSequentially('2a2b0');

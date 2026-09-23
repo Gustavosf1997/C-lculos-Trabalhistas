@@ -130,6 +130,70 @@ await page.goForward();
 await page.waitForTimeout(350);
 checar('o botão avançar também', (await page.locator('#tipos .tipo').count()) === 7, null);
 
+/* --- prescrição na rescisão: biênio da OJ 83 e férias do art. 149 --- */
+await page.click('[data-tipo="sem_justa_causa"]');
+await page.fill('#dataAdmissao', '10/01/2014');
+await page.fill('#dataAviso', '10/01/2024');
+await page.fill('#salarioBase', '3.000,00');
+await page.waitForTimeout(300);
+checar('rescisão: o campo de ajuizamento existe', (await page.locator('#dataAjuizamento').count()) === 1, null);
+checar('rescisão: sem ajuizamento, o resumo diz que não apurou', (await texto()).includes('informe o ajuizamento'), null);
+checar('rescisão: sem ajuizamento, avisa do biênio vencido', (await texto()).includes('10/03/2026'), null);
+await page.fill('#dataAjuizamento', '01/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: projeção do aviso mantém a ação no prazo', (await page.locator('#resultado .impedimento').count()) === 0, null);
+await page.fill('#dataAjuizamento', '11/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: prescrição bienal em caixa vermelha', (await texto()).includes('prescrição bienal'), null);
+checar('rescisão: bienal bloqueia a digitação', await page.locator('#salarioBase').isDisabled(), null);
+await page.fill('#dataAdmissao', '01/02/2015');
+await page.fill('#dataAviso', '01/08/2023');
+await page.fill('#dataAjuizamento', '01/02/2025');
+await page.waitForTimeout(300);
+await page.fill('#periodosFeriasVencidas', '6');
+await page.waitForTimeout(300);
+checar('rescisão: férias do art. 149 prescritas em caixa laranja',
+  (await page.locator('#resultado .recorte').innerText().catch(() => '')).includes('art. 149'), null);
+checar('rescisão: só 4 dos 6 períodos entram', (await texto()).includes('R$ 12.000,00'), null);
+await page.click('#formulario button[type="reset"]');
+await page.waitForTimeout(300);
+
+/* --- prescrição nos pedidos e nas multas --- */
+await page.click('[data-pagina="pedidos"]');
+await page.waitForTimeout(300);
+await page.fill('#salarioBase', '2.200,00');
+await page.fill('#quantidadeHoras', '30');
+await page.fill('#dataInicio', '01/01/2019');
+await page.fill('#dataFim', '31/12/2023');
+await page.waitForTimeout(300);
+checar('pedidos: sem ajuizamento, o resumo diz que não apurou', (await texto()).includes('informe o ajuizamento'), null);
+await page.fill('#dataAjuizamento', '23/09/2026');
+await page.waitForTimeout(300);
+checar('pedidos: quinquenal parcial em caixa laranja',
+  (await page.locator('#resultado .recorte').innerText().catch(() => '')).includes('23/09/2021'), null);
+await page.fill('#dataExtincao', '31/12/2023');
+await page.waitForTimeout(300);
+checar('pedidos: prescrição bienal em caixa vermelha', (await texto()).includes('prescrição bienal'), null);
+await page.fill('#dataExtincao', '');
+await page.waitForTimeout(300);
+
+await page.click('[data-pedido="multas"]');
+await page.waitForTimeout(250);
+await page.fill('#salarioBase', '2.500,00');
+await page.fill('#dataRescisao', '01/03/2023');
+await page.fill('#dataPagamento', '30/03/2023');
+await page.waitForTimeout(300);
+checar('multas: sem ajuizamento, avisa do biênio vencido', (await texto()).includes('01/03/2025'), null);
+await page.fill('#dataAjuizamento', '02/03/2025');
+await page.waitForTimeout(300);
+checar('multas: prescrição bienal em caixa vermelha', (await texto()).includes('prescrição bienal'), null);
+await page.fill('#dataFimAviso', '15/05/2023');
+await page.waitForTimeout(300);
+checar('multas: aviso projetado afasta a prescrição (OJ 83)',
+  (await page.locator('#resultado .impedimento').count()) === 0, null);
+await page.click('[data-pagina="rescisao"]');
+await page.waitForTimeout(300);
+
 /* --- PDF --- */
 await page.click('[data-tipo="sem_justa_causa"]');
 await page.fill('#dataAdmissao', '01/01/2020');

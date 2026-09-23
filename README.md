@@ -111,6 +111,7 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `src/pedidos/intervalo.js` | Intervalo intrajornada nos dois regimes do art. 71, §4º |
 | `src/pedidos/insalubridade.js` | Insalubridade e periculosidade como pedido autônomo |
 | `src/pedidos/multas.js` | Multas dos arts. 467 e 477, §8º, da CLT |
+| `src/prescricao.js` | Prescrição bienal e quinquenal, comum às duas telas (módulo puro, sem dependências) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
 | `src/memoria.js` | Memória de cálculo para impressão e PDF |
@@ -119,6 +120,7 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `src/app-pedidos.js` | Interface da aba de pedidos |
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
+| `tests/prescricao.test.mjs` | Prescrição nas três telas: rescisão, pedidos com período e multas |
 | `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
 | `tests/robustez.mjs` | Uso adverso das duas telas no navegador (Playwright) |
 | `tests/portatil.mjs` | Abre o arquivo portátil por `file://` e confere que a conta dá o mesmo |
@@ -324,26 +326,48 @@ Pedido sem período e sem FGTS:
 
 ### Prescrição
 
-O art. 7º, XXIX, da CF reúne dois prazos, e a Súmula 308 do TST os harmoniza.
-A ferramenta apura os dois antes de qualquer conta:
+A prescrição é apurada nas **três telas** — verbas rescisórias, pedidos com
+período e multas —, sempre antes de qualquer conta. O art. 7º, XXIX, da CF
+reúne dois prazos, e a Súmula 308 do TST os harmoniza:
 
-- **bienal** — extinto o contrato, a ação tem de ser ajuizada em dois anos.
-  Informe a data de extinção e, se o ajuizamento vier depois do biênio, nada
-  resta a calcular: a pretensão inteira está prescrita, inclusive o que
-  caberia no quinquênio;
+- **bienal** — extinto o contrato, a ação tem de ser ajuizada em dois anos,
+  contados do **fim do aviso prévio, inclusive o projetado** quando ele é
+  indenizado (OJ 83 da SDI-1). Um aviso de 60 dias pode ser a diferença entre
+  uma ação tempestiva e uma prescrita. Perdido o biênio, nada resta a
+  calcular: caixa vermelha no lugar do resultado e campos bloqueados;
 - **quinquenal** — respeitado o biênio, são exigíveis as parcelas dos cinco
   anos imediatamente anteriores ao **ajuizamento**, e não à extinção do
   contrato (Súmula 308, I).
 
-O quinquênio tem dois desfechos:
+Os prazos em anos vencem no dia de igual número; faltando esse dia (29 de
+fevereiro), no imediato (art. 132, §3º, do Código Civil). Ajuizar no último
+dia do biênio é tempestivo; no dia seguinte, não.
 
-- **período inteiro prescrito** — nada a calcular. Caixa vermelha no lugar do
-  resultado e demais campos bloqueados; só as datas seguem editáveis, já que é
-  por elas que o impedimento se afasta;
-- **parte do período prescrita** — o cálculo corre a partir do marco
-  quinquenal e só sobre ele. Um aviso no topo do resultado diz quais parcelas
-  estão prescritas e qual período foi efetivamente calculado, e o resumo traz
-  esse período. O recorte dá o mesmo resultado de pedir o período já ajustado.
+Em cada tela:
+
+- **verbas rescisórias** — o biênio corre da data projetada que o próprio
+  cálculo já apura. O quinquênio só alcança as **férias vencidas**, que têm
+  marco próprio: prescrevem em cinco anos contados do fim do período
+  concessivo (art. 149 da CLT). Os períodos não gozados são os últimos
+  completos; os mais antigos, com o concessivo encerrado antes do marco
+  quinquenal, saem da conta, e uma caixa laranja diz quais. As demais verbas
+  nascem com a rescisão e, dentro do biênio, nunca estão prescritas;
+- **pedidos com período** — o quinquênio recorta o período pedido; se tudo
+  estiver antes do marco, o pedido inteiro está prescrito. Para o biênio,
+  informe a extinção do contrato, já com a projeção do aviso;
+- **multas dos arts. 467 e 477** — nascem com a rescisão, então só o biênio
+  as alcança. Se houve aviso indenizado, informe o fim dele: é de lá que o
+  biênio corre.
+
+**Sem a data do ajuizamento**, a ferramenta não afirma prescrição nenhuma — a
+ação pode já ter sido proposta —, mas também não fica em silêncio: o resumo
+traz a linha "Prescrição" dizendo até quando se pode ajuizar, e, se esse prazo
+já passou em relação a hoje, um aviso diz isso com todas as letras.
+
+Quando o impedimento trava a tela, seguem livres só as entradas que podem
+afastá-lo: as datas e, na rescisão, o tipo de aviso (o indenizado projeta o
+contrato e empurra o biênio). O que está travado aparece esmaecido; o que está
+livre, não.
 
 ## Base legal conferida
 
@@ -382,8 +406,11 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Prazo de 10 dias para pagar as verbas rescisórias | art. 477, §6º, da CLT | `PRAZO_477_DIAS` |
 | Multa afastada quando o empregado deu causa à mora | parte final do art. 477, §8º | `multas.js` |
 | Multa do art. 467: 50% sobre as verbas incontroversas | art. 467 da CLT | `multas.js` |
-| Prescrição bienal de dois anos da extinção do contrato | art. 7º, XXIX, da CF | `apurarPrescricao` |
-| Quinquênio contado do ajuizamento, não da extinção | Súmula 308, I, do TST | `apurarPrescricao` |
+| Prescrição bienal de dois anos da extinção do contrato | art. 7º, XXIX, da CF | `apurarBienal` |
+| O biênio corre do fim do aviso prévio, inclusive o projetado | OJ 83 da SDI-1 do TST | `apurarBienal` |
+| Quinquênio contado do ajuizamento, não da extinção | Súmula 308, I, do TST | `marcoQuinquenal` |
+| Férias prescrevem em cinco anos do fim do período concessivo | art. 149 da CLT | `fimDoConcessivo` |
+| Prazo em anos vence no dia de igual número, ou no imediato | art. 132, §3º, do Código Civil | `limiteBienal` |
 | INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
 | Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
 | Redutor mensal de R$ 978,62 − 0,133145 × rendimento | Lei 15.270/2025 | `calcularRedutorIRRF` |
@@ -412,8 +439,12 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 - Na aba de **rescisão**, o adicional noturno não aplica a hora noturna
   reduzida de 52min30s (art. 73, §1º) — o pedido autônomo de adicional noturno,
   na outra aba, aplica.
-- A prescrição bienal só é apurada quando a data de extinção do contrato é
-  informada na aba de pedidos; sem ela, apenas o quinquênio é verificado.
+- A prescrição só é afirmada com a data do ajuizamento; sem ela, a tela diz até
+  quando se pode ajuizar e avisa se esse prazo já passou. Nos pedidos, o
+  biênio depende também da data de extinção do contrato.
+- Não há suspensão nem interrupção de prazo: protesto interruptivo, ação
+  anterior arquivada (Súmula 268 do TST) e menoridade (art. 440 da CLT) ficam
+  por conta de quem calcula.
 - A insalubridade da aba de **rescisão** tem base fixa no salário mínimo; o
   pedido autônomo, na outra aba, aceita as três bases.
 - O pedido de intervalo intrajornada calcula um regime por vez: período que

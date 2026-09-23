@@ -7,7 +7,7 @@ import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
 import { calcularRescisao, formatarData, valorHorasExtras } from './calculo.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
 import { CARIMBO } from './versao.js';
-import { moeda } from './formato.js';
+import { moeda, hojeISO } from './formato.js';
 import { lerCampos, inicializarCampos, marcarErro } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
@@ -17,7 +17,7 @@ const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
-  'dataAdmissao', 'dataAviso', 'dataTermoFinal',
+  'dataAdmissao', 'dataAviso', 'dataTermoFinal', 'dataAjuizamento',
   'salarioBase', 'divisor', 'horasExtras', 'adicionalHoraExtra', 'mediaComissoes', 'horasNoturnas',
   'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
   'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
@@ -37,6 +37,8 @@ function coletarDados() {
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
     adicionais: adicionaisMarcados(),
     descontos: descontosMarcados(),
+    // "Hoje" só serve para avisar de biênio vencido quando a ação não tem data.
+    dataReferencia: hojeISO(),
     errosDeCampo: erros,
   };
 }
@@ -254,6 +256,18 @@ function renderResultado(resultado) {
     return;
   }
 
+  // Prescrição bienal é fato impeditivo: nada a calcular, e a caixa vermelha
+  // ocupa o lugar do resultado.
+  if (resultado.impedimento) {
+    atualizarDicaPeriodos(null);
+    alvo.innerHTML = `<div class="impedimento" role="alert">
+      <b>${resultado.impedimento.titulo}</b>
+      <p>${resultado.impedimento.mensagem}</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. Corrija as datas do contrato, o tipo de aviso ou a data do ajuizamento para liberar o cálculo.</p>
+    </div>`;
+    return;
+  }
+
   const { contexto: c, proventos, descontos, totais, fgts } = resultado;
   const tipo = TIPOS[tipoSelecionado];
   atualizarDicaPeriodos(c);
@@ -287,9 +301,14 @@ function renderResultado(resultado) {
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
     ['Férias vencidas', c.periodosVencidos ? `${c.periodosVencidos} período(s)` : 'nenhum computado'],
+    ['Prescrição', c.prescricao],
   );
 
   alvo.innerHTML = `
+    ${resultado.recorte ? `<div class="recorte" role="alert">
+      <b>${resultado.recorte.titulo}</b>
+      <p>${resultado.recorte.mensagem}</p>
+    </div>` : ''}
     ${resultado.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
     <dl class="contexto">
       ${contexto.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
@@ -374,6 +393,23 @@ function atualizarDicaPeriodos(contexto) {
     : 'Preencha as datas para ver os períodos aquisitivos completos.';
 }
 
+/**
+ * Bloqueia a digitação quando a prescrição bienal fulmina o pedido.
+ *
+ * Seguem livres só as entradas que podem afastar o impedimento: as datas, o
+ * tipo de aviso (o indenizado projeta o contrato e empurra o biênio) e a
+ * cláusula assecuratória, que faz surgir o aviso.
+ */
+function bloquearEntrada(bloqueado) {
+  for (const campo of $('#formulario').querySelectorAll('input, select')) {
+    const libera = campo.dataset.campo === 'data'
+      || campo.name === 'tipoAviso'
+      || campo.id === 'clausulaAssecuratoria';
+    campo.disabled = bloqueado && !libera;
+  }
+  $('#formulario').classList.toggle('formulario--bloqueado', bloqueado);
+}
+
 function atualizar() {
   aplicarVisibilidadeMarcacoes();
   const dados = coletarDados();
@@ -386,11 +422,14 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    bloquearEntrada(false);
   } else {
-    renderResultado(calcularRescisao(dados));
+    const resultado = calcularRescisao(dados);
+    renderResultado(resultado);
+    bloquearEntrada(Boolean(resultado.impedimento));
   }
   // Só se gera PDF de um cálculo fechado.
-  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro'));
+  $('#gerar-pdf').disabled = Boolean($('#resultado .aviso-erro, #resultado .impedimento'));
 }
 
 function gerarPdf() {
@@ -422,6 +461,7 @@ $('#formulario').addEventListener('submit', (evento) => {
   evento.preventDefault();
   atualizar();
 });
+// Limpar também desfaz o bloqueio: sem datas, não há prescrição a apurar.
 $('#formulario').addEventListener('reset', () => setTimeout(atualizar, 0));
 
 inicializarCampos();

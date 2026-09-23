@@ -25,8 +25,9 @@ export function calcularAdicionalRiscoPedido(dados) {
   }
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados);
-  if (impedimento) return resultadoImpedido(impedimento);
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
@@ -48,7 +49,7 @@ export function calcularAdicionalRiscoPedido(dados) {
     diasPeriodo,
     dados,
     alertas,
-    recorte,
+    prescricao,
     baseAviso: risco.valor,
     chavesFgts: ['adicional_risco', 'reflexo_13'],
     contexto: {

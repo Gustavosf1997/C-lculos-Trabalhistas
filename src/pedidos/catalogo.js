@@ -23,6 +23,7 @@ import { formatarData } from '../calculo.js';
 const resumoDoPeriodo = (c) => [
   ['Período calculado', `${formatarData(c.inicio)} a ${formatarData(c.fim)}`],
   ['Meses no período', c.mesesFracionados ? `${formatarQuantidade(c.meses)} (${c.diasPeriodo} dias)` : String(c.meses)],
+  ['Prescrição', c.prescricao],
 ];
 
 /** Jornadas usuais e o divisor mensal correspondente (Súmula 431 do TST). */
@@ -44,8 +45,8 @@ const grupoPeriodo = {
     { id: 'dataAjuizamento', rotulo: 'Data do ajuizamento', tipo: 'data',
       dica: 'Marco da prescrição quinquenal (Súmula 308, I, do TST).' },
     { id: 'dataExtincao', rotulo: 'Extinção do contrato', tipo: 'data',
-      dica: 'Se informada, apura também a prescrição bienal: ajuizamento mais de dois anos '
-        + 'depois da extinção fulmina a pretensão inteira (art. 7º, XXIX, da CF).' },
+      dica: 'Com a projeção do aviso indenizado, se houve: é dela que corre o biênio (OJ 83 da SDI-1). '
+        + 'Ajuizamento mais de dois anos depois fulmina a pretensão inteira (art. 7º, XXIX, da CF).' },
   ],
 };
 
@@ -298,11 +299,13 @@ export const PEDIDOS = [
       { label: 'Art. 467: 50% sobre as verbas incontroversas', devida: true },
       { label: 'Reflexos e FGTS', devida: false, nota: 'natureza de penalidade' },
       { label: 'Multa do art. 477 quando o empregado deu causa à mora', devida: false, nota: 'parte final do §8º' },
+      { label: 'Ajuizamento depois do biênio', devida: false, nota: 'art. 7º, XXIX, da CF' },
     ],
     calcular: calcularMultas,
     semPeriodo: true,
     resumo: (c) => [
       ...(c.rescisao ? [['Término do contrato', formatarData(c.rescisao)]] : []),
+      ...(c.prescricao ? [['Prescrição', c.prescricao]] : []),
       ...(c.prazo ? [['Prazo do art. 477', formatarData(c.prazo)]] : []),
       ...(c.pagamento ? [['Pagamento', formatarData(c.pagamento)]] : []),
       ...(c.prazo ? [['Atraso', c.pagamento ? `${c.diasAtraso} dia(s)` : 'sem pagamento']] : []),
@@ -310,6 +313,19 @@ export const PEDIDOS = [
       ...(c.incontroverso ? [['Incontroverso', moeda.format(c.incontroverso)]] : []),
     ],
     grupos: [
+      {
+        titulo: 'Contrato e prescrição',
+        campos: [
+          { id: 'dataRescisao', rotulo: 'Término do contrato', tipo: 'data',
+            dica: 'O prazo de 10 dias do art. 477, §6º, corre daí.' },
+          { id: 'dataFimAviso', rotulo: 'Fim do aviso prévio projetado', tipo: 'data',
+            dica: 'Só se houve aviso indenizado: é do fim dele que corre o biênio (OJ 83 da SDI-1). '
+              + 'Em branco, vale o término do contrato.' },
+          { id: 'dataAjuizamento', rotulo: 'Data do ajuizamento', tipo: 'data',
+            dica: 'Apura a prescrição bienal (art. 7º, XXIX, da CF). As duas multas nascem com a '
+              + 'rescisão, então o quinquênio nunca as alcança antes do biênio.' },
+        ],
+      },
       {
         titulo: 'Multa do art. 477',
         campos: [
@@ -321,8 +337,6 @@ export const PEDIDOS = [
             aparece: (d) => d.multa477,
             dica: 'Adicionais, horas extras, comissões e demais parcelas dos arts. 457, §1º, e 458 da CLT. '
               + 'O TST fixou no Tema 142 que a base da multa é a remuneração, não o salário base.' },
-          { id: 'dataRescisao', rotulo: 'Término do contrato', tipo: 'data', obrigatorio: true,
-            aparece: (d) => d.multa477, dica: 'O prazo de 10 dias corre daí (art. 477, §6º).' },
           { id: 'dataPagamento', rotulo: 'Data do pagamento', tipo: 'data',
             aparece: (d) => d.multa477, dica: 'Em branco: não houve pagamento comprovado.' },
           { id: 'moraDoEmpregado', rotulo: 'O empregado deu causa à mora (afasta a multa)',

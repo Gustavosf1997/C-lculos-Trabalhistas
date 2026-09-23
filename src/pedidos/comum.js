@@ -10,6 +10,7 @@
 import { FGTS, SALARIO_MINIMO } from '../tabelas.js';
 import { parseData, formatarData, diasEntre } from '../calculo.js';
 import { formatarNumeroBR } from '../formato.js';
+import { apurarBienal, marcoQuinquenal, descreverPrescricao } from '../prescricao.js';
 
 /** Divisor mensal padrão (44h semanais). */
 export const DIVISOR_PADRAO = 220;
@@ -77,53 +78,37 @@ export function calcularAdicionalRisco(dados) {
 
 /**
  * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
- * reúne e que a Súmula 308 do TST harmoniza:
+ * reúne e que a Súmula 308 do TST harmoniza — as regras em si moram em
+ * `prescricao.js`, comum às duas telas:
  *
- *  - **bienal**: extinto o contrato, a ação tem de ser ajuizada em dois anos.
+ *  - **bienal**: extinto o contrato, a ação tem de ser ajuizada em dois anos,
+ *    contados do fim do aviso, inclusive o projetado (OJ 83 da SDI-1).
  *    Perdido esse prazo, nada resta a calcular, nem o quinquênio;
  *  - **quinquenal**: respeitado o biênio, são exigíveis as parcelas dos cinco
- *    anos imediatamente anteriores ao ajuizamento — contados dele, e não da
- *    extinção do contrato (Súmula 308, I).
+ *    anos imediatamente anteriores ao ajuizamento (Súmula 308, I).
+ *
+ * Sem a data do ajuizamento não há o que afirmar, mas a situação é dita na
+ * tela — e, se o biênio já passou em relação a hoje, vira aviso.
  *
  * @param {Date} inicio início do período pedido
  * @param {Date} fim fim do período pedido
- * @param {object} dados campos da tela (dataAjuizamento e dataExtincao)
- * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date}}
+ * @param {object} dados campos da tela (dataAjuizamento, dataExtincao, dataReferencia)
+ * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date,
+ *   descricao: string, alerta: string|null}}
  */
 export function apurarPrescricao(inicio, fim, dados = {}) {
   const ajuizamento = parseData(dados.dataAjuizamento);
-  if (!ajuizamento) return { impedimento: null, recorte: null, inicioCalculo: inicio };
+  const bienal = apurarBienal(parseData(dados.dataExtincao), ajuizamento, dados.dataReferencia);
+  const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
+  const descricao = descreverPrescricao({ ajuizamento, limite: bienal.limite, marco });
+  const base = { descricao, alerta: bienal.alerta, impedimento: null, recorte: null, inicioCalculo: inicio };
 
-  const extincao = parseData(dados.dataExtincao);
-  if (extincao) {
-    const limiteBienal = new Date(
-      Date.UTC(extincao.getUTCFullYear() + 2, extincao.getUTCMonth(), extincao.getUTCDate()),
-    );
-    if (ajuizamento > limiteBienal) {
-      return {
-        inicioCalculo: inicio,
-        recorte: null,
-        impedimento: {
-          integral: true,
-          bienal: true,
-          marco: limiteBienal,
-          titulo: 'Pretensão atingida pela prescrição bienal',
-          mensagem: `O contrato foi extinto em ${formatarData(extincao)} e a ação só foi ajuizada em `
-            + `${formatarData(ajuizamento)}, depois do biênio que se encerrou em ${formatarData(limiteBienal)} `
-            + '(art. 7º, XXIX, da CF). Prescrita a pretensão como um todo, não há período imprescrito a calcular.',
-        },
-      };
-    }
-  }
-
-  const marco = new Date(
-    Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
-  );
+  if (bienal.impedimento) return { ...base, impedimento: bienal.impedimento };
+  if (!ajuizamento) return base;
 
   if (fim < marco) {
     return {
-      inicioCalculo: inicio,
-      recorte: null,
+      ...base,
       impedimento: {
         integral: true,
         marco,
@@ -136,7 +121,7 @@ export function apurarPrescricao(inicio, fim, dados = {}) {
 
   if (inicio < marco) {
     return {
-      impedimento: null,
+      ...base,
       inicioCalculo: marco,
       recorte: {
         marco,
@@ -149,7 +134,7 @@ export function apurarPrescricao(inicio, fim, dados = {}) {
     };
   }
 
-  return { impedimento: null, recorte: null, inicioCalculo: inicio };
+  return base;
 }
 
 /**
@@ -262,8 +247,10 @@ export function reflexosMensais(base, dados) {
  */
 export function fecharResultado({
   mensais, meses, mesesFracionados, diasPeriodo, contexto, dados, alertas = [],
-  recorte = null, baseAviso = 0, chavesFgts = [],
+  prescricao = null, baseAviso = 0, chavesFgts = [],
 }) {
+  const recorte = prescricao?.recorte ?? null;
+  if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
   const totalMensal = arredondar(mensais.reduce((soma, m) => soma + m.valor, 0));
   const periodo = mensais.map((m) => ({ ...m, valor: arredondar(m.valor * meses) }));
 
@@ -308,7 +295,7 @@ export function fecharResultado({
     alertas,
     impedimento: null,
     recorte,
-    contexto: { ...contexto, meses, mesesFracionados, diasPeriodo },
+    contexto: { ...contexto, meses, mesesFracionados, diasPeriodo, prescricao: prescricao?.descricao },
     mensais,
     periodo,
     fgts: { base, valor: fgtsDevido, multa: multaFgts, detalhe: detalheFgts },

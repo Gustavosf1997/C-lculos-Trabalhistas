@@ -109,3 +109,13 @@ export function mascararInteiro(texto) {
 export function mascararDecimal(texto) {
   return normalizarNumero(texto);
 }
+
+/**
+ * Data de hoje em ISO, no fuso de quem está usando — e não em UTC, que perto
+ * da meia-noite daria o dia seguinte. Serve de referência para avisar que um
+ * prazo já venceu; os motores só a recebem, nunca consultam o relógio.
+ */
+export function hojeISO(agora = new Date()) {
+  const dois = (n) => String(n).padStart(2, '0');
+  return `${agora.getFullYear()}-${dois(agora.getMonth() + 1)}-${dois(agora.getDate())}`;
+}
