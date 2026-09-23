@@ -251,7 +251,9 @@ function renderResultado(resultado) {
 
   if (resultado.erros.length) {
     atualizarDicaPeriodos(null);
-    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+    // O aviso de biênio vencido já vale com as datas: vem antes do que falta.
+    alvo.innerHTML = `${resultado.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+      <div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${resultado.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
     return;
   }

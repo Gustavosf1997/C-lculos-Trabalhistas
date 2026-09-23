@@ -90,6 +90,11 @@ export function calcularAdicionalRisco(dados) {
  * Sem a data do ajuizamento não há o que afirmar, mas a situação é dita na
  * tela — e, se o biênio já passou em relação a hoje, vira aviso.
  *
+ * Roda **antes** de qualquer validação de valor: prescrição é fato
+ * impeditivo, e as datas bastam para apurá-la. Pedir o salário de um período
+ * prescrito seria pedir um dado que não serve para nada. Por isso aceita
+ * período incompleto — o biênio nem depende dele.
+ *
  * @param {Date} inicio início do período pedido
  * @param {Date} fim fim do período pedido
  * @param {object} dados campos da tela (dataAjuizamento, dataExtincao, dataReferencia)
@@ -105,6 +110,10 @@ export function apurarPrescricao(inicio, fim, dados = {}) {
 
   if (bienal.impedimento) return { ...base, impedimento: bienal.impedimento };
   if (!ajuizamento) return base;
+
+  // O quinquênio precisa de um período inteiro e em ordem: com o fim antes do
+  // início (erro de digitação), acusar "tudo prescrito" seria enganar.
+  if (!inicio || !fim || fim < inicio) return base;
 
   if (fim < marco) {
     return {
@@ -308,9 +317,18 @@ export function fecharResultado({
   };
 }
 
-/** Resultado vazio, com os erros de preenchimento. */
-export const resultadoComErros = (erros) => ({
-  erros, alertas: [], impedimento: null, recorte: null,
+/**
+ * Resultado vazio, com os erros de preenchimento.
+ *
+ * Recebe a prescrição já apurada, quando houver: o recorte do quinquênio e o
+ * aviso de biênio vencido valem desde que as datas foram digitadas, antes de
+ * o resto do formulário estar pronto.
+ */
+export const resultadoComErros = (erros, prescricao = null) => ({
+  erros,
+  alertas: prescricao?.alerta ? [prescricao.alerta] : [],
+  impedimento: null,
+  recorte: prescricao?.recorte ?? null,
   contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
 });
 

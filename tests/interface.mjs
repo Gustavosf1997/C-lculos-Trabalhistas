@@ -396,6 +396,72 @@ await page.fill('#dataExtincao', '');
 await page.waitForTimeout(350);
 checar('apagar a extinção libera o cálculo', (await page.locator('.liquido b').count()) > 0, null);
 
+/* --- o roteiro do print: só as datas, digitadas, nenhum valor --- */
+// Os testes acima preenchiam salário e horas antes das datas, e assim nunca
+// viram o defeito: com só as datas na tela, o cálculo pedia o salário em vez
+// de acusar a prescrição. Aqui a ordem é a de quem usa: de cima para baixo.
+const digitar = async (id, valor) => {
+  await page.locator(`#${id}`).click();
+  await page.locator(`#${id}`).pressSequentially(valor.replace(/\//g, ''));
+};
+const vermelho = async () => (await page.locator('#resultado .impedimento b').innerText().catch(() => ''));
+
+await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
+await page.click('[data-pedido="horas_extras"]');
+await page.waitForTimeout(250);
+await digitar('dataInicio', '01/01/2000');
+await digitar('dataFim', '01/01/2000');
+await digitar('dataAjuizamento', '01/01/2020');
+await digitar('dataExtincao', '01/01/2000');
+await page.waitForTimeout(350);
+checar('só datas (o print): prescrição bienal acusada', (await vermelho()).includes('bienal'), await vermelho());
+checar('só datas (o print): nada de "faltam informações"',
+  (await page.locator('#resultado .aviso-erro').count()) === 0, null);
+checar('só datas (o print): salário travado', await page.locator('#salarioBase').isDisabled(), null);
+
+await page.fill('#dataExtincao', '');
+await page.waitForTimeout(300);
+checar('só datas: quinquênio total acusado sem a extinção', (await vermelho()).includes('integralmente'), await vermelho());
+
+for (const pedido of ['adicional_noturno', 'intervalo', 'adicional_risco']) {
+  await page.click(`[data-pedido="${pedido}"]`);
+  await page.waitForTimeout(250);
+  await digitar('dataInicio', '01/01/2000');
+  await digitar('dataFim', '31/12/2001');
+  await digitar('dataAjuizamento', '01/01/2020');
+  await page.waitForTimeout(300);
+  checar(`só datas: ${pedido} acusa a prescrição`, (await vermelho()).includes('prescrito'), await vermelho());
+}
+
+await page.click('[data-pedido="multas"]');
+await page.waitForTimeout(250);
+await digitar('dataRescisao', '01/01/2000');
+await digitar('dataAjuizamento', '01/01/2020');
+await page.waitForTimeout(300);
+checar('só datas: multas acusam o biênio', (await vermelho()).includes('bienal'), await vermelho());
+
+await page.click('[data-pedido="horas_extras"]');
+await page.waitForTimeout(250);
+await digitar('dataInicio', '01/01/2019');
+await digitar('dataFim', '31/12/2023');
+await digitar('dataAjuizamento', '23/09/2026');
+await page.waitForTimeout(300);
+checar('só datas: prescrição parcial já aparece em laranja',
+  (await page.locator('#resultado .recorte').count()) === 1, null);
+checar('só datas: e junto dela, a lista do que falta',
+  (await page.locator('#resultado .aviso-erro').count()) === 1, null);
+
+await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+await page.click('[data-tipo="sem_justa_causa"]');
+await digitar('dataAdmissao', '01/01/1995');
+await digitar('dataAviso', '01/01/2000');
+await digitar('dataAjuizamento', '01/01/2020');
+await page.waitForTimeout(350);
+checar('só datas: rescisão acusa o biênio', (await vermelho()).includes('bienal'), await vermelho());
+checar('só datas: rescisão trava o salário', await page.locator('#salarioBase').isDisabled(), null);
+await page.click('#formulario button[type="reset"]');
+await page.waitForTimeout(300);
+
 await browser.close();
 console.log(checagens.join('\n'));
 console.log(erros.length ? 'ERROS DE CONSOLE: ' + erros.join(' | ') : 'sem erros de console');

@@ -38,6 +38,14 @@ export function calcularMultas(dados) {
   const pagamento = parseData(dados.dataPagamento);
   const incontroverso = num(dados.valorIncontroverso);
 
+  // Biênio primeiro: é fato impeditivo, e as datas bastam para apurá-lo. Só
+  // depois se pedem os valores — de uma multa prescrita, nenhum serve. Corre
+  // do fim do aviso projetado, se houve; senão, do término (OJ 83 da SDI-1).
+  const fimDoContrato = parseData(dados.dataFimAviso) ?? rescisao;
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const bienal = apurarBienal(fimDoContrato, ajuizamento, dados.dataReferencia);
+  if (bienal.impedimento) return resultadoImpedido(bienal.impedimento);
+
   if (!pede477 && !pede467) erros.push('Escolha ao menos uma das multas.');
   if (pede477) {
     if (salario <= 0) erros.push('Informe o salário do empregado para a multa do art. 477.');
@@ -46,13 +54,7 @@ export function calcularMultas(dados) {
   if (pede467 && incontroverso <= 0) {
     erros.push('Informe o valor das verbas rescisórias incontroversas.');
   }
-  if (erros.length) return resultadoComErros(erros);
-
-  // O biênio corre do fim do aviso projetado, se houve; senão, do término.
-  const fimDoContrato = parseData(dados.dataFimAviso) ?? rescisao;
-  const ajuizamento = parseData(dados.dataAjuizamento);
-  const bienal = apurarBienal(fimDoContrato, ajuizamento, dados.dataReferencia);
-  if (bienal.impedimento) return resultadoImpedido(bienal.impedimento);
+  if (erros.length) return resultadoComErros(erros, bienal);
 
   const alertas = bienal.alerta ? [bienal.alerta] : [];
   if (ajuizamento && !fimDoContrato) {

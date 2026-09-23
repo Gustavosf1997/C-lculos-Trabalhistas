@@ -1678,8 +1678,9 @@ function calcularRescisao(dados) {
     erros.push('A rescisão antecipada deve ocorrer antes do termo final previsto.');
   }
 
+  // O salário só é cobrado depois da prescrição: as datas bastam para apurar
+  // o biênio, e de um contrato prescrito nenhum valor serve.
   const salarioBase = num(dados.salarioBase);
-  if (salarioBase <= 0) erros.push('Informe o último salário base.');
 
   const ajuizamento = parseData(dados.dataAjuizamento);
   if (admissao && ajuizamento && ajuizamento < admissao) {
@@ -1687,6 +1688,9 @@ function calcularRescisao(dados) {
   }
 
   if (erros.length) {
+    // Com as datas incompletas não há prescrição a apurar, então vale mostrar
+    // de uma vez tudo o que falta — inclusive o salário.
+    if (salarioBase <= 0) erros.push('Informe o último salário base.');
     return {
       erros, alertas: [], impedimento: null, recorte: null,
       proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
@@ -1772,6 +1776,15 @@ function calcularRescisao(dados) {
   if (bienal.alerta) alertas.push(bienal.alerta);
   if (ajuizamento && ajuizamento < dataAviso) {
     alertas.push('A data do ajuizamento é anterior ao fim do contrato. Confira as datas.');
+  }
+
+  // Afastada a prescrição bienal, agora sim o salário é indispensável. Os
+  // avisos já apurados seguem junto, para a tela mostrá-los desde as datas.
+  if (salarioBase <= 0) {
+    return {
+      erros: ['Informe o último salário base.'], alertas: [...alertas], impedimento: null, recorte: null,
+      proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
+    };
   }
 
   if (excedenteTrabalhado > 0) {
@@ -2581,6 +2594,11 @@ function calcularAdicionalRisco(dados) {
  * Sem a data do ajuizamento não há o que afirmar, mas a situação é dita na
  * tela — e, se o biênio já passou em relação a hoje, vira aviso.
  *
+ * Roda **antes** de qualquer validação de valor: prescrição é fato
+ * impeditivo, e as datas bastam para apurá-la. Pedir o salário de um período
+ * prescrito seria pedir um dado que não serve para nada. Por isso aceita
+ * período incompleto — o biênio nem depende dele.
+ *
  * @param {Date} inicio início do período pedido
  * @param {Date} fim fim do período pedido
  * @param {object} dados campos da tela (dataAjuizamento, dataExtincao, dataReferencia)
@@ -2596,6 +2614,10 @@ function apurarPrescricao(inicio, fim, dados = {}) {
 
   if (bienal.impedimento) return { ...base, impedimento: bienal.impedimento };
   if (!ajuizamento) return base;
+
+  // O quinquênio precisa de um período inteiro e em ordem: com o fim antes do
+  // início (erro de digitação), acusar "tudo prescrito" seria enganar.
+  if (!inicio || !fim || fim < inicio) return base;
 
   if (fim < marco) {
     return {
@@ -2799,9 +2821,18 @@ function fecharResultado({
   };
 }
 
-/** Resultado vazio, com os erros de preenchimento. */
-const resultadoComErros = (erros) => ({
-  erros, alertas: [], impedimento: null, recorte: null,
+/**
+ * Resultado vazio, com os erros de preenchimento.
+ *
+ * Recebe a prescrição já apurada, quando houver: o recorte do quinquênio e o
+ * aviso de biênio vencido valem desde que as datas foram digitadas, antes de
+ * o resto do formulário estar pronto.
+ */
+const resultadoComErros = (erros, prescricao = null) => ({
+  erros,
+  alertas: prescricao?.alerta ? [prescricao.alerta] : [],
+  impedimento: null,
+  recorte: prescricao?.recorte ?? null,
   contexto: null, mensais: [], periodo: [], fgts: null, totais: null,
 });
 
@@ -2838,6 +2869,12 @@ function validarPeriodo(dados) {
 
 function calcularHorasExtras(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
+
+  // Prescrição primeiro: é fato impeditivo, e as datas bastam para apurá-la.
+  // Só depois se pedem os valores — de um período prescrito, nenhum serve.
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+
   const salarioBase = num(dados.salarioBase);
   const divisor = num(dados.divisor);
   const horasInformadas = num(dados.quantidadeHoras);
@@ -2845,10 +2882,7 @@ function calcularHorasExtras(dados) {
   if (salarioBase <= 0) erros.push('Informe o salário base do período.');
   if (divisor <= 0) erros.push('Informe o divisor da jornada (220 para 44h semanais).');
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas extras.');
-  if (erros.length) return resultadoComErros(erros);
-
-  const prescricao = apurarPrescricao(inicio, fim, dados);
-  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  if (erros.length) return resultadoComErros(erros, prescricao);
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
@@ -2955,6 +2989,12 @@ function calcularHorasExtras(dados) {
 
 function calcularAdicionalNoturno(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
+
+  // Prescrição primeiro: é fato impeditivo, e as datas bastam para apurá-la.
+  // Só depois se pedem os valores — de um período prescrito, nenhum serve.
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+
   const salarioBase = num(dados.salarioBase);
   const divisor = num(dados.divisor);
   const horasInformadas = num(dados.horasNoturnas);
@@ -2962,10 +3002,7 @@ function calcularAdicionalNoturno(dados) {
   if (salarioBase <= 0) erros.push('Informe o salário base do período.');
   if (divisor <= 0) erros.push('Informe o divisor da jornada.');
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas noturnas.');
-  if (erros.length) return resultadoComErros(erros);
-
-  const prescricao = apurarPrescricao(inicio, fim, dados);
-  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  if (erros.length) return resultadoComErros(erros, prescricao);
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
@@ -3063,6 +3100,12 @@ function calcularAdicionalNoturno(dados) {
 
 function calcularIntervalo(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
+
+  // Prescrição primeiro: é fato impeditivo, e as datas bastam para apurá-la.
+  // Só depois se pedem os valores — de um período prescrito, nenhum serve.
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+
   const salarioBase = num(dados.salarioBase);
   const divisor = num(dados.divisor);
   const minutosSuprimidos = num(dados.minutosSuprimidos);
@@ -3070,10 +3113,7 @@ function calcularIntervalo(dados) {
   if (salarioBase <= 0) erros.push('Informe o salário base do período.');
   if (divisor <= 0) erros.push('Informe o divisor da jornada.');
   if (minutosSuprimidos <= 0) erros.push('Informe os minutos de intervalo suprimidos por dia.');
-  if (erros.length) return resultadoComErros(erros);
-
-  const prescricao = apurarPrescricao(inicio, fim, dados);
-  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  if (erros.length) return resultadoComErros(erros, prescricao);
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
@@ -3166,16 +3206,19 @@ function calcularIntervalo(dados) {
 
 function calcularAdicionalRiscoPedido(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
+
+  // Prescrição primeiro: é fato impeditivo, e as datas bastam para apurá-la.
+  // Só depois se pedem os valores — de um período prescrito, nenhum serve.
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+
   const salarioBase = num(dados.salarioBase);
 
   if (salarioBase <= 0) erros.push('Informe o salário base do período.');
   if (!dados.risco || dados.risco === 'nenhum') {
     erros.push('Escolha entre insalubridade e periculosidade.');
   }
-  if (erros.length) return resultadoComErros(erros);
-
-  const prescricao = apurarPrescricao(inicio, fim, dados);
-  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  if (erros.length) return resultadoComErros(erros, prescricao);
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
@@ -3257,6 +3300,14 @@ function calcularMultas(dados) {
   const pagamento = parseData(dados.dataPagamento);
   const incontroverso = num(dados.valorIncontroverso);
 
+  // Biênio primeiro: é fato impeditivo, e as datas bastam para apurá-lo. Só
+  // depois se pedem os valores — de uma multa prescrita, nenhum serve. Corre
+  // do fim do aviso projetado, se houve; senão, do término (OJ 83 da SDI-1).
+  const fimDoContrato = parseData(dados.dataFimAviso) ?? rescisao;
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const bienal = apurarBienal(fimDoContrato, ajuizamento, dados.dataReferencia);
+  if (bienal.impedimento) return resultadoImpedido(bienal.impedimento);
+
   if (!pede477 && !pede467) erros.push('Escolha ao menos uma das multas.');
   if (pede477) {
     if (salario <= 0) erros.push('Informe o salário do empregado para a multa do art. 477.');
@@ -3265,13 +3316,7 @@ function calcularMultas(dados) {
   if (pede467 && incontroverso <= 0) {
     erros.push('Informe o valor das verbas rescisórias incontroversas.');
   }
-  if (erros.length) return resultadoComErros(erros);
-
-  // O biênio corre do fim do aviso projetado, se houve; senão, do término.
-  const fimDoContrato = parseData(dados.dataFimAviso) ?? rescisao;
-  const ajuizamento = parseData(dados.dataAjuizamento);
-  const bienal = apurarBienal(fimDoContrato, ajuizamento, dados.dataReferencia);
-  if (bienal.impedimento) return resultadoImpedido(bienal.impedimento);
+  if (erros.length) return resultadoComErros(erros, bienal);
 
   const alertas = bienal.alerta ? [bienal.alerta] : [];
   if (ajuizamento && !fimDoContrato) {
@@ -3973,7 +4018,9 @@ function renderResultado(resultado) {
 
   if (resultado.erros.length) {
     atualizarDicaPeriodos(null);
-    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+    // O aviso de biênio vencido já vale com as datas: vem antes do que falta.
+    alvo.innerHTML = `${resultado.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+      <div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${resultado.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
     return;
   }
@@ -4370,6 +4417,15 @@ function linhas(itens) {
     .join('');
 }
 
+/** Caixa laranja do recorte e avisos, comuns ao resultado e à lista de erros. */
+function blocoDePrescricao(r) {
+  return `${r.recorte ? `<div class="recorte" role="alert">
+      <b>${r.recorte.titulo}</b>
+      <p>${r.recorte.mensagem}</p>
+    </div>` : ''}
+    ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}`;
+}
+
 function renderResultado(r) {
   const alvo = $('#resultado');
   const pedido = pedidoAtual();
@@ -4386,7 +4442,10 @@ function renderResultado(r) {
   }
 
   if (r.erros.length) {
-    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+    // A prescrição já apurada pelas datas vem antes da lista do que falta: a
+    // pessoa sabe do recorte ou do prazo vencido sem esperar o resto.
+    alvo.innerHTML = `${blocoDePrescricao(r)}
+      <div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${r.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
     return;
   }
@@ -4396,11 +4455,7 @@ function renderResultado(r) {
   const temMensais = r.mensais.length > 0;
 
   alvo.innerHTML = `
-    ${r.recorte ? `<div class="recorte" role="alert">
-      <b>${r.recorte.titulo}</b>
-      <p>${r.recorte.mensagem}</p>
-    </div>` : ''}
-    ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+    ${blocoDePrescricao(r)}
 
     <dl class="contexto">
       ${resumo.map(([rotulo, valor]) => `<div><dt>${rotulo}</dt><dd>${valor}</dd></div>`).join('')}

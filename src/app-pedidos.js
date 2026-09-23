@@ -174,6 +174,15 @@ function linhas(itens) {
     .join('');
 }
 
+/** Caixa laranja do recorte e avisos, comuns ao resultado e à lista de erros. */
+function blocoDePrescricao(r) {
+  return `${r.recorte ? `<div class="recorte" role="alert">
+      <b>${r.recorte.titulo}</b>
+      <p>${r.recorte.mensagem}</p>
+    </div>` : ''}
+    ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}`;
+}
+
 function renderResultado(r) {
   const alvo = $('#resultado');
   const pedido = pedidoAtual();
@@ -190,7 +199,10 @@ function renderResultado(r) {
   }
 
   if (r.erros.length) {
-    alvo.innerHTML = `<div class="aviso-erro"><b>Faltam informações para calcular:</b>
+    // A prescrição já apurada pelas datas vem antes da lista do que falta: a
+    // pessoa sabe do recorte ou do prazo vencido sem esperar o resto.
+    alvo.innerHTML = `${blocoDePrescricao(r)}
+      <div class="aviso-erro"><b>Faltam informações para calcular:</b>
       <ul>${r.erros.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
     return;
   }
@@ -200,11 +212,7 @@ function renderResultado(r) {
   const temMensais = r.mensais.length > 0;
 
   alvo.innerHTML = `
-    ${r.recorte ? `<div class="recorte" role="alert">
-      <b>${r.recorte.titulo}</b>
-      <p>${r.recorte.mensagem}</p>
-    </div>` : ''}
-    ${r.alertas.map((a) => `<p class="alerta">${a}</p>`).join('')}
+    ${blocoDePrescricao(r)}
 
     <dl class="contexto">
       ${resumo.map(([rotulo, valor]) => `<div><dt>${rotulo}</dt><dd>${valor}</dd></div>`).join('')}

@@ -359,6 +359,13 @@ Em cada tela:
   as alcança. Se houve aviso indenizado, informe o fim dele: é de lá que o
   biênio corre.
 
+**As datas bastam.** A prescrição é apurada antes de qualquer validação de
+valor: preenchidos o período (ou o contrato) e o ajuizamento, a caixa vermelha
+aparece e o resto trava, sem pedir salário nem horas — de um período
+prescrito, nenhum valor serve. Com as datas incompletas não há o que apurar, e
+a tela lista de uma vez tudo o que falta. Na prescrição parcial, a caixa
+laranja do recorte aparece junto dessa lista, assim que as datas chegam.
+
 **Sem a data do ajuizamento**, a ferramenta não afirma prescrição nenhuma — a
 ação pode já ter sido proposta —, mas também não fica em silêncio: o resumo
 traz a linha "Prescrição" dizendo até quando se pode ajuizar, e, se esse prazo
