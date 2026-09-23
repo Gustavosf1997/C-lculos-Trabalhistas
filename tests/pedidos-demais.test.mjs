@@ -142,12 +142,21 @@ test('sem escolher multa nenhuma, o pedido acusa', () => {
 
 test('o FGTS incide só sobre as parcelas salariais que o pedido apurou', () => {
   const r = calcularAdicionalNoturno({ ...periodo, ...jornada, horasNoturnas: 30 });
-  // adicional (68,57) + DSR (13,71) + 13º (6,86) x 12 meses x 8%
+  // adicional (68,57) + DSR (13,71) + 13º (6,86) + férias 1/3 (9,14) x 12 x 8%
+  assert.equal(r.fgts.base, 1179.36);
+  assert.equal(r.fgts.valor, 94.35);
+  assert.equal(r.fgts.detalhe, '8% sobre adicional noturno, DSR, 13º e férias + 1/3');
+});
+
+test('férias indenizadas saem da base do FGTS quando assim marcado', () => {
+  // Gozadas, integram a base (art. 15 da Lei 8.036/90); indenizadas, não.
+  const r = calcularAdicionalNoturno({
+    ...periodo, ...jornada, horasNoturnas: 30, fgtsSobreFerias: false,
+  });
   assert.equal(r.fgts.base, 1069.68);
   assert.equal(r.fgts.valor, 85.57);
   assert.equal(r.fgts.detalhe, '8% sobre adicional noturno, DSR e 13º');
-  // o reflexo de férias + 1/3 é indenizatório: fica fora da base
-  assert.ok(verba(r, 'reflexo_ferias') > 0);
+  assert.ok(verba(r, 'reflexo_ferias') > 0); // a verba continua devida
 });
 
 test('o intervalo indenizatório não gera FGTS', () => {
@@ -161,6 +170,6 @@ test('o intervalo salarial da Súmula 437 gera FGTS sem DSR', () => {
   const r = calcularIntervalo({
     ...periodo, ...jornada, regimeIntervalo: 'anterior_reforma', minutosSuprimidos: 30,
   });
-  assert.equal(r.fgts.detalhe, '8% sobre intervalo e 13º');
-  assert.equal(r.fgts.valor, 343.2); // (330 + 27,50) x 12 x 8%
+  assert.equal(r.fgts.detalhe, '8% sobre intervalo, 13º e férias + 1/3');
+  assert.equal(r.fgts.valor, 378.4); // (330 + 27,50 + 36,67) x 12 x 8%
 });

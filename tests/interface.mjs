@@ -169,6 +169,61 @@ checar('memória traz o resultado', memoria.includes('Total bruto'), null);
 checar('memória fora da tela', await page.locator('#memoria').isHidden(), null);
 
 /* ------------------------------------------------------------- pedidos */
+/* --- prescrição na rescisão (OJ 83 e art. 149) --- */
+await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+await page.click('[data-tipo="sem_justa_causa"]');
+await page.fill('#dataAdmissao', '10/01/2014');
+await page.fill('#dataAviso', '10/01/2024');
+await page.fill('#salarioBase', '3.000,00');
+await page.waitForTimeout(300);
+const semAcao = (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ');
+checar('rescisão: resumo pede o ajuizamento', semAcao.includes('informe o ajuizamento'), null);
+checar('rescisão: biênio vencido vira aviso sem ajuizamento', semAcao.includes('10/03/2026'), null);
+
+await page.fill('#dataAjuizamento', '01/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: aviso projetado mantém a ação tempestiva (OJ 83)',
+  (await page.locator('#resultado .impedimento').count()) === 0
+  && (await page.locator('#resultado .liquido b').count()) === 1, null);
+
+await page.fill('#dataAjuizamento', '11/03/2026');
+await page.waitForTimeout(300);
+checar('rescisão: bienal em caixa vermelha',
+  (await page.locator('#resultado .impedimento').innerText().catch(() => '')).includes('bienal'), null);
+checar('rescisão: bienal bloqueia o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('rescisão: datas seguem editáveis', !(await page.locator('#dataAjuizamento').isDisabled()), null);
+checar('rescisão: tipo de aviso segue editável',
+  !(await page.locator('input[name="tipoAviso"]').first().isDisabled()), null);
+checar('rescisão: PDF bloqueado com a prescrição', await page.locator('#gerar-pdf').isDisabled(), null);
+
+// O que segue editável não pode parecer travado: o ajuizamento mora no
+// segundo grupo, e uma regra "esmaece todo grupo menos o primeiro" o apagava.
+const opacidade = (seletor) => page.evaluate((sel) => {
+  let el = document.querySelector(sel);
+  let total = 1;
+  while (el) { total *= Number(getComputedStyle(el).opacity); el = el.parentElement; }
+  return Math.round(total * 100) / 100;
+}, seletor);
+checar('rescisão: ajuizamento nítido sob bloqueio', (await opacidade('#dataAjuizamento')) === 1,
+  await opacidade('#dataAjuizamento'));
+checar('rescisão: tipo de aviso nítido sob bloqueio', (await opacidade('input[name="tipoAviso"]')) === 1, null);
+checar('rescisão: salário esmaecido sob bloqueio', (await opacidade('#salarioBase')) < 1, null);
+
+await page.fill('#dataAjuizamento', '');
+await page.waitForTimeout(300);
+checar('rescisão: apagar o ajuizamento desbloqueia', !(await page.locator('#salarioBase').isDisabled()), null);
+
+// férias vencidas prescritas: laranja, e o cálculo segue
+await page.fill('#dataAdmissao', '01/02/2015');
+await page.fill('#dataAviso', '01/08/2023');
+await page.fill('#periodosFeriasVencidas', '6');
+await page.fill('#dataAjuizamento', '01/02/2025');
+await page.waitForTimeout(300);
+const recorteFerias = await page.locator('#resultado .recorte').innerText().catch(() => '');
+checar('rescisão: férias prescritas em caixa laranja', recorteFerias.includes('art. 149'), recorteFerias.slice(0, 60));
+checar('rescisão: só as férias exigíveis entram',
+  (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ').includes('R$ 12.000,00'), null);
+
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');
 await page.locator('#divisor').pressSequentially('2a2b0');
@@ -246,7 +301,19 @@ await page.waitForTimeout(350);
 const noturno = await texto();
 checar('30 h de relógio viram 34,29 h fictas', noturno.includes('34,29'), null);
 checar('adicional noturno de R$ 68,57', noturno.includes('R$ 68,57'), null);
-checar('FGTS descreve a base real', noturno.includes('8% sobre adicional noturno, DSR e 13º'), null);
+checar('FGTS descreve a base real',
+  noturno.includes('8% sobre adicional noturno, DSR, 13º e férias + 1/3'), null);
+// férias indenizadas saem da base, e a linha passa a dizer isso
+await page.uncheck('#fgtsSobreFerias');
+await page.waitForTimeout(350);
+checar('desmarcar férias encurta a base do FGTS',
+  (await texto()).includes('8% sobre adicional noturno, DSR e 13º'), null);
+await page.check('#fgtsSobreFerias');
+await page.check('input[name="risco"][value="periculosidade"]');
+await page.waitForTimeout(350);
+// hora de R$ 13,00 (2.200 + 30%) x 34,29 h fictas x 20%
+checar('risco integra a hora normal do noturno', (await texto()).includes('R$ 89,14'), null);
+await page.check('input[name="risco"][value="nenhum"]');
 
 // intervalo intrajornada: dois regimes
 await page.click('[data-pedido="intervalo"]');
@@ -287,7 +354,23 @@ await page.fill('#dataPagamento', '30/03/2026');
 await page.waitForTimeout(350);
 const multas = await texto();
 checar('prazo do art. 477 calculado', multas.includes('11/03/2026'), null);
-checar('multa do art. 477 de um salário', multas.includes('R$ 2.500,00'), null);
+checar('multa do art. 477 de uma remuneração', multas.includes('R$ 2.500,00'), null);
+
+// Tema 142 do TST: a base é a remuneração, não o salário base
+await page.fill('#outrasParcelas', '400,00');
+await page.waitForTimeout(350);
+checar('parcelas habituais entram na base da multa', (await texto()).includes('R$ 2.900,00'), null);
+
+// parte final do §8º: a mora do empregado afasta a multa
+await page.check('#moraDoEmpregado');
+await page.waitForTimeout(350);
+const comMora = await texto();
+checar('mora do empregado afasta a multa', !comMora.includes('Multa do art. 477'), null);
+checar('nada a pagar com a mora do empregado', /Total do pedido\s*R\$ 0,00/i.test(comMora), null);
+checar('mora do empregado é explicada', comMora.includes('afasta a multa'), null);
+await page.uncheck('#moraDoEmpregado');
+await page.fill('#outrasParcelas', '');
+
 await page.check('#multa467');
 await page.fill('#valorIncontroverso', '5.000,00');
 await page.waitForTimeout(350);
@@ -296,6 +379,22 @@ checar('as duas multas somam R$ 5.000,00', (await texto()).includes('R$ 5.000,00
 // voltar ao primeiro pedido devolve os campos próprios dele
 await page.click('[data-pedido="horas_extras"]');
 checar('volta às horas extras com os campos certos', (await page.locator('#quantidadeHoras').count()) === 1, null);
+
+// prescrição bienal: contrato extinto há mais de dois anos barra tudo
+await dadosBase();
+await page.fill('#quantidadeHoras', '30');
+await page.fill('#dataAjuizamento', '19/09/2026');
+await page.waitForTimeout(350);
+checar('quinquênio não barra o período de 2024', (await page.locator('#resultado .impedimento').count()) === 0, null);
+await page.fill('#dataExtincao', '10/01/2024');
+await page.waitForTimeout(350);
+const bienal = await texto();
+checar('prescrição bienal barra o cálculo', bienal.includes('bienal'), bienal.slice(0, 60));
+checar('bienal bloqueia o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('data de extinção segue editável', !(await page.locator('#dataExtincao').isDisabled()), null);
+await page.fill('#dataExtincao', '');
+await page.waitForTimeout(350);
+checar('apagar a extinção libera o cálculo', (await page.locator('.liquido b').count()) > 0, null);
 
 await browser.close();
 console.log(checagens.join('\n'));

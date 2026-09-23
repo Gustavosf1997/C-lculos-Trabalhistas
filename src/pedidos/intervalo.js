@@ -13,7 +13,7 @@
 import { moeda, formatarQuantidade } from '../formato.js';
 import {
   MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
-  apurarPrescricao, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
+  apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
   resultadoImpedido, validarPeriodo,
 } from './comum.js';
 import { parseData, formatarData } from '../calculo.js';
@@ -29,10 +29,11 @@ export function calcularIntervalo(dados) {
   if (minutosSuprimidos <= 0) erros.push('Informe os minutos de intervalo suprimidos por dia.');
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
-  if (impedimento) return resultadoImpedido(impedimento);
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  const { inicioCalculo } = prescricao;
 
-  const alertas = [];
+  const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
@@ -83,7 +84,7 @@ export function calcularIntervalo(dados) {
     diasPeriodo,
     dados,
     alertas,
-    recorte,
+    prescricao,
     baseAviso: indenizatorio ? 0 : valorMes,
     chavesFgts: indenizatorio ? [] : ['intervalo', 'reflexo_13'],
     contexto: {

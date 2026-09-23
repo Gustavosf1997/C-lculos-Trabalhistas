@@ -9,7 +9,7 @@
 import { PEDIDOS, pedidoPorId, JORNADAS } from './pedidos/catalogo.js';
 import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
 import { CARIMBO } from './versao.js';
-import { moeda } from './formato.js';
+import { moeda, hojeISO } from './formato.js';
 import { lerCampos, inicializarCampos } from './campos.js';
 import { montarMemoria, imprimir } from './memoria.js';
 
@@ -158,7 +158,8 @@ function coletarDados() {
   const textuais = campos.filter((c) => TIPOS_DE_TEXTO.includes(c.tipo)).map((c) => c.id);
   const { valores, erros } = lerCampos(textuais);
 
-  const dados = { ...valores, ...estadoDasEscolhas(), errosDeCampo: erros };
+  // "Hoje" só serve para avisar de biênio vencido quando a ação não tem data.
+  const dados = { ...valores, ...estadoDasEscolhas(), dataReferencia: hojeISO(), errosDeCampo: erros };
   return dados;
 }
 
@@ -181,7 +182,9 @@ function renderResultado(r) {
     alvo.innerHTML = `<div class="impedimento" role="alert">
       <b>${r.impedimento.titulo}</b>
       <p>${r.impedimento.mensagem}</p>
-      <p class="impedimento__saida">Os demais campos ficam bloqueados. Corrija o período pedido ou a data do ajuizamento para liberar o cálculo.</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. ${r.impedimento.bienal
+        ? 'Corrija a data de fim do contrato ou a do ajuizamento'
+        : 'Corrija o período pedido ou a data do ajuizamento'} para liberar o cálculo.</p>
     </div>`;
     return;
   }
@@ -228,7 +231,8 @@ function renderResultado(r) {
     </div>` : ''}
 
     <div class="liquido"><span>Total do pedido</span><b>${moeda.format(r.totais.geral)}</b></div>
-    <p class="observacao">Sem juros e sem correção monetária.</p>`;
+    <p class="observacao">Valores brutos: sem juros, sem correção monetária e sem os
+      descontos de INSS e IRRF, que são apurados na execução.</p>`;
 }
 
 function selecionarPedido(id) {
@@ -254,7 +258,9 @@ function selecionarPedido(id) {
 /* --------------------------------------------------------------- bloqueio */
 
 /** Campos que permanecem editáveis: são eles que afastam o impedimento. */
-const CAMPOS_DO_PERIODO = ['dataInicio', 'dataFim', 'dataAjuizamento'];
+const CAMPOS_DO_PERIODO = [
+  'dataInicio', 'dataFim', 'dataAjuizamento', 'dataExtincao', 'dataRescisao', 'dataFimAviso',
+];
 
 function bloquearEntrada(bloqueado) {
   for (const campo of $('#formulario').querySelectorAll('input, select')) {

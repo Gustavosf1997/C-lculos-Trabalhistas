@@ -11,6 +11,9 @@ import { TIPOS } from './tipos.js';
 import { calcularAdicionais, DIVISOR_PADRAO } from './adicionais.js';
 import { salarioHora } from './descontos.js';
 import { moeda, formatarQuantidade } from './formato.js';
+import {
+  apurarBienal, marcoQuinquenal, fimDoConcessivo, descreverPrescricao, formatarDataPrescricao,
+} from './prescricao.js';
 
 /* ------------------------------------------------------------------ datas */
 
@@ -27,6 +30,13 @@ export function formatarData(data) {
 }
 
 const DIA_MS = 86400000;
+
+/**
+ * Teto de dias de aviso prévio que o empregado pode ser obrigado a cumprir em
+ * serviço. A proporcionalidade da Lei 12.506/2011 é benefício do trabalhador,
+ * de modo que o excedente é indenizado (Nota Técnica 184/2012 da SRT/MTE).
+ */
+export const DIAS_AVISO_TRABALHAVEIS = 30;
 
 function addDias(data, dias) {
   return new Date(data.getTime() + dias * DIA_MS);
@@ -244,8 +254,16 @@ export function calcularRescisao(dados) {
   const salarioBase = num(dados.salarioBase);
   if (salarioBase <= 0) erros.push('Informe o último salário base.');
 
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  if (admissao && ajuizamento && ajuizamento < admissao) {
+    erros.push('A data do ajuizamento não pode ser anterior à admissão.');
+  }
+
   if (erros.length) {
-    return { erros, alertas: [], proventos: [], descontos: [], totais: null, contexto: null, fgts: null };
+    return {
+      erros, alertas: [], impedimento: null, recorte: null,
+      proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
+    };
   }
   const alertas = [];
 
@@ -289,10 +307,53 @@ export function calcularRescisao(dados) {
   const avisoIndenizado = tipoAviso === 'indenizado' || tipoAviso === 'indenizado_metade';
   const avisoTrabalhado = tipoAviso === 'trabalhado';
 
+  // A proporcionalidade da Lei 12.506/2011 existe em favor do empregado: ele
+  // não pode ser obrigado a trabalhar mais de 30 dias de aviso, e o que passar
+  // disso é indenizado (Nota Técnica 184/2012 da SRT/MTE).
+  const diasAvisoTrabalhados = avisoTrabalhado
+    ? Math.min(diasAvisoLegais, DIAS_AVISO_TRABALHAVEIS)
+    : 0;
+  const excedenteTrabalhado = avisoTrabalhado ? diasAvisoLegais - diasAvisoTrabalhados : 0;
+  // Dias pagos em dinheiro: o aviso indenizado por inteiro, ou só o excedente
+  // quando o aviso é cumprido em serviço.
+  const diasAvisoPagos = avisoIndenizado ? diasAvisoDevidos : excedenteTrabalhado;
+
   // Último dia do contrato e data projetada (o aviso indenizado integra o
   // tempo de serviço — OJ 82 da SDI-1 e Súmula 305 do TST).
-  const ultimoDiaTrabalhado = avisoTrabalhado ? addDias(dataAviso, diasAvisoLegais) : dataAviso;
-  const dataProjetada = avisoIndenizado ? addDias(ultimoDiaTrabalhado, diasAvisoDevidos) : ultimoDiaTrabalhado;
+  const ultimoDiaTrabalhado = avisoTrabalhado ? addDias(dataAviso, diasAvisoTrabalhados) : dataAviso;
+  const dataProjetada = diasAvisoPagos > 0
+    ? addDias(ultimoDiaTrabalhado, diasAvisoPagos)
+    : ultimoDiaTrabalhado;
+
+  /* --- prescrição bienal (art. 7º, XXIX, da CF) --- */
+  // O biênio corre do fim do aviso, e do projetado quando ele é indenizado
+  // (OJ 83 da SDI-1): por isso é apurado aqui, e não sobre a data do aviso.
+  const bienal = apurarBienal(dataProjetada, ajuizamento, dados.dataReferencia);
+  if (bienal.impedimento) {
+    return {
+      erros: [],
+      alertas: [],
+      impedimento: bienal.impedimento,
+      recorte: null,
+      proventos: [],
+      descontos: [],
+      fgts: null,
+      totais: null,
+      contexto: { dataProjetada, ajuizamento, limiteBienal: bienal.limite },
+    };
+  }
+  if (bienal.alerta) alertas.push(bienal.alerta);
+  if (ajuizamento && ajuizamento < dataAviso) {
+    alertas.push('A data do ajuizamento é anterior ao fim do contrato. Confira as datas.');
+  }
+
+  if (excedenteTrabalhado > 0) {
+    alertas.push(
+      `O aviso proporcional é de ${diasAvisoLegais} dias, mas o empregado só pode ser obrigado a `
+        + `cumprir ${DIAS_AVISO_TRABALHAVEIS} em serviço: os ${excedenteTrabalhado} dias restantes foram `
+        + 'lançados como indenizados e projetam o contrato (Nota Técnica 184/2012 da SRT/MTE).',
+    );
+  }
 
   /* --- proventos --- */
   const proventos = [];
@@ -333,12 +394,18 @@ export function calcularRescisao(dados) {
   }
 
   let valorAviso = 0;
-  if (avisoIndenizado && diasAvisoDevidos > 0) {
-    valorAviso = arredondar((remuneracao / 30) * diasAvisoDevidos);
+  if (diasAvisoPagos > 0) {
+    valorAviso = arredondar((remuneracao / 30) * diasAvisoPagos);
+    const rotuloAviso = excedenteTrabalhado > 0
+      ? 'Aviso prévio indenizado (excedente dos 30 dias trabalhados)'
+      : (tipoAviso === 'indenizado_metade' ? 'Aviso prévio indenizado (50%)' : 'Aviso prévio indenizado');
+    const detalheAviso = excedenteTrabalhado > 0
+      ? `${diasAvisoPagos} dias além dos ${diasAvisoTrabalhados} cumpridos (de ${diasAvisoLegais} proporcionais)`
+      : `${diasAvisoPagos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
     proventos.push({
       chave: 'aviso_previo',
-      label: tipoAviso === 'indenizado_metade' ? 'Aviso prévio indenizado (50%)' : 'Aviso prévio indenizado',
-      detalhe: `${diasAvisoDevidos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`,
+      label: rotuloAviso,
+      detalhe: detalheAviso,
       valor: valorAviso,
     });
   }
@@ -407,13 +474,45 @@ export function calcularRescisao(dados) {
   const fatorFaltas = diasFerias / 30;
   const { completos, inicioPeriodoAtual } = periodosAquisitivos(admissao, dataProjetada);
   const periodosInformados = num(dados.periodosFeriasVencidas);
-  const periodosVencidos = Math.min(periodosInformados, completos);
+  const periodosNaoGozados = Math.min(periodosInformados, completos);
   if (periodosInformados > completos) {
     alertas.push(
       `Foram informados ${periodosInformados} períodos de férias vencidas, mas o contrato completou `
         + `${completos}. O cálculo usou ${completos}.`,
     );
   }
+
+  // Férias prescrevem em cinco anos contados do fim do período concessivo
+  // (art. 149 da CLT). Os não gozados são os últimos períodos completos; os
+  // mais antigos deles podem ter o concessivo encerrado antes do marco
+  // quinquenal, e aí saem da conta.
+  const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
+  const prescritos = [];
+  if (marco) {
+    for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
+      const inicioAquisitivo = addAnos(admissao, k - 1);
+      const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
+      if (fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
+    }
+  }
+  const periodosVencidos = periodosNaoGozados - prescritos.length;
+  const recorte = prescritos.length
+    ? {
+      marco,
+      titulo: prescritos.length === periodosNaoGozados
+        ? 'Férias vencidas prescritas'
+        : 'Parte das férias vencidas está prescrita',
+      mensagem: `${prescritos.length === 1 ? 'Um período' : `${prescritos.length} períodos`} de férias `
+        + `não gozadas ${prescritos.length === 1 ? 'teve' : 'tiveram'} o concessivo encerrado antes de `
+        + `${formatarDataPrescricao(marco)}, marco quinquenal contado do ajuizamento `
+        + `(${prescritos.map((p) => `concessivo até ${formatarDataPrescricao(p.fimConcessivo)}`).join('; ')}). `
+        + 'Pelo art. 149 da CLT, as férias prescrevem em cinco anos do fim do período concessivo, e '
+        + `${prescritos.length === 1 ? 'ele saiu' : 'eles saíram'} do cálculo. `
+        + (periodosVencidos
+          ? `O cálculo abaixo considera ${periodosVencidos} período(s) exigível(is).`
+          : 'Nenhum período vencido restou exigível.'),
+    }
+    : null;
   const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
@@ -578,7 +677,14 @@ export function calcularRescisao(dados) {
   return {
     erros: [],
     alertas,
+    impedimento: null,
+    recorte,
     contexto: {
+      ajuizamento,
+      limiteBienal: bienal.limite,
+      marcoQuinquenal: marco,
+      periodosPrescritos: prescritos.length,
+      prescricao: descreverPrescricao({ ajuizamento, limite: bienal.limite, marco }),
       remuneracao,
       remuneracaoFixa,
       horasExtras,
@@ -598,6 +704,9 @@ export function calcularRescisao(dados) {
       diasRestantes,
       diasAvisoLegais,
       diasAvisoDevidos,
+      diasAvisoTrabalhados,
+      diasAvisoPagos,
+      excedenteTrabalhado,
       ultimoDiaTrabalhado,
       dataProjetada,
       avos13,

@@ -8,8 +8,9 @@
  */
 
 import { FGTS, SALARIO_MINIMO } from '../tabelas.js';
-import { parseData, formatarData, contarMeses, diasEntre } from '../calculo.js';
+import { parseData, formatarData, diasEntre } from '../calculo.js';
 import { formatarNumeroBR } from '../formato.js';
+import { apurarBienal, marcoQuinquenal, descreverPrescricao } from '../prescricao.js';
 
 /** Divisor mensal padrão (44h semanais). */
 export const DIVISOR_PADRAO = 220;
@@ -76,22 +77,38 @@ export function calcularAdicionalRisco(dados) {
 }
 
 /**
- * Prescrição quinquenal (art. 7º, XXIX, da CF).
+ * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
+ * reúne e que a Súmula 308 do TST harmoniza — as regras em si moram em
+ * `prescricao.js`, comum às duas telas:
  *
- * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date}}
+ *  - **bienal**: extinto o contrato, a ação tem de ser ajuizada em dois anos,
+ *    contados do fim do aviso, inclusive o projetado (OJ 83 da SDI-1).
+ *    Perdido esse prazo, nada resta a calcular, nem o quinquênio;
+ *  - **quinquenal**: respeitado o biênio, são exigíveis as parcelas dos cinco
+ *    anos imediatamente anteriores ao ajuizamento (Súmula 308, I).
+ *
+ * Sem a data do ajuizamento não há o que afirmar, mas a situação é dita na
+ * tela — e, se o biênio já passou em relação a hoje, vira aviso.
+ *
+ * @param {Date} inicio início do período pedido
+ * @param {Date} fim fim do período pedido
+ * @param {object} dados campos da tela (dataAjuizamento, dataExtincao, dataReferencia)
+ * @returns {{impedimento: object|null, recorte: object|null, inicioCalculo: Date,
+ *   descricao: string, alerta: string|null}}
  */
-export function apurarPrescricao(inicio, fim, dataAjuizamento) {
-  const ajuizamento = parseData(dataAjuizamento);
-  if (!ajuizamento) return { impedimento: null, recorte: null, inicioCalculo: inicio };
+export function apurarPrescricao(inicio, fim, dados = {}) {
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const bienal = apurarBienal(parseData(dados.dataExtincao), ajuizamento, dados.dataReferencia);
+  const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
+  const descricao = descreverPrescricao({ ajuizamento, limite: bienal.limite, marco });
+  const base = { descricao, alerta: bienal.alerta, impedimento: null, recorte: null, inicioCalculo: inicio };
 
-  const marco = new Date(
-    Date.UTC(ajuizamento.getUTCFullYear() - 5, ajuizamento.getUTCMonth(), ajuizamento.getUTCDate()),
-  );
+  if (bienal.impedimento) return { ...base, impedimento: bienal.impedimento };
+  if (!ajuizamento) return base;
 
   if (fim < marco) {
     return {
-      inicioCalculo: inicio,
-      recorte: null,
+      ...base,
       impedimento: {
         integral: true,
         marco,
@@ -104,7 +121,7 @@ export function apurarPrescricao(inicio, fim, dataAjuizamento) {
 
   if (inicio < marco) {
     return {
-      impedimento: null,
+      ...base,
       inicioCalculo: marco,
       recorte: {
         marco,
@@ -117,19 +134,69 @@ export function apurarPrescricao(inicio, fim, dataAjuizamento) {
     };
   }
 
-  return { impedimento: null, recorte: null, inicioCalculo: inicio };
+  return base;
 }
 
-/** Meses de competência do período; período curto vira fração de mês. */
+/**
+ * Avisos de coerência entre as datas informadas. Não barram o cálculo: são
+ * combinações possíveis, mas que quase sempre denunciam erro de digitação.
+ */
+export function conferirDatas(inicio, fim, dados = {}) {
+  const avisos = [];
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const extincao = parseData(dados.dataExtincao);
+
+  if (ajuizamento && fim > ajuizamento) {
+    avisos.push(
+      `O período pedido vai até ${formatarData(fim)}, depois do ajuizamento em `
+        + `${formatarData(ajuizamento)}. Parcelas posteriores à inicial só entram por aditamento ou `
+        + 'como pedido de trato sucessivo — confira as datas.',
+    );
+  }
+  if (extincao && fim > extincao) {
+    avisos.push(
+      `O contrato foi extinto em ${formatarData(extincao)} e o período pedido vai até `
+        + `${formatarData(fim)}. Não há parcela devida depois do fim do contrato.`,
+    );
+  }
+  if (extincao && inicio > extincao) {
+    avisos.push(
+      `O período pedido começa em ${formatarData(inicio)}, depois da extinção do contrato em `
+        + `${formatarData(extincao)}. Confira as datas.`,
+    );
+  }
+  return avisos;
+}
+
+/**
+ * Quantos meses o período vale, para multiplicar uma verba mensal.
+ *
+ * Conta competência a competência: mês inteiro vale 1, mês partido vale a
+ * fração dos seus próprios dias. Um período de 01/01 a 31/12 dá 12 exatos;
+ * 20/01 a 10/03 dá 1,71, e não 1.
+ *
+ * A regra dos 15 dias não serve aqui: ela conta *avos* de 13º e de férias, que
+ * são direitos adquiridos por mês de serviço. Uma verba que se repete todo mês
+ * — hora extra, adicional, intervalo — é devida na proporção do tempo, sob
+ * pena de pagar mês cheio por quinze dias ou de engolir cinquenta dias como se
+ * fossem trinta.
+ */
 export function contarPeriodo(inicio, fim) {
   const diasPeriodo = diasEntre(inicio, fim);
-  const mesesInteiros = contarMeses(inicio, fim);
-  return {
-    diasPeriodo,
-    mesesInteiros,
-    meses: mesesInteiros > 0 ? mesesInteiros : Math.round((diasPeriodo / 30) * 100) / 100,
-    mesesFracionados: mesesInteiros === 0,
-  };
+
+  let proporcao = 0;
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const primeiroDoMes = cursor;
+    const ultimoDoMes = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > primeiroDoMes ? inicio : primeiroDoMes;
+    const ate = fim < ultimoDoMes ? fim : ultimoDoMes;
+    proporcao += diasEntre(de, ate) / ultimoDoMes.getUTCDate();
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+
+  const meses = Math.round(proporcao * 100) / 100;
+  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses) };
 }
 
 /** Enumera em português: "a", "a e b", "a, b e c". */
@@ -180,8 +247,10 @@ export function reflexosMensais(base, dados) {
  */
 export function fecharResultado({
   mensais, meses, mesesFracionados, diasPeriodo, contexto, dados, alertas = [],
-  recorte = null, baseAviso = 0, chavesFgts = [],
+  prescricao = null, baseAviso = 0, chavesFgts = [],
 }) {
+  const recorte = prescricao?.recorte ?? null;
+  if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
   const totalMensal = arredondar(mensais.reduce((soma, m) => soma + m.valor, 0));
   const periodo = mensais.map((m) => ({ ...m, valor: arredondar(m.valor * meses) }));
 
@@ -200,9 +269,18 @@ export function fecharResultado({
   const totalPeriodo = arredondar(periodo.reduce((soma, p) => soma + p.valor, 0));
 
   // A base do FGTS é a soma das verbas de natureza salarial que o cálculo
-  // apurou — nunca todas: férias indenizadas e parcelas indenizatórias ficam
-  // de fora. Cada pedido diz quais entram pela chave da verba.
-  const parcelasFgts = mensais.filter((m) => chavesFgts.includes(m.chave));
+  // apurou — nunca todas: as parcelas indenizatórias ficam de fora. Cada
+  // pedido diz quais entram pela chave da verba.
+  //
+  // As férias são o ponto que depende do caso: gozadas no curso do contrato,
+  // elas e o terço integram a base (art. 15 da Lei 8.036/90, sem exclusão
+  // legal); indenizadas, não. Só quem calcula sabe qual foi, então a escolha
+  // fica na tela — ligada por padrão, que é o que acontece num período dentro
+  // do contrato.
+  const chaves = chavesFgts.length && dados.fgtsSobreFerias !== false
+    ? [...chavesFgts, 'reflexo_ferias']
+    : chavesFgts;
+  const parcelasFgts = mensais.filter((m) => chaves.includes(m.chave));
   const baseFgtsMes = arredondar(parcelasFgts.reduce((soma, m) => soma + m.valor, 0));
   const querFgts = dados.reflexoFGTS !== false && baseFgtsMes > 0;
   const base = querFgts ? arredondar(baseFgtsMes * meses + valorAviso) : 0;
@@ -217,7 +295,7 @@ export function fecharResultado({
     alertas,
     impedimento: null,
     recorte,
-    contexto: { ...contexto, meses, mesesFracionados, diasPeriodo },
+    contexto: { ...contexto, meses, mesesFracionados, diasPeriodo, prescricao: prescricao?.descricao },
     mensais,
     periodo,
     fgts: { base, valor: fgtsDevido, multa: multaFgts, detalhe: detalheFgts },

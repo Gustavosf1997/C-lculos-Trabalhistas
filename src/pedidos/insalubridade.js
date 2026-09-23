@@ -11,7 +11,7 @@
  */
 
 import {
-  arredondar, num, calcularAdicionalRisco, apurarPrescricao, contarPeriodo,
+  arredondar, num, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo,
   reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo,
 } from './comum.js';
 
@@ -25,9 +25,11 @@ export function calcularAdicionalRiscoPedido(dados) {
   }
   if (erros.length) return resultadoComErros(erros);
 
-  const { impedimento, recorte, inicioCalculo } = apurarPrescricao(inicio, fim, dados.dataAjuizamento);
-  if (impedimento) return resultadoImpedido(impedimento);
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  const { inicioCalculo } = prescricao;
 
+  const alertas = conferirDatas(inicio, fim, dados);
   const risco = calcularAdicionalRisco(dados);
   const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
 
@@ -46,7 +48,8 @@ export function calcularAdicionalRiscoPedido(dados) {
     mesesFracionados,
     diasPeriodo,
     dados,
-    recorte,
+    alertas,
+    prescricao,
     baseAviso: risco.valor,
     chavesFgts: ['adicional_risco', 'reflexo_13'],
     contexto: {

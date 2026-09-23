@@ -223,9 +223,14 @@ body {
 .impedimento p { margin: 0; font-size: 13px; }
 .impedimento__saida { margin-top: 8px !important; color: #991b1b; }
 
-.formulario--bloqueado .grupo:not(:first-of-type) { opacity: .5; }
+/* Tela travada pela prescrição: esmaece o que de fato está bloqueado, e não
+   um grupo pela posição. As datas que afastam o impedimento moram em mais de
+   um grupo (na rescisão, o ajuizamento fica no segundo), e um campo livre com
+   cara de travado faria a pessoa desistir justamente dele. */
+.formulario--bloqueado .grupo:not(:has(input:enabled, select:enabled)) { opacity: .5; }
+.formulario--bloqueado .grupo:has(input:enabled, select:enabled) .campo:has(input:disabled, select:disabled) { opacity: .5; }
 .campo input:disabled, .campo select:disabled { background: #f5f5f4; color: var(--tinta-fraca); cursor: not-allowed; }
-.opcao:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+.opcao:has(input:disabled) { cursor: not-allowed; }
 
 .aviso-erro {
   background: #fef5f5; border: 1px solid #fecaca; color: #991b1b;

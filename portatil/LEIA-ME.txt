@@ -1,0 +1,59 @@
+CÁLCULOS TRABALHISTAS — VERSÃO PORTÁTIL
+=======================================
+
+COMO USAR
+    Dê dois cliques em "calculos-trabalhistas.html".
+
+    É só isso. O arquivo abre no navegador que você já tem (Chrome, Edge,
+    Firefox, Safari) e a ferramenta está pronta para uso.
+
+
+O QUE ELE NÃO PRECISA
+    - não instala nada, e não pede permissão de administrador;
+    - não precisa de internet: funciona em avião, em audiência, onde for;
+    - não precisa de servidor, de Node, de Python nem de extensão;
+    - não deixa rastro: nada é gravado fora deste arquivo.
+
+    Pode ser copiado para um pen drive, anexado em e-mail ou guardado numa
+    pasta de rede. Ele não depende de nenhum outro arquivo.
+
+
+ONDE FICAM OS DADOS
+    Em lugar nenhum. Tudo é calculado dentro da própria página, na memória do
+    navegador. Nada é enviado para servidor e nada fica salvo no computador:
+    ao fechar a aba, o que foi digitado se perde.
+
+    Para guardar um cálculo, use o botão "Gerar PDF" e salve o arquivo.
+
+
+DUAS ABAS
+    Verbas rescisórias — o acerto da rescisão, nas sete modalidades.
+    Cálculo de pedidos — horas extras, adicional noturno, intervalo
+                         intrajornada, insalubridade/periculosidade e as
+                         multas dos arts. 467 e 477.
+
+    Trocar de aba limpa a tela: cada cálculo começa do zero.
+
+
+PRESCRIÇÃO
+    Apurada nas três telas — rescisão, pedidos e multas. Informe a data do
+    ajuizamento: com ela a ferramenta aponta a prescrição bienal (contada do
+    fim do aviso, inclusive o projetado) e a quinquenal. Sem ela, o resumo
+    diz até quando se pode ajuizar e avisa se esse prazo já passou.
+
+
+TABELAS APLICADAS
+    As de 2026. A data de atualização aparece no cabeçalho da própria
+    ferramenta — se ela estiver velha, procure uma versão mais nova. Confira
+    as tabelas contra a fonte oficial antes de qualquer uso profissional.
+
+
+AVISO
+    Os valores são estimativas de uso orientativo. Não substituem o TRCT
+    homologado, a memória de cálculo do processo nem a análise de convenção
+    coletiva, acordo individual ou decisão judicial. Não há juros nem
+    correção monetária.
+
+
+Gerado a partir do código-fonte em
+https://github.com/Gustavosf1997/C-lculos-Trabalhistas
