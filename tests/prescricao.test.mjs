@@ -13,6 +13,9 @@ import {
 } from '../src/prescricao.js';
 import { calcularRescisao } from '../src/calculo.js';
 import { calcularHorasExtras } from '../src/pedidos/horas-extras.js';
+import { calcularAdicionalNoturno } from '../src/pedidos/noturno.js';
+import { calcularIntervalo } from '../src/pedidos/intervalo.js';
+import { calcularAdicionalRiscoPedido } from '../src/pedidos/insalubridade.js';
 import { calcularMultas } from '../src/pedidos/multas.js';
 import { hojeISO } from '../src/formato.js';
 
@@ -188,4 +191,95 @@ test('multas: só a do art. 467, sem datas, segue calculando', () => {
   const r = calcularMultas({ multa467: true, valorIncontroverso: 5000 });
   assert.equal(r.totais.geral, 2500);
   assert.equal(r.contexto.prescricao, null);
+});
+
+/* ---------------------- as datas bastam: prescrição antes dos valores --- */
+// Os testes anteriores preenchiam salário e horas antes das datas, e por isso
+// nunca viram o defeito: com só as datas na tela, cada cálculo pedia o
+// salário em vez de acusar a prescrição. Estes preenchem só as datas.
+
+const PEDIDOS_COM_PERIODO = [
+  ['horas extras', calcularHorasExtras],
+  ['adicional noturno', calcularAdicionalNoturno],
+  ['intervalo', calcularIntervalo],
+  ['insalubridade/periculosidade', calcularAdicionalRiscoPedido],
+];
+
+// O caso do print: período de 2000, extinção em 2000, ação em 2020.
+const soDatas = {
+  dataInicio: '2000-01-01', dataFim: '2000-01-01', dataAjuizamento: '2020-01-01', dataExtincao: '2000-01-01',
+};
+
+for (const [nome, calcular] of PEDIDOS_COM_PERIODO) {
+  test(`${nome}: só com as datas, a prescrição bienal já é acusada`, () => {
+    const r = calcular(soDatas);
+    assert.ok(r.impedimento?.bienal, JSON.stringify(r.erros));
+    assert.deepEqual(r.erros, []);
+  });
+
+  test(`${nome}: só com as datas, a prescrição quinquenal total já é acusada`, () => {
+    const r = calcular({ dataInicio: '2000-01-01', dataFim: '2001-12-31', dataAjuizamento: '2020-01-01' });
+    assert.equal(r.impedimento?.titulo, 'Pedido integralmente prescrito', JSON.stringify(r.erros));
+  });
+
+  test(`${nome}: prescrição parcial aparece junto da lista do que falta`, () => {
+    const r = calcular({ dataInicio: '2019-01-01', dataFim: '2023-12-31', dataAjuizamento: '2026-09-23' });
+    assert.equal(r.impedimento, null);
+    assert.ok(r.erros.length > 0); // faltam os valores...
+    assert.equal(r.recorte?.titulo, 'Parte do período está prescrita'); // ...mas o recorte já vale
+  });
+}
+
+test('pedidos: extinção e ajuizamento bastam para o biênio, mesmo sem o período', () => {
+  const r = calcularHorasExtras({ dataAjuizamento: '2020-01-01', dataExtincao: '2000-01-01' });
+  assert.ok(r.impedimento?.bienal);
+});
+
+test('pedidos: período com o fim antes do início não vira "tudo prescrito"', () => {
+  // erro de digitação: acusar prescrição total seria enganar
+  const r = calcularHorasExtras({ dataInicio: '2025-01-01', dataFim: '2010-01-01', dataAjuizamento: '2026-09-23' });
+  assert.equal(r.impedimento, null);
+  assert.ok(r.erros.some((e) => e.includes('anterior ao início')));
+});
+
+test('pedidos: formulário vazio segue listando tudo o que falta de uma vez', () => {
+  const r = calcularHorasExtras({});
+  assert.ok(r.erros.length >= 4);
+});
+
+test('multas: só com as datas, o biênio já é acusado', () => {
+  const r = calcularMultas({ multa477: true, dataRescisao: '2000-01-01', dataAjuizamento: '2020-01-01' });
+  assert.ok(r.impedimento?.bienal, JSON.stringify(r.erros));
+});
+
+test('multas: biênio vencido em relação a hoje aparece junto do que falta', () => {
+  const r = calcularMultas({ multa477: true, dataRescisao: '2020-01-01', dataReferencia: '2026-09-23' });
+  assert.ok(r.erros.length > 0);
+  assert.ok(r.alertas.some((a) => a.includes('01/01/2022')));
+});
+
+test('rescisão: só com as datas, o biênio já é acusado', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa', tipoAviso: 'indenizado',
+    dataAdmissao: '1995-01-01', dataAviso: '2000-01-01', dataAjuizamento: '2020-01-01',
+  });
+  assert.ok(r.impedimento?.bienal, JSON.stringify(r.erros));
+});
+
+test('rescisão: com as datas no prazo, aí sim o salário é pedido', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa', tipoAviso: 'indenizado',
+    dataAdmissao: '2020-01-01', dataAviso: '2026-06-01', dataAjuizamento: '2026-09-01',
+  });
+  assert.equal(r.impedimento, null);
+  assert.deepEqual(r.erros, ['Informe o último salário base.']);
+});
+
+test('rescisão: biênio vencido em relação a hoje aparece junto do que falta', () => {
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa', tipoAviso: 'indenizado',
+    dataAdmissao: '2010-01-01', dataAviso: '2020-01-01', dataReferencia: '2026-09-23',
+  });
+  assert.deepEqual(r.erros, ['Informe o último salário base.']);
+  assert.ok(r.alertas.some((a) => a.includes('prazo de dois anos')));
 });

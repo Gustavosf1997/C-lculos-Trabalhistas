@@ -16,6 +16,12 @@ import {
 
 export function calcularAdicionalNoturno(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
+
+  // Prescrição primeiro: é fato impeditivo, e as datas bastam para apurá-la.
+  // Só depois se pedem os valores — de um período prescrito, nenhum serve.
+  const prescricao = apurarPrescricao(inicio, fim, dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+
   const salarioBase = num(dados.salarioBase);
   const divisor = num(dados.divisor);
   const horasInformadas = num(dados.horasNoturnas);
@@ -23,10 +29,7 @@ export function calcularAdicionalNoturno(dados) {
   if (salarioBase <= 0) erros.push('Informe o salário base do período.');
   if (divisor <= 0) erros.push('Informe o divisor da jornada.');
   if (horasInformadas <= 0) erros.push('Informe a quantidade de horas noturnas.');
-  if (erros.length) return resultadoComErros(erros);
-
-  const prescricao = apurarPrescricao(inicio, fim, dados);
-  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  if (erros.length) return resultadoComErros(erros, prescricao);
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);

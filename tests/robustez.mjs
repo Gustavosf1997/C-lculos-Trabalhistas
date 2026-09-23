@@ -264,17 +264,21 @@ await page.waitForTimeout(300);
 checar('limpar devolve o divisor padrão', (await page.inputValue('#divisor')) === '220', await page.inputValue('#divisor'));
 await vistoriar('pedidos: depois de limpar');
 
-// impedimento e desbloqueio
+// impedimento e desbloqueio. As datas vêm primeiro, como na tela, e bastam:
+// o salário tem de travar antes de receber qualquer valor. (Esta sequência
+// já preencheu o salário depois das datas — e só passava porque a prescrição
+// esperava pelos valores para ser acusada.)
 await page.fill('#dataInicio', '01/01/2010');
 await page.fill('#dataFim', '31/12/2012');
 await page.fill('#dataAjuizamento', '21/09/2026');
-await page.fill('#salarioBase', '2.000,00');
-await page.fill('#quantidadeHoras', '20');
 await page.waitForTimeout(300);
-checar('prescrição integral bloqueia', await page.locator('#salarioBase').isDisabled(), null);
+checar('prescrição integral bloqueia só com as datas', await page.locator('#salarioBase').isDisabled(), null);
 await page.fill('#dataFim', '31/12/2025');
 await page.waitForTimeout(300);
 checar('corrigir a data desbloqueia', !(await page.locator('#salarioBase').isDisabled()), null);
+await page.fill('#salarioBase', '2.000,00');
+await page.fill('#quantidadeHoras', '20');
+await page.waitForTimeout(300);
 await vistoriar('pedidos: depois do desbloqueio');
 
 // PDF: a memória tem de sair preenchida, sem lixo

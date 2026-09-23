@@ -251,8 +251,9 @@ export function calcularRescisao(dados) {
     erros.push('A rescisão antecipada deve ocorrer antes do termo final previsto.');
   }
 
+  // O salário só é cobrado depois da prescrição: as datas bastam para apurar
+  // o biênio, e de um contrato prescrito nenhum valor serve.
   const salarioBase = num(dados.salarioBase);
-  if (salarioBase <= 0) erros.push('Informe o último salário base.');
 
   const ajuizamento = parseData(dados.dataAjuizamento);
   if (admissao && ajuizamento && ajuizamento < admissao) {
@@ -260,6 +261,9 @@ export function calcularRescisao(dados) {
   }
 
   if (erros.length) {
+    // Com as datas incompletas não há prescrição a apurar, então vale mostrar
+    // de uma vez tudo o que falta — inclusive o salário.
+    if (salarioBase <= 0) erros.push('Informe o último salário base.');
     return {
       erros, alertas: [], impedimento: null, recorte: null,
       proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
@@ -345,6 +349,15 @@ export function calcularRescisao(dados) {
   if (bienal.alerta) alertas.push(bienal.alerta);
   if (ajuizamento && ajuizamento < dataAviso) {
     alertas.push('A data do ajuizamento é anterior ao fim do contrato. Confira as datas.');
+  }
+
+  // Afastada a prescrição bienal, agora sim o salário é indispensável. Os
+  // avisos já apurados seguem junto, para a tela mostrá-los desde as datas.
+  if (salarioBase <= 0) {
+    return {
+      erros: ['Informe o último salário base.'], alertas: [...alertas], impedimento: null, recorte: null,
+      proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
+    };
   }
 
   if (excedenteTrabalhado > 0) {
