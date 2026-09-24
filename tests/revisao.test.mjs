@@ -89,10 +89,36 @@ test('a partir do marco o DSR majorado entra na base dos reflexos', () => {
   assert.equal(r.alertas.length, 0);
 });
 
-test('período que cruza o marco calcula com o reflexo e avisa', () => {
+test('período que cruza o marco é separado em dois trechos', () => {
+  // 36 meses: 14,61 antes de 20/03/2023 e 21,39 depois. O reflexo no 13º é
+  // R$ 37,50 por mês antes (só horas extras) e R$ 45,00 depois (com o DSR).
   const r = calcularHorasExtras({ ...heBase, dataInicio: '2022-01-01', dataFim: '2024-12-31' });
-  assert.equal(mensal(r, 'reflexo_13'), 45);
-  assert.ok(r.alertas.some((a) => a.includes('em separado')));
+  const periodo = (k) => r.periodo.find((p) => p.chave === k)?.valor ?? 0;
+  assert.equal(mensal(r, 'reflexo_13'), 45); // o mensal exibido é o do trecho recente
+  assert.equal(periodo('reflexo_13'), 1510.43); // 37,50 x 14,61 + 45,00 x 21,39
+  assert.equal(periodo('reflexo_ferias'), 2013.9); // 50,00 x 14,61 + 60,00 x 21,39
+  assert.ok(r.alertas.some((a) => a.includes('separou')));
+});
+
+test('antes do marco o DSR majorado também não vai para o aviso nem para o FGTS', () => {
+  // Redação original da OJ 394: férias, 13º, aviso prévio e FGTS.
+  const r = calcularHorasExtras({
+    ...heBase, dataInicio: '2021-01-01', dataFim: '2022-12-31', reflexoAviso: true, diasAviso: 30,
+  });
+  const periodo = (k) => r.periodo.find((p) => p.chave === k)?.valor ?? 0;
+  assert.equal(periodo('dsr'), 2160); // o DSR é pago...
+  assert.equal(periodo('reflexo_aviso'), 450); // ...mas o aviso é só sobre as horas extras
+  assert.equal(r.fgts.base, 13350); // 10.800 + 900 + 1.200 + 450, sem o DSR
+  assert.ok(!r.fgts.detalhe.includes('DSR'));
+});
+
+test('no trecho após o marco, o DSR entra no FGTS só pelos meses majorados', () => {
+  const r = calcularHorasExtras({
+    ...heBase, dataInicio: '2022-01-01', dataFim: '2024-12-31', reflexoAviso: true, diasAviso: 30,
+  });
+  // 16.200 + DSR de 21,39 meses (1.925,10) + 13º + férias + aviso de 540
+  assert.equal(r.fgts.base, 22189.43);
+  assert.ok(r.fgts.detalhe.includes('DSR (desde 20/03/2023)'));
 });
 
 /* --------------------------------------- prescrição bienal --------------- */
@@ -168,11 +194,21 @@ test('aviso de até 30 dias é cumprido por inteiro, sem excedente', () => {
 });
 
 test('o pedido de demissão deve 30 dias, não o aviso proporcional', () => {
+  // Um período de férias vencidas garante saldo para o desconto caber inteiro.
   const r = calcularRescisao({
-    ...avisoBase, tipo: 'pedido_demissao', tipoAviso: 'nao_cumprido',
+    ...avisoBase, tipo: 'pedido_demissao', tipoAviso: 'nao_cumprido', periodosFeriasVencidas: 1,
   });
   assert.equal(r.contexto.diasAvisoLegais, 30);
   assert.equal(r.descontos.find((d) => d.chave === 'aviso_nao_cumprido')?.valor, 3000);
+});
+
+test('sem saldo no acerto, o desconto do aviso para no que as verbas comportam', () => {
+  // 10 dias de março, 13º e férias proporcionais: R$ 2.166,67. O aviso não
+  // cumprido vale R$ 3.000,00, mas o acerto não termina com o empregado devendo.
+  const r = calcularRescisao({ ...avisoBase, tipo: 'pedido_demissao', tipoAviso: 'nao_cumprido' });
+  assert.equal(r.totais.liquido, 0);
+  assert.equal(r.contexto.descontosNaoAbatidos, 945.83);
+  assert.ok(r.alertas.some((a) => a.includes('não comportam')));
 });
 
 
@@ -255,4 +291,62 @@ test('o aviso de data chega ao resultado do pedido', () => {
   });
   assert.ok(r.alertas.some((a) => a.includes('depois do ajuizamento')));
   assert.ok(r.totais.geral > 0); // avisa, mas não barra
+});
+
+/* ------------------------------ limites dos descontos na rescisão -------- */
+// Art. 477, §5º, da CLT: nenhuma compensação no acerto passa de um mês de
+// remuneração — teto que a SDI-1 do TST aplica a toda compensação. E o acerto
+// não termina com o empregado devendo: o que as verbas não comportam, o
+// empregador cobra por outra via.
+
+const comDescontos = {
+  tipo: 'sem_justa_causa', tipoAviso: 'indenizado', salarioBase: 3000,
+  dataAdmissao: '2020-01-10', dataAviso: '2026-03-10', periodosFeriasVencidas: 1,
+};
+const desconto = (r, chave) => r.descontos.find((d) => d.chave === chave)?.valor ?? 0;
+
+test('compensações acima de um mês de remuneração são cortadas no teto', () => {
+  const r = calcularRescisao({
+    ...comDescontos,
+    descontos: ['adiantamento_salario', 'outros'],
+    adiantamentoSalario: 1200,
+    outrosDescontos: 2500, // juntos, 3.700: 700 acima do teto de 3.000
+  });
+  assert.equal(desconto(r, 'adiantamentoSalario') + desconto(r, 'outrosDescontos'), 3000);
+  assert.equal(r.contexto.descontosNaoAbatidos, 700);
+  assert.ok(r.alertas.some((a) => a.includes('art. 477, §5º')));
+});
+
+test('dentro do teto, as compensações entram inteiras', () => {
+  const r = calcularRescisao({ ...comDescontos, descontos: ['outros'], outrosDescontos: 2999 });
+  assert.equal(desconto(r, 'outrosDescontos'), 2999);
+  assert.equal(r.contexto.descontosNaoAbatidos, 0);
+});
+
+test('INSS, IRRF e pensão não contam para o teto do §5º', () => {
+  // Pensão é ordem judicial em favor de terceiro; INSS e IRRF, retenção legal.
+  const r = calcularRescisao({
+    ...comDescontos, descontos: ['pensao', 'outros'], pensaoPercentual: 30, outrosDescontos: 3000,
+  });
+  assert.ok(desconto(r, 'pensao') > 0);
+  assert.equal(desconto(r, 'outrosDescontos'), 3000); // no limite, mas inteiro
+  assert.equal(r.contexto.descontosNaoAbatidos, 0);
+});
+
+test('o teto do §5º é a remuneração, com adicionais e médias', () => {
+  const r = calcularRescisao({
+    ...comDescontos, adicionais: ['periculosidade_30'], descontos: ['outros'], outrosDescontos: 5000,
+  });
+  assert.equal(desconto(r, 'outrosDescontos'), 3900); // 3.000 + 30%
+});
+
+test('o acerto nunca termina com o empregado devendo', () => {
+  // Justa causa, dois dias trabalhados no mês e um empréstimo alto.
+  const r = calcularRescisao({
+    tipo: 'justa_causa', salarioBase: 3000, dataAdmissao: '2025-06-10', dataAviso: '2026-03-02',
+    descontos: ['outros'], outrosDescontos: 2800,
+  });
+  assert.equal(r.totais.liquido, 0);
+  assert.ok(r.contexto.descontosNaoAbatidos > 0);
+  assert.ok(r.alertas.some((a) => a.includes('não comportam')));
 });

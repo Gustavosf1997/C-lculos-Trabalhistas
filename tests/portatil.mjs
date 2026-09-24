@@ -154,7 +154,8 @@ await page.fill('#periodosFeriasVencidas', '6');
 await page.waitForTimeout(300);
 checar('rescisão: férias do art. 149 prescritas em caixa laranja',
   (await page.locator('#resultado .recorte').innerText().catch(() => '')).includes('art. 149'), null);
-checar('rescisão: só 4 dos 6 períodos entram', (await texto()).includes('R$ 12.000,00'), null);
+// 4 exigíveis: 3 com o concessivo vencido antes da saída (em dobro) e 1 simples
+checar('rescisão: só 4 dos 6 períodos entram, com a dobra de cada um', (await texto()).includes('R$ 21.000,00'), null);
 await page.click('#formulario button[type="reset"]');
 await page.waitForTimeout(300);
 

@@ -242,13 +242,13 @@ export const TIPOS = {
     nome: 'Rescisão antecipada pelo empregado',
     tag: 'Art. 480 da CLT',
     icone: '↩️',
-    descricao: 'O empregado sai antes do termo final e indeniza a empresa pelos prejuízos, limitado ao valor do art. 479.',
+    descricao: 'O empregado sai antes do termo final. Se a empresa comprovar prejuízo, ele a indeniza, até o valor do art. 479.',
     verbas: [
       { label: 'Saldo de salário', devida: true },
       { label: '13º salário proporcional', devida: true },
       { label: 'Férias vencidas + 1/3', devida: true },
       { label: 'Férias proporcionais + 1/3', devida: true },
-      { label: 'Indenização ao empregador (art. 480)', devida: false, nota: 'descontada do acerto' },
+      { label: 'Indenização ao empregador (art. 480)', devida: false, nota: 'só o prejuízo comprovado, até o teto do art. 479' },
       { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
     ],
     verbasComClausula: [
@@ -272,13 +272,12 @@ export const TIPOS = {
     },
     campos: {
       fgts: false, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true,
-      termoFinal: true, clausulaAssecuratoria: true,
+      termoFinal: true, clausulaAssecuratoria: true, prejuizo480: true,
     },
     indenizacaoAntecipada: {
       artigo: 480,
       natureza: 'desconto',
       label: 'Indenização ao empregador (art. 480)',
-      detalhe: 'limitada ao valor do art. 479',
     },
     rotuloDataAviso: 'Data da saída antecipada',
     dicaDataAviso: 'Último dia efetivamente trabalhado.',
