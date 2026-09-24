@@ -221,8 +221,9 @@ await page.fill('#dataAjuizamento', '01/02/2025');
 await page.waitForTimeout(300);
 const recorteFerias = await page.locator('#resultado .recorte').innerText().catch(() => '');
 checar('rescisão: férias prescritas em caixa laranja', recorteFerias.includes('art. 149'), recorteFerias.slice(0, 60));
-checar('rescisão: só as férias exigíveis entram',
-  (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ').includes('R$ 12.000,00'), null);
+// 4 exigíveis: 3 com o concessivo vencido antes da saída (em dobro) e 1 simples
+checar('rescisão: só as férias exigíveis entram, com a dobra de cada período',
+  (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ').includes('R$ 21.000,00'), null);
 
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');
@@ -461,6 +462,69 @@ checar('só datas: rescisão acusa o biênio', (await vermelho()).includes('bien
 checar('só datas: rescisão trava o salário', await page.locator('#salarioBase').isDisabled(), null);
 await page.click('#formulario button[type="reset"]');
 await page.waitForTimeout(300);
+
+/* --- terceira revisão: arts. 480 e 477, §5º, dobra de férias, DSR do intervalo --- */
+await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+const telaR = async () => (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ');
+
+await page.click('[data-tipo="sem_justa_causa"]');
+checar('marcação manual de férias em dobro saiu da tela', (await page.locator('#feriasDobro').count()) === 0, null);
+checar('campo do art. 480 escondido fora da modalidade', await page.locator('#campo-prejuizo480').isHidden(), null);
+await page.fill('#dataAdmissao', '01/03/2019');
+await page.fill('#dataAviso', '15/09/2026');
+await page.fill('#salarioBase', '3.000,00');
+await page.fill('#periodosFeriasVencidas', '2');
+await page.waitForTimeout(300);
+checar('dobra aplicada só ao período com o concessivo vencido', (await telaR()).includes('R$ 9.000,00'), null);
+checar('resumo diz quantos períodos vão em dobro', (await telaR()).includes('1 em dobro'), null);
+
+// art. 477, §5º: compensações acima de um mês de remuneração
+await page.check('input[name="descontos"][value="outros"]');
+await page.fill('#outrosDescontos', '5.000,00');
+await page.waitForTimeout(300);
+checar('compensação cortada no teto do art. 477, §5º', (await telaR()).includes('art. 477, §5º'), null);
+checar('o desconto mostra o valor cortado', (await telaR()).includes('R$ 2.000,00 fora do acerto'), null);
+
+// art. 480: só com prejuízo comprovado
+await page.click('[data-tipo="determinado_antecipada_empregado"]');
+await page.fill('#dataAdmissao', '01/06/2026');
+await page.fill('#dataTermoFinal', '29/08/2026');
+await page.fill('#dataAviso', '15/07/2026');
+await page.click('input[name="descontos"][value="nenhum"]');
+await page.waitForTimeout(300);
+checar('campo do art. 480 aparece na saída antecipada', await page.locator('#campo-prejuizo480').isVisible(), null);
+checar('sem prejuízo, o art. 480 não desconta', !(await telaR()).includes('Indenização ao empregador'), null);
+checar('e a tela explica o teto', (await telaR()).includes('comprovar prejuízo'), null);
+await page.fill('#prejuizoArt480', '500,00');
+await page.waitForTimeout(300);
+checar('com prejuízo, desconta o prejuízo', (await telaR()).includes('Indenização ao empregador'), null);
+await page.check('#clausulaAssecuratoria');
+await page.waitForTimeout(300);
+checar('com a cláusula, o campo do art. 480 some', await page.locator('#campo-prejuizo480').isHidden(), null);
+
+// intervalo do regime antigo: DSR
+await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
+await page.click('[data-pedido="intervalo"]');
+checar('dias úteis escondidos no regime indenizatório', await page.locator('#diasUteis').isHidden(), null);
+await page.fill('#dataInicio', '01/01/2015');
+await page.fill('#dataFim', '31/12/2015');
+await page.fill('#salarioBase', '2.200,00');
+await page.fill('#minutosSuprimidos', '30');
+await page.check('input[name="regimeIntervalo"][value="anterior_reforma"]');
+await page.waitForTimeout(300);
+checar('regime antigo pede os dias do DSR', await page.locator('#diasUteis').isVisible(), null);
+checar('regime antigo paga DSR sobre o intervalo', (await telaR()).includes('DSR sobre o intervalo'), null);
+checar('e a OJ 394 original tira o DSR da base do FGTS', (await telaR()).includes('8% sobre intervalo, 13º e férias + 1/3'), null);
+
+// horas extras cruzando o marco da OJ 394
+await page.click('[data-pedido="horas_extras"]');
+await page.fill('#dataInicio', '01/01/2022');
+await page.fill('#dataFim', '31/12/2024');
+await page.fill('#salarioBase', '2.200,00');
+await page.fill('#quantidadeHoras', '30');
+await page.waitForTimeout(300);
+checar('período cruzando 20/03/2023 é separado', (await telaR()).includes('o cálculo o separou'), null);
+checar('13º do período pela soma dos dois trechos', (await telaR()).includes('R$ 1.510,43'), null);
 
 await browser.close();
 console.log(checagens.join('\n'));

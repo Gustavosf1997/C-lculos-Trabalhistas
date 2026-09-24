@@ -77,8 +77,28 @@ export function calcularIntervalo(dados) {
     valor: valorMes,
   }];
 
-  // Natureza indenizatória não repercute em outras verbas.
-  if (!indenizatorio) mensais.push(...reflexosMensais(valorMes, dados));
+  // Natureza indenizatória não repercute em outras verbas. No regime salarial
+  // (Súmula 437, III) o intervalo é pago como hora extra, dia a dia, e gera
+  // DSR (Lei 605/49). Como todo esse regime é anterior a 20/03/2023, vale a
+  // redação original da OJ 394: o DSR majorado é pago, mas não repercute em
+  // férias, 13º, aviso nem FGTS.
+  let dsrMes = 0;
+  if (!indenizatorio) {
+    if (dados.reflexoDSR !== false) {
+      const diasUteis = num(dados.diasUteis) || 25;
+      const diasRepouso = num(dados.diasRepouso) || 5;
+      dsrMes = arredondar((valorMes / diasUteis) * diasRepouso);
+      mensais.push({
+        chave: 'dsr',
+        nomeCurto: 'DSR',
+        label: 'DSR sobre o intervalo',
+        detalhe: `${diasRepouso} repousos / ${diasUteis} dias úteis (Lei 605/49) — sem reflexos (OJ 394)`,
+        valor: dsrMes,
+        fgtsPeriodo: 0,
+      });
+    }
+    mensais.push(...reflexosMensais(valorMes, dados));
+  }
 
   return fecharResultado({
     mensais,
@@ -89,7 +109,7 @@ export function calcularIntervalo(dados) {
     alertas,
     prescricao,
     baseAviso: indenizatorio ? 0 : valorMes,
-    chavesFgts: indenizatorio ? [] : ['intervalo', 'reflexo_13'],
+    chavesFgts: indenizatorio ? [] : ['intervalo', 'dsr', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,
       inicioPedido: inicio,

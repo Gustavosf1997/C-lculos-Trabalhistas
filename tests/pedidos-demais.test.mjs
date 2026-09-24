@@ -173,3 +173,19 @@ test('o intervalo salarial da Súmula 437 gera FGTS sem DSR', () => {
   assert.equal(r.fgts.detalhe, '8% sobre intervalo, 13º e férias + 1/3');
   assert.equal(r.fgts.valor, 378.4); // (330 + 27,50 + 36,67) x 12 x 8%
 });
+
+
+test('o intervalo salarial da Súmula 437 gera DSR, sem reflexos do DSR', () => {
+  const r = calcularIntervalo({
+    ...periodo, ...jornada, regimeIntervalo: 'anterior_reforma', minutosSuprimidos: 30,
+  });
+  assert.equal(verba(r, 'dsr'), 66); // 330 / 25 x 5
+  assert.equal(verba(r, 'reflexo_13'), 27.5); // sobre o intervalo, não sobre o DSR (OJ 394)
+  assert.ok(!r.fgts.detalhe.includes('DSR')); // nem no FGTS
+});
+
+test('o intervalo indenizatório segue sem DSR e sem reflexos', () => {
+  const r = calcularIntervalo({ ...periodo, ...jornada, minutosSuprimidos: 30 });
+  assert.equal(verba(r, 'dsr'), 0);
+  assert.equal(r.mensais.length, 1);
+});

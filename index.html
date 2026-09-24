@@ -53,6 +53,11 @@
                 <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAviso" />
                 <span class="campo__dica" id="dica-data-aviso">Data da comunicação da rescisão.</span>
               </label>
+              <label class="campo" id="campo-prejuizo480" hidden>
+                <span class="campo__rotulo">Prejuízo comprovado do empregador</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="prejuizoArt480" placeholder="0,00" /></span>
+                <span class="campo__dica">A indenização do art. 480 cobre só o prejuízo que a saída causou, até o que o empregado receberia pelo art. 479 (§1º). Sem prejuízo, nada se desconta.</span>
+              </label>
               <label class="campo campo--largo checkbox" id="campo-clausula" hidden>
                 <input type="checkbox" id="clausulaAssecuratoria" />
                 <span>Contrato com <b>cláusula assecuratória</b> do direito recíproco de rescisão antecipada (art. 481 da CLT)</span>
@@ -133,10 +138,6 @@
                 <span class="campo__rotulo">Faltas injustificadas no período aquisitivo</span>
                 <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="365" id="faltasInjustificadas" placeholder="0" />
                 <span class="campo__dica">Acima de 5 faltas, reduz os dias de férias (art. 130 da CLT).</span>
-              </label>
-              <label class="campo campo--largo checkbox">
-                <input type="checkbox" id="feriasDobro" />
-                <span>Pagar as férias vencidas <b>em dobro</b> (período concessivo expirado — art. 137 da CLT)</span>
               </label>
             </div>
           </fieldset>

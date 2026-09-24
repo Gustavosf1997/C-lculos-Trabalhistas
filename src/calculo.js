@@ -224,6 +224,52 @@ function num(valor) {
 }
 
 /**
+ * Limita os descontos da rescisão, em duas camadas.
+ *
+ * 1. **Art. 477, §5º, da CLT**: "qualquer compensação" no acerto não passa de
+ *    um mês de remuneração. A SDI-1 do TST aplica o teto a toda compensação,
+ *    qualquer que seja a natureza — aviso não cumprido, art. 480, horas
+ *    negativas, adiantamentos e outros débitos. INSS e IRRF são retenções
+ *    legais, e a pensão é ordem judicial em favor de terceiro: nenhum dos três
+ *    é compensação, e ficam fora do teto.
+ * 2. **Saldo**: o acerto não termina com o empregado devendo. O que as verbas
+ *    não comportam fica de fora — primeiro das compensações, depois da pensão.
+ *
+ * O corte começa pelo último desconto lançado. Os itens reduzidos ganham uma
+ * nota no detalhe; o valor que sobra é do empregador cobrar por outra via.
+ *
+ * @param {object[]} descontos alterados no lugar
+ * @returns {{naoAbatido: number, excessoDoLimite: number, faltaDeSaldo: number}}
+ */
+function limitarDescontos(descontos, { proventos, limite }) {
+  const soma = (natureza) => arredondar(
+    descontos.filter((d) => d.natureza === natureza).reduce((t, d) => t + d.valor, 0),
+  );
+  const cortar = (naturezas, quanto, nota) => {
+    let resta = arredondar(quanto);
+    for (const item of [...descontos].reverse()) {
+      if (resta <= 0) break;
+      if (!naturezas.includes(item.natureza) || item.valor <= 0) continue;
+      const corte = Math.min(item.valor, resta);
+      item.valor = arredondar(item.valor - corte);
+      item.detalhe = `${item.detalhe} · ${moeda.format(corte)} fora do acerto (${nota})`;
+      resta = arredondar(resta - corte);
+    }
+    return arredondar(quanto - resta);
+  };
+
+  const excessoDoLimite = Math.max(0, arredondar(soma('compensacao') - limite));
+  if (excessoDoLimite > 0) cortar(['compensacao'], excessoDoLimite, 'art. 477, §5º');
+
+  const total = arredondar(descontos.reduce((t, d) => t + d.valor, 0));
+  const faltaDeSaldo = Math.max(0, arredondar(total - proventos));
+  if (faltaDeSaldo > 0) cortar(['compensacao', 'pensao'], faltaDeSaldo, 'sem saldo no acerto');
+
+  // Itens zerados pelo corte não somem: a nota explica por que valem zero.
+  return { naoAbatido: arredondar(excessoDoLimite + faltaDeSaldo), excessoDoLimite, faltaDeSaldo };
+}
+
+/**
  * @param {object} dados campos do formulário (ver `campos.js` / `app.js`)
  * @returns {{erros:string[], contexto:object, proventos:object[], descontos:object[], fgts:object, totais:object}}
  */
@@ -427,18 +473,43 @@ export function calcularRescisao(dados) {
   const diasRestantes = termoFinal ? Math.max(0, diffDias(ultimoDiaTrabalhado, termoFinal)) : 0;
   const regraIndenizacao = tipo.indenizacaoAntecipada;
   let indenizacaoAntecipada = 0;
+  let tetoArt480 = 0;
   if (regraIndenizacao && !clausulaAtiva && diasRestantes > 0) {
-    indenizacaoAntecipada = arredondar(((remuneracao / 30) * diasRestantes) / 2);
-    const lancamento = {
-      chave: `indenizacao_art_${regraIndenizacao.artigo}`,
-      label: regraIndenizacao.label,
-      detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}${
-        regraIndenizacao.detalhe ? ` — ${regraIndenizacao.detalhe}` : ''
-      }`,
-      valor: indenizacaoAntecipada,
-    };
-    if (regraIndenizacao.natureza === 'provento') proventos.push(lancamento);
-    else descontosAntecipados.push(lancamento);
+    // Metade da remuneração dos dias que faltavam até o termo final.
+    const metadeDoRestante = arredondar(((remuneracao / 30) * diasRestantes) / 2);
+    if (regraIndenizacao.natureza === 'provento') {
+      // Art. 479: devida pelo empregador, sem prova de nada.
+      indenizacaoAntecipada = metadeDoRestante;
+      proventos.push({
+        chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+        label: regraIndenizacao.label,
+        detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}`,
+        valor: indenizacaoAntecipada,
+      });
+    } else {
+      // Art. 480: o empregado indeniza os *prejuízos* que a saída causou, e o
+      // art. 479 é só o teto (§1º). Sem prejuízo comprovado, nada se desconta.
+      tetoArt480 = metadeDoRestante;
+      const prejuizo = num(dados.prejuizoArt480);
+      indenizacaoAntecipada = arredondar(Math.min(prejuizo, tetoArt480));
+      if (indenizacaoAntecipada > 0) {
+        descontosAntecipados.push({
+          chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+          label: regraIndenizacao.label,
+          natureza: 'compensacao',
+          detalhe: prejuizo > tetoArt480
+            ? `prejuízo de ${moeda.format(prejuizo)} limitado ao teto de ${moeda.format(tetoArt480)} (art. 480, §1º)`
+            : `prejuízo comprovado, dentro do teto de ${moeda.format(tetoArt480)} (art. 480, §1º)`,
+          valor: indenizacaoAntecipada,
+        });
+      } else {
+        alertas.push(
+          'A indenização do art. 480 só é devida se o empregador comprovar prejuízo com a saída '
+            + `antecipada, e fica limitada a ${moeda.format(tetoArt480)} — o que o empregado receberia pelo `
+            + 'art. 479. Nenhum prejuízo foi informado, e por isso nada foi descontado.',
+        );
+      }
+    }
   }
 
   /* --- 13º proporcional --- */
@@ -495,20 +566,25 @@ export function calcularRescisao(dados) {
     );
   }
 
-  // Férias prescrevem em cinco anos contados do fim do período concessivo
-  // (art. 149 da CLT). Os não gozados são os últimos períodos completos; os
-  // mais antigos deles podem ter o concessivo encerrado antes do marco
-  // quinquenal, e aí saem da conta.
+  // Os não gozados são os últimos períodos completos, e cada um tem o seu
+  // destino, decidido pelo fim do próprio período concessivo:
+  //  - prescreve, se o concessivo acabou antes do marco quinquenal contado do
+  //    ajuizamento (art. 149 da CLT);
+  //  - é pago em dobro, se o concessivo acabou antes do fim do contrato — com
+  //    a projeção do aviso indenizado, que integra o tempo de serviço
+  //    (art. 487, §1º). A dobra é de cada período, não do conjunto (art. 137);
+  //  - é pago simples, se o concessivo ainda corria na saída.
   const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
   const prescritos = [];
-  if (marco) {
-    for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
-      const inicioAquisitivo = addAnos(admissao, k - 1);
-      const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
-      if (fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
-    }
+  let periodosEmDobro = 0;
+  for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
+    const inicioAquisitivo = addAnos(admissao, k - 1);
+    const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
+    if (marco && fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
+    else if (fimConcessivo < dataProjetada) periodosEmDobro += 1;
   }
   const periodosVencidos = periodosNaoGozados - prescritos.length;
+  const periodosSimples = periodosVencidos - periodosEmDobro;
   const recorte = prescritos.length
     ? {
       marco,
@@ -526,7 +602,6 @@ export function calcularRescisao(dados) {
           : 'Nenhum período vencido restou exigível.'),
     }
     : null;
-  const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
   if (periodosVencidos > 0 && fatorFaltas === 0) {
@@ -536,11 +611,15 @@ export function calcularRescisao(dados) {
     );
   }
   if (periodosVencidos > 0 && fatorFaltas > 0) {
-    feriasVencidas = arredondar(remuneracao * fatorFaltas * periodosVencidos * (emDobro ? 2 : 1));
+    feriasVencidas = arredondar(remuneracao * fatorFaltas * (periodosSimples + 2 * periodosEmDobro));
+    const partes = [
+      periodosEmDobro ? `${periodosEmDobro} em dobro, com o concessivo vencido (art. 137 da CLT)` : null,
+      periodosSimples ? `${periodosSimples} simples, com o concessivo em curso na saída` : null,
+    ].filter(Boolean);
     proventos.push({
       chave: 'ferias_vencidas',
-      label: emDobro ? 'Férias vencidas em dobro' : 'Férias vencidas',
-      detalhe: `${periodosVencidos} período(s) não gozado(s)${emDobro ? ' — art. 137 da CLT' : ''}`,
+      label: periodosSimples ? 'Férias vencidas' : 'Férias vencidas em dobro',
+      detalhe: `${periodosVencidos} período(s) não gozado(s): ${partes.join('; ')}`,
       valor: feriasVencidas,
     });
     proventos.push({
@@ -581,13 +660,16 @@ export function calcularRescisao(dados) {
 
   const inssSalario = calcularINSS(baseMensal);
   if (inssSalario > 0) {
-    descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
+    descontos.push({
+      chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: inssSalario,
+    });
   }
   const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
   if (inss13 > 0) {
     descontos.push({
       chave: 'inss_13',
       label: 'INSS sobre 13º salário',
+      natureza: 'legal',
       detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
       valor: inss13,
     });
@@ -604,6 +686,7 @@ export function calcularRescisao(dados) {
     descontos.push({
       chave: 'horas_negativas',
       label: 'Horas negativas',
+      natureza: 'compensacao',
       detalhe: `${formatarQuantidade(horasNegativas)} h x ${moeda.format(arredondar(valorHora))} (salário-hora)`,
       valor: arredondar(valorHora * horasNegativas),
     });
@@ -618,7 +701,9 @@ export function calcularRescisao(dados) {
     pensao: baseMensal * fatorPensao,
   });
   if (irrfSalario > 0) {
-    descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
+    descontos.push({
+      chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: irrfSalario,
+    });
   }
   const irrf13 = arredondar(
     decimosPorAno.reduce(
@@ -631,13 +716,16 @@ export function calcularRescisao(dados) {
     ),
   );
   if (irrf13 > 0) {
-    descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
+    descontos.push({
+      chave: 'irrf_13', label: 'IRRF sobre 13º salário', natureza: 'legal', detalhe: 'tributação exclusiva', valor: irrf13,
+    });
   }
 
   if (tipoAviso === 'nao_cumprido') {
     descontos.push({
       chave: 'aviso_nao_cumprido',
       label: 'Aviso prévio não cumprido',
+      natureza: 'compensacao',
       detalhe: '30 dias (art. 487, §2º)',
       valor: arredondar(remuneracao),
     });
@@ -648,6 +736,7 @@ export function calcularRescisao(dados) {
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
+      natureza: 'pensao',
       detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
       valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
     });
@@ -659,7 +748,27 @@ export function calcularRescisao(dados) {
     ['outros', 'outrosDescontos', 'Outros descontos'],
   ]) {
     const valor = aplica(id) ? num(dados[chave]) : 0;
-    if (valor > 0) descontos.push({ chave, label, detalhe: 'informado', valor: arredondar(valor) });
+    if (valor > 0) descontos.push({ chave, label, natureza: 'compensacao', detalhe: 'informado', valor: arredondar(valor) });
+  }
+
+  /* --- limites dos descontos --- */
+  const totalProventosAntes = arredondar(totalProventosBrutos);
+  const { naoAbatido, excessoDoLimite, faltaDeSaldo } = limitarDescontos(descontos, {
+    proventos: totalProventosAntes,
+    limite: remuneracao,
+  });
+  if (excessoDoLimite > 0) {
+    alertas.push(
+      `As compensações passam de um mês de remuneração (${moeda.format(remuneracao)}). Pelo art. 477, §5º, `
+        + `da CLT, ${moeda.format(excessoDoLimite)} não podem ser descontados na rescisão; se devidos, o `
+        + 'empregador os cobra por outra via.',
+    );
+  }
+  if (faltaDeSaldo > 0) {
+    alertas.push(
+      `As verbas não comportam todos os descontos: ${moeda.format(faltaDeSaldo)} ficaram de fora, porque `
+        + 'o acerto não pode terminar com saldo devedor do empregado.',
+    );
   }
 
   /* --- alertas (não bloqueiam o cálculo) --- */
@@ -727,7 +836,9 @@ export function calcularRescisao(dados) {
       avosFerias,
       periodosVencidos,
       periodosInformados,
-      emDobro,
+      periodosEmDobro,
+      tetoArt480,
+      descontosNaoAbatidos: naoAbatido,
       periodosCompletosCalculados: completos,
       diasFerias,
       diasSaldo,

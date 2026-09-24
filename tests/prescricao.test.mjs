@@ -124,14 +124,18 @@ test('férias com o concessivo encerrado antes do marco quinquenal prescrevem', 
   const r = calcularRescisao({ ...semFerias, dataAjuizamento: '2025-02-01' });
   assert.equal(r.contexto.periodosPrescritos, 2);
   assert.equal(r.contexto.periodosVencidos, 4);
-  assert.equal(ferias(r), 12000);
+  // Dos 4 exigíveis, 3 tiveram o concessivo vencido antes da saída projetada
+  // (24/09/2023) e vão em dobro; o 8º, com o concessivo até 31/01/2024, simples.
+  assert.equal(r.contexto.periodosEmDobro, 3);
+  assert.equal(ferias(r), 21000); // (3 x 2 + 1) x 3.000
   assert.ok(r.recorte.mensagem.includes('art. 149'));
 });
 
 test('sem ajuizamento, as férias informadas entram todas', () => {
   const r = calcularRescisao(semFerias);
   assert.equal(r.contexto.periodosVencidos, 6);
-  assert.equal(ferias(r), 18000);
+  assert.equal(r.contexto.periodosEmDobro, 5);
+  assert.equal(ferias(r), 33000); // (5 x 2 + 1) x 3.000
   assert.equal(r.recorte, null);
 });
 

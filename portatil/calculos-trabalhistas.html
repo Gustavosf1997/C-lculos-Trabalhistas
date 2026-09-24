@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Cálculos Trabalhistas</title>
 <!--
-  Versão portátil — esboço v0.1 · atualizada em 23/09/2026
+  Versão portátil — esboço v0.1 · atualizada em 24/09/2026
 
   Arquivo único: abra com dois cliques, em qualquer navegador. Não instala
   nada, não precisa de internet e não envia dado nenhum para servidor — todo
@@ -384,6 +384,11 @@ body {
                 <input type="text" inputmode="numeric" data-campo="data" maxlength="10" placeholder="dd/mm/aaaa" id="dataAviso" />
                 <span class="campo__dica" id="dica-data-aviso">Data da comunicação da rescisão.</span>
               </label>
+              <label class="campo" id="campo-prejuizo480" hidden>
+                <span class="campo__rotulo">Prejuízo comprovado do empregador</span>
+                <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="prejuizoArt480" placeholder="0,00" /></span>
+                <span class="campo__dica">A indenização do art. 480 cobre só o prejuízo que a saída causou, até o que o empregado receberia pelo art. 479 (§1º). Sem prejuízo, nada se desconta.</span>
+              </label>
               <label class="campo campo--largo checkbox" id="campo-clausula" hidden>
                 <input type="checkbox" id="clausulaAssecuratoria" />
                 <span>Contrato com <b>cláusula assecuratória</b> do direito recíproco de rescisão antecipada (art. 481 da CLT)</span>
@@ -464,10 +469,6 @@ body {
                 <span class="campo__rotulo">Faltas injustificadas no período aquisitivo</span>
                 <input type="text" inputmode="numeric" data-campo="inteiro" data-min="0" data-max="365" id="faltasInjustificadas" placeholder="0" />
                 <span class="campo__dica">Acima de 5 faltas, reduz os dias de férias (art. 130 da CLT).</span>
-              </label>
-              <label class="campo campo--largo checkbox">
-                <input type="checkbox" id="feriasDobro" />
-                <span>Pagar as férias vencidas <b>em dobro</b> (período concessivo expirado — art. 137 da CLT)</span>
               </label>
             </div>
           </fieldset>
@@ -842,13 +843,13 @@ const TIPOS = {
     nome: 'Rescisão antecipada pelo empregado',
     tag: 'Art. 480 da CLT',
     icone: '↩️',
-    descricao: 'O empregado sai antes do termo final e indeniza a empresa pelos prejuízos, limitado ao valor do art. 479.',
+    descricao: 'O empregado sai antes do termo final. Se a empresa comprovar prejuízo, ele a indeniza, até o valor do art. 479.',
     verbas: [
       { label: 'Saldo de salário', devida: true },
       { label: '13º salário proporcional', devida: true },
       { label: 'Férias vencidas + 1/3', devida: true },
       { label: 'Férias proporcionais + 1/3', devida: true },
-      { label: 'Indenização ao empregador (art. 480)', devida: false, nota: 'descontada do acerto' },
+      { label: 'Indenização ao empregador (art. 480)', devida: false, nota: 'só o prejuízo comprovado, até o teto do art. 479' },
       { label: 'Multa do FGTS / saque / seguro-desemprego', devida: false },
     ],
     verbasComClausula: [
@@ -872,13 +873,12 @@ const TIPOS = {
     },
     campos: {
       fgts: false, decimoTerceiro: true, feriasProporcionais: true, feriasVencidas: true,
-      termoFinal: true, clausulaAssecuratoria: true,
+      termoFinal: true, clausulaAssecuratoria: true, prejuizo480: true,
     },
     indenizacaoAntecipada: {
       artigo: 480,
       natureza: 'desconto',
       label: 'Indenização ao empregador (art. 480)',
-      detalhe: 'limitada ao valor do art. 479',
     },
     rotuloDataAviso: 'Data da saída antecipada',
     dicaDataAviso: 'Último dia efetivamente trabalhado.',
@@ -1651,6 +1651,52 @@ function num(valor) {
 }
 
 /**
+ * Limita os descontos da rescisão, em duas camadas.
+ *
+ * 1. **Art. 477, §5º, da CLT**: "qualquer compensação" no acerto não passa de
+ *    um mês de remuneração. A SDI-1 do TST aplica o teto a toda compensação,
+ *    qualquer que seja a natureza — aviso não cumprido, art. 480, horas
+ *    negativas, adiantamentos e outros débitos. INSS e IRRF são retenções
+ *    legais, e a pensão é ordem judicial em favor de terceiro: nenhum dos três
+ *    é compensação, e ficam fora do teto.
+ * 2. **Saldo**: o acerto não termina com o empregado devendo. O que as verbas
+ *    não comportam fica de fora — primeiro das compensações, depois da pensão.
+ *
+ * O corte começa pelo último desconto lançado. Os itens reduzidos ganham uma
+ * nota no detalhe; o valor que sobra é do empregador cobrar por outra via.
+ *
+ * @param {object[]} descontos alterados no lugar
+ * @returns {{naoAbatido: number, excessoDoLimite: number, faltaDeSaldo: number}}
+ */
+function limitarDescontos(descontos, { proventos, limite }) {
+  const soma = (natureza) => arredondar(
+    descontos.filter((d) => d.natureza === natureza).reduce((t, d) => t + d.valor, 0),
+  );
+  const cortar = (naturezas, quanto, nota) => {
+    let resta = arredondar(quanto);
+    for (const item of [...descontos].reverse()) {
+      if (resta <= 0) break;
+      if (!naturezas.includes(item.natureza) || item.valor <= 0) continue;
+      const corte = Math.min(item.valor, resta);
+      item.valor = arredondar(item.valor - corte);
+      item.detalhe = `${item.detalhe} · ${moeda.format(corte)} fora do acerto (${nota})`;
+      resta = arredondar(resta - corte);
+    }
+    return arredondar(quanto - resta);
+  };
+
+  const excessoDoLimite = Math.max(0, arredondar(soma('compensacao') - limite));
+  if (excessoDoLimite > 0) cortar(['compensacao'], excessoDoLimite, 'art. 477, §5º');
+
+  const total = arredondar(descontos.reduce((t, d) => t + d.valor, 0));
+  const faltaDeSaldo = Math.max(0, arredondar(total - proventos));
+  if (faltaDeSaldo > 0) cortar(['compensacao', 'pensao'], faltaDeSaldo, 'sem saldo no acerto');
+
+  // Itens zerados pelo corte não somem: a nota explica por que valem zero.
+  return { naoAbatido: arredondar(excessoDoLimite + faltaDeSaldo), excessoDoLimite, faltaDeSaldo };
+}
+
+/**
  * @param {object} dados campos do formulário (ver `campos.js` / `app.js`)
  * @returns {{erros:string[], contexto:object, proventos:object[], descontos:object[], fgts:object, totais:object}}
  */
@@ -1854,18 +1900,43 @@ function calcularRescisao(dados) {
   const diasRestantes = termoFinal ? Math.max(0, diffDias(ultimoDiaTrabalhado, termoFinal)) : 0;
   const regraIndenizacao = tipo.indenizacaoAntecipada;
   let indenizacaoAntecipada = 0;
+  let tetoArt480 = 0;
   if (regraIndenizacao && !clausulaAtiva && diasRestantes > 0) {
-    indenizacaoAntecipada = arredondar(((remuneracao / 30) * diasRestantes) / 2);
-    const lancamento = {
-      chave: `indenizacao_art_${regraIndenizacao.artigo}`,
-      label: regraIndenizacao.label,
-      detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}${
-        regraIndenizacao.detalhe ? ` — ${regraIndenizacao.detalhe}` : ''
-      }`,
-      valor: indenizacaoAntecipada,
-    };
-    if (regraIndenizacao.natureza === 'provento') proventos.push(lancamento);
-    else descontosAntecipados.push(lancamento);
+    // Metade da remuneração dos dias que faltavam até o termo final.
+    const metadeDoRestante = arredondar(((remuneracao / 30) * diasRestantes) / 2);
+    if (regraIndenizacao.natureza === 'provento') {
+      // Art. 479: devida pelo empregador, sem prova de nada.
+      indenizacaoAntecipada = metadeDoRestante;
+      proventos.push({
+        chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+        label: regraIndenizacao.label,
+        detalhe: `metade de ${diasRestantes} dia(s) até ${formatarData(termoFinal)}`,
+        valor: indenizacaoAntecipada,
+      });
+    } else {
+      // Art. 480: o empregado indeniza os *prejuízos* que a saída causou, e o
+      // art. 479 é só o teto (§1º). Sem prejuízo comprovado, nada se desconta.
+      tetoArt480 = metadeDoRestante;
+      const prejuizo = num(dados.prejuizoArt480);
+      indenizacaoAntecipada = arredondar(Math.min(prejuizo, tetoArt480));
+      if (indenizacaoAntecipada > 0) {
+        descontosAntecipados.push({
+          chave: `indenizacao_art_${regraIndenizacao.artigo}`,
+          label: regraIndenizacao.label,
+          natureza: 'compensacao',
+          detalhe: prejuizo > tetoArt480
+            ? `prejuízo de ${moeda.format(prejuizo)} limitado ao teto de ${moeda.format(tetoArt480)} (art. 480, §1º)`
+            : `prejuízo comprovado, dentro do teto de ${moeda.format(tetoArt480)} (art. 480, §1º)`,
+          valor: indenizacaoAntecipada,
+        });
+      } else {
+        alertas.push(
+          'A indenização do art. 480 só é devida se o empregador comprovar prejuízo com a saída '
+            + `antecipada, e fica limitada a ${moeda.format(tetoArt480)} — o que o empregado receberia pelo `
+            + 'art. 479. Nenhum prejuízo foi informado, e por isso nada foi descontado.',
+        );
+      }
+    }
   }
 
   /* --- 13º proporcional --- */
@@ -1922,20 +1993,25 @@ function calcularRescisao(dados) {
     );
   }
 
-  // Férias prescrevem em cinco anos contados do fim do período concessivo
-  // (art. 149 da CLT). Os não gozados são os últimos períodos completos; os
-  // mais antigos deles podem ter o concessivo encerrado antes do marco
-  // quinquenal, e aí saem da conta.
+  // Os não gozados são os últimos períodos completos, e cada um tem o seu
+  // destino, decidido pelo fim do próprio período concessivo:
+  //  - prescreve, se o concessivo acabou antes do marco quinquenal contado do
+  //    ajuizamento (art. 149 da CLT);
+  //  - é pago em dobro, se o concessivo acabou antes do fim do contrato — com
+  //    a projeção do aviso indenizado, que integra o tempo de serviço
+  //    (art. 487, §1º). A dobra é de cada período, não do conjunto (art. 137);
+  //  - é pago simples, se o concessivo ainda corria na saída.
   const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
   const prescritos = [];
-  if (marco) {
-    for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
-      const inicioAquisitivo = addAnos(admissao, k - 1);
-      const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
-      if (fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
-    }
+  let periodosEmDobro = 0;
+  for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
+    const inicioAquisitivo = addAnos(admissao, k - 1);
+    const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
+    if (marco && fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
+    else if (fimConcessivo < dataProjetada) periodosEmDobro += 1;
   }
   const periodosVencidos = periodosNaoGozados - prescritos.length;
+  const periodosSimples = periodosVencidos - periodosEmDobro;
   const recorte = prescritos.length
     ? {
       marco,
@@ -1953,7 +2029,6 @@ function calcularRescisao(dados) {
           : 'Nenhum período vencido restou exigível.'),
     }
     : null;
-  const emDobro = Boolean(dados.feriasDobro);
 
   let feriasVencidas = 0;
   if (periodosVencidos > 0 && fatorFaltas === 0) {
@@ -1963,11 +2038,15 @@ function calcularRescisao(dados) {
     );
   }
   if (periodosVencidos > 0 && fatorFaltas > 0) {
-    feriasVencidas = arredondar(remuneracao * fatorFaltas * periodosVencidos * (emDobro ? 2 : 1));
+    feriasVencidas = arredondar(remuneracao * fatorFaltas * (periodosSimples + 2 * periodosEmDobro));
+    const partes = [
+      periodosEmDobro ? `${periodosEmDobro} em dobro, com o concessivo vencido (art. 137 da CLT)` : null,
+      periodosSimples ? `${periodosSimples} simples, com o concessivo em curso na saída` : null,
+    ].filter(Boolean);
     proventos.push({
       chave: 'ferias_vencidas',
-      label: emDobro ? 'Férias vencidas em dobro' : 'Férias vencidas',
-      detalhe: `${periodosVencidos} período(s) não gozado(s)${emDobro ? ' — art. 137 da CLT' : ''}`,
+      label: periodosSimples ? 'Férias vencidas' : 'Férias vencidas em dobro',
+      detalhe: `${periodosVencidos} período(s) não gozado(s): ${partes.join('; ')}`,
       valor: feriasVencidas,
     });
     proventos.push({
@@ -2008,13 +2087,16 @@ function calcularRescisao(dados) {
 
   const inssSalario = calcularINSS(baseMensal);
   if (inssSalario > 0) {
-    descontos.push({ chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: inssSalario });
+    descontos.push({
+      chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: inssSalario,
+    });
   }
   const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
   if (inss13 > 0) {
     descontos.push({
       chave: 'inss_13',
       label: 'INSS sobre 13º salário',
+      natureza: 'legal',
       detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
       valor: inss13,
     });
@@ -2031,6 +2113,7 @@ function calcularRescisao(dados) {
     descontos.push({
       chave: 'horas_negativas',
       label: 'Horas negativas',
+      natureza: 'compensacao',
       detalhe: `${formatarQuantidade(horasNegativas)} h x ${moeda.format(arredondar(valorHora))} (salário-hora)`,
       valor: arredondar(valorHora * horasNegativas),
     });
@@ -2045,7 +2128,9 @@ function calcularRescisao(dados) {
     pensao: baseMensal * fatorPensao,
   });
   if (irrfSalario > 0) {
-    descontos.push({ chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, detalhe: 'tabela progressiva', valor: irrfSalario });
+    descontos.push({
+      chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: irrfSalario,
+    });
   }
   const irrf13 = arredondar(
     decimosPorAno.reduce(
@@ -2058,13 +2143,16 @@ function calcularRescisao(dados) {
     ),
   );
   if (irrf13 > 0) {
-    descontos.push({ chave: 'irrf_13', label: 'IRRF sobre 13º salário', detalhe: 'tributação exclusiva', valor: irrf13 });
+    descontos.push({
+      chave: 'irrf_13', label: 'IRRF sobre 13º salário', natureza: 'legal', detalhe: 'tributação exclusiva', valor: irrf13,
+    });
   }
 
   if (tipoAviso === 'nao_cumprido') {
     descontos.push({
       chave: 'aviso_nao_cumprido',
       label: 'Aviso prévio não cumprido',
+      natureza: 'compensacao',
       detalhe: '30 dias (art. 487, §2º)',
       valor: arredondar(remuneracao),
     });
@@ -2075,6 +2163,7 @@ function calcularRescisao(dados) {
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
+      natureza: 'pensao',
       detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
       valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
     });
@@ -2086,7 +2175,27 @@ function calcularRescisao(dados) {
     ['outros', 'outrosDescontos', 'Outros descontos'],
   ]) {
     const valor = aplica(id) ? num(dados[chave]) : 0;
-    if (valor > 0) descontos.push({ chave, label, detalhe: 'informado', valor: arredondar(valor) });
+    if (valor > 0) descontos.push({ chave, label, natureza: 'compensacao', detalhe: 'informado', valor: arredondar(valor) });
+  }
+
+  /* --- limites dos descontos --- */
+  const totalProventosAntes = arredondar(totalProventosBrutos);
+  const { naoAbatido, excessoDoLimite, faltaDeSaldo } = limitarDescontos(descontos, {
+    proventos: totalProventosAntes,
+    limite: remuneracao,
+  });
+  if (excessoDoLimite > 0) {
+    alertas.push(
+      `As compensações passam de um mês de remuneração (${moeda.format(remuneracao)}). Pelo art. 477, §5º, `
+        + `da CLT, ${moeda.format(excessoDoLimite)} não podem ser descontados na rescisão; se devidos, o `
+        + 'empregador os cobra por outra via.',
+    );
+  }
+  if (faltaDeSaldo > 0) {
+    alertas.push(
+      `As verbas não comportam todos os descontos: ${moeda.format(faltaDeSaldo)} ficaram de fora, porque `
+        + 'o acerto não pode terminar com saldo devedor do empregado.',
+    );
   }
 
   /* --- alertas (não bloqueiam o cálculo) --- */
@@ -2154,7 +2263,9 @@ function calcularRescisao(dados) {
       avosFerias,
       periodosVencidos,
       periodosInformados,
-      emDobro,
+      periodosEmDobro,
+      tetoArt480,
+      descontosNaoAbatidos: naoAbatido,
       periodosCompletosCalculados: completos,
       diasFerias,
       diasSaldo,
@@ -2199,7 +2310,7 @@ function calcularRescisao(dados) {
  */
 
 const VERSAO = '0.1';
-const ATUALIZADO_EM = '23/09/2026';
+const ATUALIZADO_EM = '24/09/2026';
 const CARIMBO = `esboço v${VERSAO} · atualizada em ${ATUALIZADO_EM}`;
 
     return { VERSAO, ATUALIZADO_EM, CARIMBO };
@@ -2765,7 +2876,10 @@ function fecharResultado({
   const recorte = prescricao?.recorte ?? null;
   if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
   const totalMensal = arredondar(mensais.reduce((soma, m) => soma + m.valor, 0));
-  const periodo = mensais.map((m) => ({ ...m, valor: arredondar(m.valor * meses) }));
+  // Uma verba pode trazer o seu total do período já apurado (`valorPeriodo`),
+  // quando o período tem trechos com regras diferentes — o DSR majorado antes
+  // e depois de 20/03/2023, por exemplo. As demais são o mensal vezes os meses.
+  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * meses) }));
 
   const diasAviso = dados.reflexoAviso && baseAviso > 0 ? num(dados.diasAviso) || 30 : 0;
   const valorAviso = diasAviso ? arredondar((baseAviso / 30) * diasAviso) : 0;
@@ -2793,13 +2907,21 @@ function fecharResultado({
   const chaves = chavesFgts.length && dados.fgtsSobreFerias !== false
     ? [...chavesFgts, 'reflexo_ferias']
     : chavesFgts;
+  //
+  // Uma verba também pode dizer quanto dela entra no FGTS (`fgtsPeriodo`): o
+  // DSR majorado, antes de 20/03/2023, é pago mas não recolhe (OJ 394).
   const parcelasFgts = mensais.filter((m) => chaves.includes(m.chave));
-  const baseFgtsMes = arredondar(parcelasFgts.reduce((soma, m) => soma + m.valor, 0));
-  const querFgts = dados.reflexoFGTS !== false && baseFgtsMes > 0;
-  const base = querFgts ? arredondar(baseFgtsMes * meses + valorAviso) : 0;
+  const ajustada = (m) => m.fgtsPeriodo !== undefined || m.valorPeriodo !== undefined;
+  const mensalSemAjuste = arredondar(parcelasFgts.filter((m) => !ajustada(m)).reduce((soma, m) => soma + m.valor, 0));
+  const periodoAjustado = parcelasFgts.filter(ajustada).reduce((soma, m) => soma + (m.fgtsPeriodo ?? m.valorPeriodo), 0);
+  const basePeriodo = arredondar(arredondar(mensalSemAjuste * meses) + periodoAjustado);
+  const querFgts = dados.reflexoFGTS !== false && basePeriodo > 0;
+  const base = querFgts ? arredondar(basePeriodo + valorAviso) : 0;
   const fgtsDevido = arredondar(base * FGTS.aliquotaDeposito);
   const multaFgts = dados.multaFGTS ? arredondar(fgtsDevido * FGTS.multaSemJustaCausa) : 0;
-  const nomes = parcelasFgts.map((m) => m.nomeCurto ?? m.label.toLowerCase());
+  const nomes = parcelasFgts
+    .filter((m) => (m.fgtsPeriodo ?? 1) > 0)
+    .map((m) => m.nomeCurto ?? m.label.toLowerCase());
   if (valorAviso > 0) nomes.push('aviso prévio');
   const detalheFgts = querFgts ? `${porcentagem(FGTS.aliquotaDeposito)} sobre ${listar(nomes)}` : null;
 
@@ -2921,29 +3043,58 @@ function calcularHorasExtras(dados) {
     });
   }
 
-  // OJ 394, II, da SDI-1: o DSR majorado só repercute nas demais verbas para as
-  // horas extras prestadas a partir de 20/03/2023. Antes disso a majoração não
-  // repercute — e o cálculo afasta o reflexo em vez de apenas avisar, sob pena
-  // de entregar um número que a própria orientação recusa.
+  // OJ 394 da SDI-1. Na redação original, o DSR majorado pelas horas extras
+  // não repercute em férias, 13º, aviso prévio nem FGTS. Na nova (item II),
+  // repercute em todos eles — mas só para as horas extras prestadas a partir
+  // de 20/03/2023. O período é partido nesse marco, e cada trecho segue a sua
+  // regra: nada de aplicar a nova a meses que ela não alcança.
   const marcoOJ394 = parseData(MARCO_OJ_394);
-  const periodoTodoAnterior = fim < marcoOJ394;
-  const pediuDsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
-  const dsrNosReflexos = pediuDsrNosReflexos && !periodoTodoAnterior;
-  const baseReflexos = horasExtrasMes + (dsrNosReflexos ? dsrMes : 0);
-  if (pediuDsrNosReflexos && periodoTodoAnterior) {
+  const pediuDsrMajorado = querDSR && dados.dsrNosReflexos !== false;
+  const mesesDesdeOMarco = fim >= marcoOJ394
+    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).meses
+    : 0;
+  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, meses) : 0;
+  const mesesSemMajoracao = arredondar(meses - mesesMajorados);
+  const partido = mesesMajorados > 0 && mesesSemMajoracao > 0;
+
+  if (pediuDsrMajorado && mesesMajorados === 0) {
     alertas.push(
-      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}: pela OJ 394, II, da SDI-1 o DSR `
-        + 'majorado não repercute nas demais verbas nesse intervalo, e o cálculo afastou esse reflexo.',
+      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}. Pela redação original da OJ 394 da `
+        + 'SDI-1, o DSR majorado pelas horas extras não repercute em férias, 13º, aviso prévio nem FGTS, e o '
+        + 'cálculo o afastou desses reflexos.',
     );
-  } else if (dsrNosReflexos && inicioCalculo < marcoOJ394) {
+  } else if (partido) {
     alertas.push(
-      'O DSR majorado só repercute nas demais verbas para horas extras a partir de '
-        + `${formatarData(marcoOJ394)} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco: `
-        + 'calcule os dois trechos em separado para não estender o reflexo ao período anterior.',
+      `O período cruza ${formatarData(marcoOJ394)}, e o cálculo o separou. Nos `
+        + `${formatarQuantidade(mesesSemMajoracao)} meses anteriores, o DSR majorado não repercute em férias, `
+        + '13º, aviso nem FGTS (OJ 394, redação original); nos '
+        + `${formatarQuantidade(mesesMajorados)} meses seguintes, repercute (OJ 394, II).`,
     );
   }
 
-  mensais.push(...reflexosMensais(baseReflexos, dados));
+  // O DSR é pago no período todo; o FGTS sobre ele, só nos meses majorados.
+  const dsr = mensais.find((m) => m.chave === 'dsr');
+  if (dsr && mesesMajorados < meses) {
+    dsr.fgtsPeriodo = arredondar(dsrMes * mesesMajorados);
+    if (partido) dsr.nomeCurto = `DSR (desde ${formatarData(marcoOJ394)})`;
+  }
+
+  // Reflexos em 13º e férias: sobre as horas extras no período todo, e sobre
+  // o DSR só nos meses majorados. O mensal exibido é o do trecho mais recente.
+  const semDsr = reflexosMensais(horasExtrasMes, dados);
+  const comDsr = reflexosMensais(horasExtrasMes + dsrMes, dados);
+  if (mesesMajorados === 0) mensais.push(...semDsr);
+  else if (!partido) mensais.push(...comDsr);
+  else {
+    mensais.push(...comDsr.map((item) => {
+      const antes = semDsr.find((s) => s.chave === item.chave)?.valor ?? 0;
+      return {
+        ...item,
+        detalhe: `${item.detalhe}; sem o DSR antes de ${formatarData(marcoOJ394)}`,
+        valorPeriodo: arredondar(antes * mesesSemMajoracao + item.valor * mesesMajorados),
+      };
+    }));
+  }
 
   return fecharResultado({
     mensais,
@@ -2953,7 +3104,8 @@ function calcularHorasExtras(dados) {
     dados,
     alertas,
     prescricao,
-    baseAviso: horasExtrasMes + (querDSR ? dsrMes : 0),
+    // O aviso é pago na saída: segue a regra do fim do período.
+    baseAviso: horasExtrasMes + (mesesMajorados > 0 ? dsrMes : 0),
     chavesFgts: ['horas_extras', 'dsr', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,
@@ -3157,8 +3309,28 @@ function calcularIntervalo(dados) {
     valor: valorMes,
   }];
 
-  // Natureza indenizatória não repercute em outras verbas.
-  if (!indenizatorio) mensais.push(...reflexosMensais(valorMes, dados));
+  // Natureza indenizatória não repercute em outras verbas. No regime salarial
+  // (Súmula 437, III) o intervalo é pago como hora extra, dia a dia, e gera
+  // DSR (Lei 605/49). Como todo esse regime é anterior a 20/03/2023, vale a
+  // redação original da OJ 394: o DSR majorado é pago, mas não repercute em
+  // férias, 13º, aviso nem FGTS.
+  let dsrMes = 0;
+  if (!indenizatorio) {
+    if (dados.reflexoDSR !== false) {
+      const diasUteis = num(dados.diasUteis) || 25;
+      const diasRepouso = num(dados.diasRepouso) || 5;
+      dsrMes = arredondar((valorMes / diasUteis) * diasRepouso);
+      mensais.push({
+        chave: 'dsr',
+        nomeCurto: 'DSR',
+        label: 'DSR sobre o intervalo',
+        detalhe: `${diasRepouso} repousos / ${diasUteis} dias úteis (Lei 605/49) — sem reflexos (OJ 394)`,
+        valor: dsrMes,
+        fgtsPeriodo: 0,
+      });
+    }
+    mensais.push(...reflexosMensais(valorMes, dados));
+  }
 
   return fecharResultado({
     mensais,
@@ -3169,7 +3341,7 @@ function calcularIntervalo(dados) {
     alertas,
     prescricao,
     baseAviso: indenizatorio ? 0 : valorMes,
-    chavesFgts: indenizatorio ? [] : ['intervalo', 'reflexo_13'],
+    chavesFgts: indenizatorio ? [] : ['intervalo', 'dsr', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,
       inicioPedido: inicio,
@@ -3505,8 +3677,12 @@ const grupoReflexos = (opcoes = {}) => ({
   campos: [
     ...(opcoes.dsr === false ? [] : [
       reflexo('reflexoDSR', 'DSR sobre a verba (Lei 605/49, Súmula 172 do TST)'),
-      reflexo('dsrNosReflexos', 'DSR majorado repercute nas demais verbas (OJ 394, II, da SDI-1 — a partir de 20/03/2023)',
-        true, { aparece: (d) => d.reflexoDSR !== false }),
+      // Sem sentido onde o período é todo anterior a 20/03/2023, como o
+      // intervalo do regime antigo: lá o DSR majorado nunca repercute.
+      ...(opcoes.dsrMajorado === false ? [] : [
+        reflexo('dsrNosReflexos', 'DSR majorado repercute nas demais verbas (OJ 394, II, da SDI-1 — a partir de 20/03/2023)',
+          true, { aparece: (d) => d.reflexoDSR !== false }),
+      ]),
     ]),
     reflexo('reflexo13', '13º salário'),
     reflexo('reflexoFerias', 'Férias + 1/3'),
@@ -3619,7 +3795,7 @@ const PEDIDOS = [
     descricao: 'Intervalo não concedido ou reduzido, pago com acréscimo de 50% sobre a hora normal.',
     itens: [
       { label: 'Período suprimido + 50% (a partir de 11/11/2017)', devida: true },
-      { label: 'Intervalo integral e reflexos (até 10/11/2017)', devida: true, nota: 'Súmula 437 do TST' },
+      { label: 'Intervalo integral, DSR e reflexos (até 10/11/2017)', devida: true, nota: 'Súmula 437 do TST' },
       { label: 'Reflexos no regime indenizatório', devida: false, nota: 'art. 71, §4º' },
     ],
     calcular: calcularIntervalo,
@@ -3651,10 +3827,13 @@ const PEDIDOS = [
           { id: 'diasComSupressao', rotulo: 'Dias com supressão no mês', tipo: 'inteiro', valor: 22, min: 1, max: 31 },
           { id: 'adicionalIntervalo', rotulo: 'Acréscimo', tipo: 'percentual', valor: 50, min: 0, max: 200,
             dica: '50% sobre a hora normal (art. 71, §4º).' },
+          // No regime salarial o intervalo é pago como hora extra, dia a dia:
+          // gera DSR como qualquer verba variável (Súmula 437, III).
+          ...camposDSR.map((campo) => ({ ...campo, aparece: (d) => d.regimeIntervalo === 'anterior_reforma' })),
         ],
       },
       {
-        ...grupoReflexos({ dsr: false }),
+        ...grupoReflexos({ dsrMajorado: false }),
         aparece: (d) => d.regimeIntervalo === 'anterior_reforma',
       },
     ],
@@ -3670,7 +3849,7 @@ const PEDIDOS = [
       { label: 'Insalubridade de 10%, 20% ou 40%', devida: true },
       { label: 'Periculosidade de 30%', devida: true },
       { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
-      { label: 'DSR', devida: false, nota: 'parcela mensal fixa' },
+      { label: 'DSR', devida: false, nota: 'o adicional mensal já remunera os repousos — OJ 103 da SDI-1' },
     ],
     calcular: calcularAdicionalRiscoPedido,
     resumo: (c) => [
@@ -3784,7 +3963,7 @@ const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
-  'dataAdmissao', 'dataAviso', 'dataTermoFinal', 'dataAjuizamento',
+  'dataAdmissao', 'dataAviso', 'dataTermoFinal', 'dataAjuizamento', 'prejuizoArt480',
   'salarioBase', 'divisor', 'horasExtras', 'adicionalHoraExtra', 'mediaComissoes', 'horasNoturnas',
   'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
   'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
@@ -3800,7 +3979,6 @@ function coletarDados() {
     ...valores,
     tipo: tipoSelecionado,
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
-    feriasDobro: $('#feriasDobro').checked,
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
     adicionais: adicionaisMarcados(),
     descontos: descontosMarcados(),
@@ -3965,6 +4143,8 @@ function aplicarVisibilidade(tipo) {
   // O aviso prévio do contrato a termo só existe com a cláusula do art. 481.
   const clausula = $('#clausulaAssecuratoria').checked && campos.clausulaAssecuratoria;
   $('#grupo-aviso').hidden = !tipo.aviso || (tipo.aviso.somenteComClausula && !clausula);
+  // Com a cláusula, o art. 480 dá lugar ao aviso: o prejuízo deixa de importar.
+  $('#campo-prejuizo480').hidden = !campos.prejuizo480 || clausula;
 }
 
 function montarOpcoesAviso(tipo) {
@@ -4069,7 +4249,9 @@ function renderResultado(resultado) {
     ['Data projetada', formatarData(c.dataProjetada)],
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
-    ['Férias vencidas', c.periodosVencidos ? `${c.periodosVencidos} período(s)` : 'nenhum computado'],
+    ['Férias vencidas', c.periodosVencidos
+      ? `${c.periodosVencidos} período(s)${c.periodosEmDobro ? `, ${c.periodosEmDobro} em dobro` : ''}`
+      : 'nenhum computado'],
     ['Prescrição', c.prescricao],
   );
 
@@ -4158,7 +4340,7 @@ function aplicarVisibilidadeMarcacoes() {
 /** A contagem de períodos vem do cálculo, para não divergir dele. */
 function atualizarDicaPeriodos(contexto) {
   $('#dica-periodos').textContent = contexto
-    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados.`
+    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados — a dobra do art. 137 é aplicada sozinha a cada um com o concessivo vencido.`
     : 'Preencha as datas para ver os períodos aquisitivos completos.';
 }
 

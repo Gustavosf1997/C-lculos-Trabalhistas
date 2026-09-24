@@ -103,8 +103,12 @@ const grupoReflexos = (opcoes = {}) => ({
   campos: [
     ...(opcoes.dsr === false ? [] : [
       reflexo('reflexoDSR', 'DSR sobre a verba (Lei 605/49, Súmula 172 do TST)'),
-      reflexo('dsrNosReflexos', 'DSR majorado repercute nas demais verbas (OJ 394, II, da SDI-1 — a partir de 20/03/2023)',
-        true, { aparece: (d) => d.reflexoDSR !== false }),
+      // Sem sentido onde o período é todo anterior a 20/03/2023, como o
+      // intervalo do regime antigo: lá o DSR majorado nunca repercute.
+      ...(opcoes.dsrMajorado === false ? [] : [
+        reflexo('dsrNosReflexos', 'DSR majorado repercute nas demais verbas (OJ 394, II, da SDI-1 — a partir de 20/03/2023)',
+          true, { aparece: (d) => d.reflexoDSR !== false }),
+      ]),
     ]),
     reflexo('reflexo13', '13º salário'),
     reflexo('reflexoFerias', 'Férias + 1/3'),
@@ -217,7 +221,7 @@ export const PEDIDOS = [
     descricao: 'Intervalo não concedido ou reduzido, pago com acréscimo de 50% sobre a hora normal.',
     itens: [
       { label: 'Período suprimido + 50% (a partir de 11/11/2017)', devida: true },
-      { label: 'Intervalo integral e reflexos (até 10/11/2017)', devida: true, nota: 'Súmula 437 do TST' },
+      { label: 'Intervalo integral, DSR e reflexos (até 10/11/2017)', devida: true, nota: 'Súmula 437 do TST' },
       { label: 'Reflexos no regime indenizatório', devida: false, nota: 'art. 71, §4º' },
     ],
     calcular: calcularIntervalo,
@@ -249,10 +253,13 @@ export const PEDIDOS = [
           { id: 'diasComSupressao', rotulo: 'Dias com supressão no mês', tipo: 'inteiro', valor: 22, min: 1, max: 31 },
           { id: 'adicionalIntervalo', rotulo: 'Acréscimo', tipo: 'percentual', valor: 50, min: 0, max: 200,
             dica: '50% sobre a hora normal (art. 71, §4º).' },
+          // No regime salarial o intervalo é pago como hora extra, dia a dia:
+          // gera DSR como qualquer verba variável (Súmula 437, III).
+          ...camposDSR.map((campo) => ({ ...campo, aparece: (d) => d.regimeIntervalo === 'anterior_reforma' })),
         ],
       },
       {
-        ...grupoReflexos({ dsr: false }),
+        ...grupoReflexos({ dsrMajorado: false }),
         aparece: (d) => d.regimeIntervalo === 'anterior_reforma',
       },
     ],
@@ -268,7 +275,7 @@ export const PEDIDOS = [
       { label: 'Insalubridade de 10%, 20% ou 40%', devida: true },
       { label: 'Periculosidade de 30%', devida: true },
       { label: 'Reflexos em 13º, férias + 1/3 e FGTS', devida: true },
-      { label: 'DSR', devida: false, nota: 'parcela mensal fixa' },
+      { label: 'DSR', devida: false, nota: 'o adicional mensal já remunera os repousos — OJ 103 da SDI-1' },
     ],
     calcular: calcularAdicionalRiscoPedido,
     resumo: (c) => [

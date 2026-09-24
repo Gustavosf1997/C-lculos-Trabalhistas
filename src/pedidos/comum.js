@@ -261,7 +261,10 @@ export function fecharResultado({
   const recorte = prescricao?.recorte ?? null;
   if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
   const totalMensal = arredondar(mensais.reduce((soma, m) => soma + m.valor, 0));
-  const periodo = mensais.map((m) => ({ ...m, valor: arredondar(m.valor * meses) }));
+  // Uma verba pode trazer o seu total do período já apurado (`valorPeriodo`),
+  // quando o período tem trechos com regras diferentes — o DSR majorado antes
+  // e depois de 20/03/2023, por exemplo. As demais são o mensal vezes os meses.
+  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * meses) }));
 
   const diasAviso = dados.reflexoAviso && baseAviso > 0 ? num(dados.diasAviso) || 30 : 0;
   const valorAviso = diasAviso ? arredondar((baseAviso / 30) * diasAviso) : 0;
@@ -289,13 +292,21 @@ export function fecharResultado({
   const chaves = chavesFgts.length && dados.fgtsSobreFerias !== false
     ? [...chavesFgts, 'reflexo_ferias']
     : chavesFgts;
+  //
+  // Uma verba também pode dizer quanto dela entra no FGTS (`fgtsPeriodo`): o
+  // DSR majorado, antes de 20/03/2023, é pago mas não recolhe (OJ 394).
   const parcelasFgts = mensais.filter((m) => chaves.includes(m.chave));
-  const baseFgtsMes = arredondar(parcelasFgts.reduce((soma, m) => soma + m.valor, 0));
-  const querFgts = dados.reflexoFGTS !== false && baseFgtsMes > 0;
-  const base = querFgts ? arredondar(baseFgtsMes * meses + valorAviso) : 0;
+  const ajustada = (m) => m.fgtsPeriodo !== undefined || m.valorPeriodo !== undefined;
+  const mensalSemAjuste = arredondar(parcelasFgts.filter((m) => !ajustada(m)).reduce((soma, m) => soma + m.valor, 0));
+  const periodoAjustado = parcelasFgts.filter(ajustada).reduce((soma, m) => soma + (m.fgtsPeriodo ?? m.valorPeriodo), 0);
+  const basePeriodo = arredondar(arredondar(mensalSemAjuste * meses) + periodoAjustado);
+  const querFgts = dados.reflexoFGTS !== false && basePeriodo > 0;
+  const base = querFgts ? arredondar(basePeriodo + valorAviso) : 0;
   const fgtsDevido = arredondar(base * FGTS.aliquotaDeposito);
   const multaFgts = dados.multaFGTS ? arredondar(fgtsDevido * FGTS.multaSemJustaCausa) : 0;
-  const nomes = parcelasFgts.map((m) => m.nomeCurto ?? m.label.toLowerCase());
+  const nomes = parcelasFgts
+    .filter((m) => (m.fgtsPeriodo ?? 1) > 0)
+    .map((m) => m.nomeCurto ?? m.label.toLowerCase());
   if (valorAviso > 0) nomes.push('aviso prévio');
   const detalheFgts = querFgts ? `${porcentagem(FGTS.aliquotaDeposito)} sobre ${listar(nomes)}` : null;
 

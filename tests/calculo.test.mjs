@@ -92,16 +92,18 @@ test('férias vencidas não são presumidas quando o campo fica vazio', () => {
   assert.equal(r.contexto.periodosCompletosCalculados, 7); // apenas informativo
 });
 
-test('férias vencidas em dobro seguem o art. 137 da CLT', () => {
-  const r = calcularRescisao({
-    ...base,
-    tipo: 'sem_justa_causa',
-    tipoAviso: 'indenizado',
-    periodosFeriasVencidas: 1,
-    feriasDobro: true,
-  });
-  assert.equal(verba(r, 'ferias_vencidas'), 6000);
-  assert.equal(verba(r, 'terco_vencidas'), 2000);
+test('férias vencidas: a dobra do art. 137 é de cada período, pelo próprio concessivo', () => {
+  // Admissão em 01/03/2019, saída projetada para novembro de 2026. O último
+  // período completo (2025/2026) tem o concessivo até 28/02/2027: ainda em
+  // curso na saída, é pago simples. O anterior venceu em 28/02/2026: dobro.
+  const um = calcularRescisao({ ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', periodosFeriasVencidas: 1 });
+  assert.equal(verba(um, 'ferias_vencidas'), 3000);
+  assert.equal(um.contexto.periodosEmDobro, 0);
+
+  const dois = calcularRescisao({ ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', periodosFeriasVencidas: 2 });
+  assert.equal(verba(dois, 'ferias_vencidas'), 9000); // 3.000 simples + 6.000 em dobro
+  assert.equal(verba(dois, 'terco_vencidas'), 3000); // o terço incide sobre a dobra também
+  assert.equal(dois.contexto.periodosEmDobro, 1);
 });
 
 /* ------------------------------ contratos por prazo determinado ----------- */
@@ -138,14 +140,18 @@ test('rescisão antecipada pelo empregador paga metade dos salários restantes (
   assert.equal(r.fgts.percentualMulta, 0.4);
 });
 
-test('rescisão antecipada pelo empregado desconta a indenização do art. 480', () => {
-  const r = calcularRescisao({
-    ...experiencia,
-    tipo: 'determinado_antecipada_empregado',
-    dataAviso: '2026-07-15',
-  });
-  assert.equal(desconto(r, 'indenizacao_art_480'), 1500);
-  assert.equal(r.fgts.multa, 0);
+test('rescisão antecipada pelo empregado: o art. 480 exige prejuízo comprovado', () => {
+  const saida = { ...experiencia, tipo: 'determinado_antecipada_empregado', dataAviso: '2026-07-15' };
+  // Sem prejuízo informado, nada se desconta — o art. 479 é só o teto.
+  const semPrejuizo = calcularRescisao(saida);
+  assert.equal(desconto(semPrejuizo, 'indenizacao_art_480'), 0);
+  assert.equal(semPrejuizo.contexto.tetoArt480, 1500);
+  assert.ok(semPrejuizo.alertas.some((a) => a.includes('comprovar prejuízo')));
+  assert.equal(semPrejuizo.fgts.multa, 0);
+
+  // Com prejuízo, desconta-se o prejuízo, até o teto.
+  assert.equal(desconto(calcularRescisao({ ...saida, prejuizoArt480: 900 }), 'indenizacao_art_480'), 900);
+  assert.equal(desconto(calcularRescisao({ ...saida, prejuizoArt480: 5000 }), 'indenizacao_art_480'), 1500);
 });
 
 test('cláusula assecuratória troca o art. 479 pelo aviso prévio', () => {

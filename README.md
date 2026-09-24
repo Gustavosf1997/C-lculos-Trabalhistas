@@ -121,6 +121,7 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
 | `tests/prescricao.test.mjs` | Prescrição nas três telas: rescisão, pedidos com período e multas |
+| `tests/varredura.test.mjs` | 7 mil combinações de entrada conferidas por invariantes: líquido nunca negativo, teto do §5º, totais que fecham |
 | `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
 | `tests/robustez.mjs` | Uso adverso das duas telas no navegador (Playwright) |
 | `tests/portatil.mjs` | Abre o arquivo portátil por `file://` e confere que a conta dá o mesmo |
@@ -172,10 +173,14 @@ Verbas e descontos:
   adicional noturno de 20% sobre as horas noturnas informadas — insalubridade
   e periculosidade se excluem (art. 193, §2º);
 - 13º proporcional em avos (fração de 15 dias ou mais);
-- férias vencidas (com opção de dobro do art. 137) e proporcionais, ambas + 1/3,
-  com redução por faltas injustificadas (art. 130). Os períodos vencidos são
-  informados por quem calcula — a ferramenta não tem como saber quais férias
-  foram gozadas —, e o painel mostra quantos períodos entraram na conta;
+- férias vencidas e proporcionais, ambas + 1/3, com redução por faltas
+  injustificadas (art. 130). Os períodos vencidos são informados por quem
+  calcula — a ferramenta não tem como saber quais férias foram gozadas —, e o
+  painel mostra quantos períodos entraram na conta. A **dobra do art. 137** é
+  aplicada sozinha, período a período: vai em dobro cada período cujo
+  concessivo venceu antes do fim do contrato (com a projeção do aviso
+  indenizado, art. 487, §1º); o mais recente, com o concessivo ainda em curso
+  na saída, é pago simples. O terço incide sobre a dobra também;
 - as duas contagens de avos seguem regras diferentes, como na lei: os avos de
   **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
   aberto na saída só vira avo com fração superior a 14 dias *dentro dele*
@@ -191,9 +196,19 @@ Verbas e descontos:
   já com o redutor da Lei 15.270/2025: rendimento mensal de até R$ 5.000,00 não
   paga imposto, e entre R$ 5.000,01 e R$ 7.350,00 o redutor decresce até zerar;
 - pensão alimentícia, adiantamentos e outros descontos;
+- **limite dos descontos**: pelo art. 477, §5º, as compensações no acerto não
+  passam de um mês de remuneração — teto que a SDI-1 do TST aplica a toda
+  compensação, qualquer que seja a natureza: aviso não cumprido, art. 480,
+  horas negativas, adiantamentos e outros débitos. INSS, IRRF e pensão ficam
+  fora do teto (retenção legal e ordem judicial). E o acerto nunca termina com
+  o empregado devendo: o que as verbas não comportam fica de fora. Nos dois
+  casos o desconto cortado diz quanto ficou fora, e o empregador cobra o
+  excedente por outra via;
 - indenização da rescisão antecipada: metade da remuneração dos dias que
-  faltavam até o termo final, paga pelo empregador (art. 479) ou descontada do
-  empregado (art. 480);
+  faltavam até o termo final, paga pelo empregador (art. 479). No sentido
+  inverso, o **art. 480** não é automático: o empregado indeniza os
+  **prejuízos comprovados** que a saída causou, e o valor do art. 479 é só o
+  teto (§1º). Sem prejuízo informado, nada se desconta;
 - FGTS: depósito de 8% sobre as verbas salariais, multa de 40% ou 20%, saque e
   seguro-desemprego.
 
@@ -270,10 +285,19 @@ INSS e IRRF, que se apuram na execução.
 ### Horas extras (art. 7º, XVI, da CF)
 
 Hora normal acrescida do adicional (50% por padrão, editável), com **DSR**
-(Lei 605/49). A repercussão do DSR majorado nas demais verbas segue a
-OJ 394, II, da SDI-1, válida para horas extras a partir de 20/03/2023; a tela
-avisa quando o período pedido começa antes desse marco. A quantidade pode ser
-informada por mês ou por semana.
+(Lei 605/49). A quantidade pode ser informada por mês ou por semana.
+
+O DSR majorado pelas horas extras segue a **OJ 394 da SDI-1**, que mudou em
+20/03/2023:
+
+- **antes do marco** (redação original), ele é pago, mas **não repercute** em
+  férias, 13º, aviso prévio **nem FGTS**;
+- **a partir do marco** (item II), repercute em todos eles.
+
+Quando o período cruza 20/03/2023, o cálculo o **separa sozinho**: cada
+trecho segue a sua regra, os reflexos somam os dois, e o FGTS recai sobre o
+DSR só nos meses majorados. O aviso prévio, pago na saída, segue a regra do
+fim do período.
 
 ### Adicional noturno (art. 73 da CLT)
 
@@ -293,7 +317,9 @@ Dois regimes, escolhidos na tela, porque a Lei 13.467/2017 mudou a regra:
 
 - **até 10/11/2017** — Súmula 437, I e III, do TST: paga-se o **intervalo
   integral**, ainda que a supressão seja parcial, com natureza salarial e
-  reflexos;
+  reflexos. Pago como hora extra, dia a dia, gera **DSR**; e, como todo esse
+  regime é anterior a 20/03/2023, vale a redação original da OJ 394: o DSR é
+  pago, mas não repercute em férias, 13º, aviso nem FGTS;
 - **a partir de 11/11/2017** — paga-se **apenas o período suprimido**, com
   acréscimo de 50% e natureza **indenizatória**: sem reflexos e sem FGTS.
 
@@ -307,7 +333,8 @@ Insalubridade em grau mínimo (10%), médio (20%) ou máximo (40%), sobre o
 salário mínimo (art. 192, redação da CLT), sobre o salário base ou sobre a base
 que a norma coletiva fixar; periculosidade de 30% sobre o salário base
 (art. 193, §1º). Gera reflexos em 13º, férias + 1/3 e FGTS (Súmulas 132 e 139
-do TST). Não há DSR: o adicional é mensal, não por hora trabalhada.
+do TST). Não há DSR: o adicional é mensal e já remunera os repousos (OJ 103 da
+SDI-1).
 
 ### Multas dos arts. 467 e 477 da CLT
 
@@ -391,7 +418,11 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Redução dos dias de férias por faltas injustificadas | art. 130 da CLT | `diasDeFeriasPorFaltas` |
 | Justa causa perde 13º e férias proporcionais | art. 3º da Lei 4.090/62 e Súmula 171 do TST | `tipos.js` |
 | Comum acordo: aviso e multa do FGTS pela metade, sem seguro-desemprego | art. 484-A da CLT | `tipos.js` |
-| Rescisão antecipada do contrato a termo: metade do que faltava | arts. 479 e 480 da CLT | `indenizacaoAntecipada` |
+| Rescisão antecipada pelo empregador: metade do que faltava | art. 479 da CLT | `indenizacaoAntecipada` |
+| Saída antecipada do empregado: só o prejuízo comprovado, até o teto do art. 479 | art. 480, caput e §1º, da CLT | `tetoArt480` |
+| Compensações no acerto limitadas a um mês de remuneração | art. 477, §5º, da CLT; SDI-1 do TST | `limitarDescontos` |
+| Férias vencidas em dobro, período a período, pelo próprio concessivo | art. 137 da CLT | `periodosEmDobro` |
+| Terço constitucional sobre a dobra também | art. 7º, XVII, da CF | `terco_vencidas` |
 | Cláusula assecuratória afasta os arts. 479/480 e traz o aviso prévio | art. 481 da CLT | `clausulaAtiva` |
 | Hora normal integrada pelas parcelas salariais | Súmula 264 do TST | `valorHoraNormal` |
 | Divisor mensal conforme a jornada contratada | Súmula 431 do TST | `JORNADAS` |
@@ -400,6 +431,9 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | DSR sobre as verbas variáveis: variáveis ÷ dias úteis × repousos | Lei 605/49 e Súmula 172 do TST | `dsrMes` |
 | Sábado é dia útil não trabalhado para o DSR | Súmula 113 do TST | dica do campo |
 | DSR majorado só repercute nas demais verbas a partir de 20/03/2023 | OJ 394, II, da SDI-1 (Tema 9 de repetitivos) | `MARCO_OJ_394` |
+| Antes do marco, o DSR majorado não vai a férias, 13º, aviso nem FGTS | OJ 394, redação original | `mesesMajorados` |
+| Intervalo do regime salarial gera DSR | Súmula 437, III, do TST e Lei 605/49 | `intervalo.js` |
+| Indenização do art. 479 fora da base do FGTS | art. 15, §6º, da Lei 8.036/90 c/c art. 28, §9º, "e", 3, da Lei 8.212/91 | `baseFgtsRescisao` |
 | Intervalo suprimido até 10/11/2017: período integral, natureza salarial | Súmula 437, I e III, do TST | `intervalo.js` |
 | Intervalo a partir de 11/11/2017: só o suprimido, natureza indenizatória | art. 71, §4º, da CLT (Lei 13.467/2017) | `MARCO_REFORMA` |
 | Insalubridade sobre o salário mínimo, salvo base maior em norma coletiva | art. 192 da CLT; Súmula 228 suspensa (Rcl 6.266 do STF) | `calcularAdicionalRisco` |
@@ -466,9 +500,12 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   médias de variáveis ficam de fora.
 - Não trata rescisão indireta, culpa recíproca, morte do empregado, empregado
   doméstico, rural ou estabilidades (gestante, CIPA, acidentária).
-- Não inclui a indenização do art. 479 na base do FGTS (tema controvertido) e
-  não calcula a redução do art. 480 por prejuízo comprovado — usa sempre o teto
-  do art. 479.
+- O teto do art. 477, §5º, alcança os adiantamentos, como decidiu a SDI-1 do
+  TST; há quem trate adiantamento como pagamento parcial, fora do teto. Se for
+  essa a sua leitura, a regra está isolada em `limitarDescontos`.
+- Horas extras noturnas: o pedido de horas extras não integra o adicional
+  noturno à base (OJ 97 da SDI-1) nem aplica a hora reduzida — informe o
+  adicional em "outras parcelas salariais" ou calcule o trecho noturno à parte.
 - Não aplica convenção coletiva (multa normativa, pisos, adicionais próprios).
 - Não gera TRCT nem guias (GRRF, DARF, GPS) e não persiste os cálculos.
 - Nos pedidos, não há juros, correção monetária nem desconto de INSS e IRRF, e

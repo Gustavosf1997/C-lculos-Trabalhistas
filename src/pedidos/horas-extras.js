@@ -65,29 +65,58 @@ export function calcularHorasExtras(dados) {
     });
   }
 
-  // OJ 394, II, da SDI-1: o DSR majorado só repercute nas demais verbas para as
-  // horas extras prestadas a partir de 20/03/2023. Antes disso a majoração não
-  // repercute — e o cálculo afasta o reflexo em vez de apenas avisar, sob pena
-  // de entregar um número que a própria orientação recusa.
+  // OJ 394 da SDI-1. Na redação original, o DSR majorado pelas horas extras
+  // não repercute em férias, 13º, aviso prévio nem FGTS. Na nova (item II),
+  // repercute em todos eles — mas só para as horas extras prestadas a partir
+  // de 20/03/2023. O período é partido nesse marco, e cada trecho segue a sua
+  // regra: nada de aplicar a nova a meses que ela não alcança.
   const marcoOJ394 = parseData(MARCO_OJ_394);
-  const periodoTodoAnterior = fim < marcoOJ394;
-  const pediuDsrNosReflexos = querDSR && dados.dsrNosReflexos !== false;
-  const dsrNosReflexos = pediuDsrNosReflexos && !periodoTodoAnterior;
-  const baseReflexos = horasExtrasMes + (dsrNosReflexos ? dsrMes : 0);
-  if (pediuDsrNosReflexos && periodoTodoAnterior) {
+  const pediuDsrMajorado = querDSR && dados.dsrNosReflexos !== false;
+  const mesesDesdeOMarco = fim >= marcoOJ394
+    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).meses
+    : 0;
+  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, meses) : 0;
+  const mesesSemMajoracao = arredondar(meses - mesesMajorados);
+  const partido = mesesMajorados > 0 && mesesSemMajoracao > 0;
+
+  if (pediuDsrMajorado && mesesMajorados === 0) {
     alertas.push(
-      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}: pela OJ 394, II, da SDI-1 o DSR `
-        + 'majorado não repercute nas demais verbas nesse intervalo, e o cálculo afastou esse reflexo.',
+      `Todo o período pedido é anterior a ${formatarData(marcoOJ394)}. Pela redação original da OJ 394 da `
+        + 'SDI-1, o DSR majorado pelas horas extras não repercute em férias, 13º, aviso prévio nem FGTS, e o '
+        + 'cálculo o afastou desses reflexos.',
     );
-  } else if (dsrNosReflexos && inicioCalculo < marcoOJ394) {
+  } else if (partido) {
     alertas.push(
-      'O DSR majorado só repercute nas demais verbas para horas extras a partir de '
-        + `${formatarData(marcoOJ394)} (OJ 394, II, da SDI-1). Parte do período é anterior a esse marco: `
-        + 'calcule os dois trechos em separado para não estender o reflexo ao período anterior.',
+      `O período cruza ${formatarData(marcoOJ394)}, e o cálculo o separou. Nos `
+        + `${formatarQuantidade(mesesSemMajoracao)} meses anteriores, o DSR majorado não repercute em férias, `
+        + '13º, aviso nem FGTS (OJ 394, redação original); nos '
+        + `${formatarQuantidade(mesesMajorados)} meses seguintes, repercute (OJ 394, II).`,
     );
   }
 
-  mensais.push(...reflexosMensais(baseReflexos, dados));
+  // O DSR é pago no período todo; o FGTS sobre ele, só nos meses majorados.
+  const dsr = mensais.find((m) => m.chave === 'dsr');
+  if (dsr && mesesMajorados < meses) {
+    dsr.fgtsPeriodo = arredondar(dsrMes * mesesMajorados);
+    if (partido) dsr.nomeCurto = `DSR (desde ${formatarData(marcoOJ394)})`;
+  }
+
+  // Reflexos em 13º e férias: sobre as horas extras no período todo, e sobre
+  // o DSR só nos meses majorados. O mensal exibido é o do trecho mais recente.
+  const semDsr = reflexosMensais(horasExtrasMes, dados);
+  const comDsr = reflexosMensais(horasExtrasMes + dsrMes, dados);
+  if (mesesMajorados === 0) mensais.push(...semDsr);
+  else if (!partido) mensais.push(...comDsr);
+  else {
+    mensais.push(...comDsr.map((item) => {
+      const antes = semDsr.find((s) => s.chave === item.chave)?.valor ?? 0;
+      return {
+        ...item,
+        detalhe: `${item.detalhe}; sem o DSR antes de ${formatarData(marcoOJ394)}`,
+        valorPeriodo: arredondar(antes * mesesSemMajoracao + item.valor * mesesMajorados),
+      };
+    }));
+  }
 
   return fecharResultado({
     mensais,
@@ -97,7 +126,8 @@ export function calcularHorasExtras(dados) {
     dados,
     alertas,
     prescricao,
-    baseAviso: horasExtrasMes + (querDSR ? dsrMes : 0),
+    // O aviso é pago na saída: segue a regra do fim do período.
+    baseAviso: horasExtrasMes + (mesesMajorados > 0 ? dsrMes : 0),
     chavesFgts: ['horas_extras', 'dsr', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,

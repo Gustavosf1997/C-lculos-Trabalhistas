@@ -17,7 +17,7 @@ const $ = (seletor) => document.querySelector(seletor);
 
 /** Todos os campos digitáveis da tela; o tipo de cada um está no HTML. */
 const CAMPOS = [
-  'dataAdmissao', 'dataAviso', 'dataTermoFinal', 'dataAjuizamento',
+  'dataAdmissao', 'dataAviso', 'dataTermoFinal', 'dataAjuizamento', 'prejuizoArt480',
   'salarioBase', 'divisor', 'horasExtras', 'adicionalHoraExtra', 'mediaComissoes', 'horasNoturnas',
   'periodosFeriasVencidas', 'faltasInjustificadas', 'saldoFgts', 'dependentes',
   'horasNegativas', 'pensaoPercentual', 'adiantamentoSalario', 'adiantamento13', 'outrosDescontos',
@@ -33,7 +33,6 @@ function coletarDados() {
     ...valores,
     tipo: tipoSelecionado,
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
-    feriasDobro: $('#feriasDobro').checked,
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
     adicionais: adicionaisMarcados(),
     descontos: descontosMarcados(),
@@ -198,6 +197,8 @@ function aplicarVisibilidade(tipo) {
   // O aviso prévio do contrato a termo só existe com a cláusula do art. 481.
   const clausula = $('#clausulaAssecuratoria').checked && campos.clausulaAssecuratoria;
   $('#grupo-aviso').hidden = !tipo.aviso || (tipo.aviso.somenteComClausula && !clausula);
+  // Com a cláusula, o art. 480 dá lugar ao aviso: o prejuízo deixa de importar.
+  $('#campo-prejuizo480').hidden = !campos.prejuizo480 || clausula;
 }
 
 function montarOpcoesAviso(tipo) {
@@ -302,7 +303,9 @@ function renderResultado(resultado) {
     ['Data projetada', formatarData(c.dataProjetada)],
     ['Avos de 13º', tipo.campos.decimoTerceiro ? `${c.avos13}/12` : 'não devido'],
     ['Avos de férias', tipo.campos.feriasProporcionais ? `${c.avosFerias}/12` : 'não devido'],
-    ['Férias vencidas', c.periodosVencidos ? `${c.periodosVencidos} período(s)` : 'nenhum computado'],
+    ['Férias vencidas', c.periodosVencidos
+      ? `${c.periodosVencidos} período(s)${c.periodosEmDobro ? `, ${c.periodosEmDobro} em dobro` : ''}`
+      : 'nenhum computado'],
     ['Prescrição', c.prescricao],
   );
 
@@ -391,7 +394,7 @@ function aplicarVisibilidadeMarcacoes() {
 /** A contagem de períodos vem do cálculo, para não divergir dele. */
 function atualizarDicaPeriodos(contexto) {
   $('#dica-periodos').textContent = contexto
-    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados.`
+    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados — a dobra do art. 137 é aplicada sozinha a cada um com o concessivo vencido.`
     : 'Preencha as datas para ver os períodos aquisitivos completos.';
 }
 
