@@ -2830,7 +2830,9 @@ function contarPeriodo(inicio, fim) {
   }
 
   const meses = Math.round(proporcao * 100) / 100;
-  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses) };
+  // `meses` é para mostrar; `proporcao`, sem arredondar, para multiplicar
+  // valores altos sem perder centavos na segunda casa dos meses.
+  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses), proporcao };
 }
 
 /** Enumera em português: "a", "a e b", "a, b e c". */
@@ -3633,21 +3635,30 @@ const LESOES_DPVAT = [
     nome: 'Lesão de órgão crânio-facial, cervical, torácico, abdominal ou pélvico com prejuízo '
       + 'funcional não compensável e comprometimento de função vital' },
 
-  { id: 'membro_superior', grupo: 'membros', percentual: 70,
+  { id: 'membro_superior', grupo: 'membros', membro: 'superior', percentual: 70,
     nome: 'Perda completa de um membro superior ou de uma mão' },
-  { id: 'membro_inferior', grupo: 'membros', percentual: 70,
+  { id: 'membro_inferior', grupo: 'membros', membro: 'inferior', percentual: 70,
     nome: 'Perda completa de um membro inferior' },
-  { id: 'pe', grupo: 'membros', percentual: 50, nome: 'Perda completa de um pé' },
-  { id: 'ombro', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um ombro' },
-  { id: 'cotovelo', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um cotovelo' },
-  { id: 'punho', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um punho' },
-  { id: 'polegar', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um polegar' },
-  { id: 'quadril', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um quadril' },
-  { id: 'joelho', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um joelho' },
-  { id: 'tornozelo', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um tornozelo' },
-  { id: 'dedo_mao', grupo: 'membros', percentual: 10,
+  { id: 'pe', grupo: 'membros', membro: 'inferior', segmento: 'pe', percentual: 50,
+    nome: 'Perda completa de um pé' },
+  { id: 'ombro', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um ombro' },
+  { id: 'cotovelo', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um cotovelo' },
+  { id: 'punho', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um punho' },
+  { id: 'polegar', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um polegar' },
+  { id: 'quadril', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um quadril' },
+  { id: 'joelho', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um joelho' },
+  { id: 'tornozelo', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um tornozelo' },
+  { id: 'dedo_mao', grupo: 'membros', membro: 'superior', percentual: 10,
     nome: 'Perda completa de um dos outros dedos da mão (exceto o polegar)' },
-  { id: 'dedo_pe', grupo: 'membros', percentual: 10, nome: 'Perda completa de um dos dedos do pé' },
+  { id: 'dedo_pe', grupo: 'membros', membro: 'inferior', segmento: 'pe', percentual: 10,
+    nome: 'Perda completa de um dos dedos do pé' },
 
   { id: 'surdez', grupo: 'outros', percentual: 50, nome: 'Perda auditiva total bilateral (surdez completa)' },
   { id: 'mudez', grupo: 'outros', percentual: 50, nome: 'Perda completa da fonação (mudez)' },
@@ -3658,6 +3669,30 @@ const LESOES_DPVAT = [
 ];
 
 const lesaoPorId = (id) => LESOES_DPVAT.find((l) => l.id === id) ?? null;
+
+/** Lesão de um membro (braço ou perna): pede o lado, para o teto por membro. */
+const eLesaoDeMembro = (id) => Boolean(lesaoPorId(id)?.membro);
+
+/**
+ * Teto de cada membro e segmento: a perda total dele na própria tabela.
+ *
+ * "Havendo duas ou mais lesões em um mesmo membro ou órgão, a soma das
+ * percentagens correspondentes não pode exceder à da indenização prevista para
+ * sua perda total" — regra da tabela da Circular SUSEP 29/91, da qual a do
+ * DPVAT descende, e que aqui se aplica por coerência: ombro, cotovelo e punho
+ * do mesmo braço não podem valer mais que o braço inteiro (70%). O pé tem teto
+ * próprio (50%) dentro da perna.
+ */
+const TETOS_POR_MEMBRO = {
+  superior: { teto: 70, nome: 'membro superior' },
+  inferior: { teto: 70, nome: 'membro inferior' },
+  pe: { teto: 50, nome: 'pé' },
+};
+
+const LADOS = [
+  { valor: 'direito', label: 'Direito' },
+  { valor: 'esquerdo', label: 'Esquerdo' },
+];
 
 /** Lesões que a lei classifica como invalidez total: não se graduam. */
 const eLesaoTotal = (id) => lesaoPorId(id)?.grupo === 'total';
@@ -3725,7 +3760,7 @@ function naturezaSugerida(qualificador) {
   return naturezaPorValor('leve');
 }
 
-    return { TETO_DPVAT, GRUPOS_DPVAT, LESOES_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, QUALIFICADORES_CIF, qualificadorPorCodigo, classificarCIF, descreverCIF, NATUREZAS_OFENSA, naturezaPorValor, naturezaSugerida };
+    return { TETO_DPVAT, GRUPOS_DPVAT, LESOES_DPVAT, lesaoPorId, eLesaoDeMembro, TETOS_POR_MEMBRO, LADOS, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, QUALIFICADORES_CIF, qualificadorPorCodigo, classificarCIF, descreverCIF, NATUREZAS_OFENSA, naturezaPorValor, naturezaSugerida };
   })();
 
   /* src/pedidos/tabua-ibge.js */
@@ -3866,7 +3901,7 @@ function sobrevidaNaIdade(idade, sexo) {
   const { moeda } = __modulos['src/formato.js'];
   const { arredondar, num, contarPeriodo, resultadoComErros, resultadoImpedido } = __modulos['src/pedidos/comum.js'];
   const { apurarBienal, dataDaPrescricao } = __modulos['src/prescricao.js'];
-  const { TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida, QUALIFICADORES_CIF } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida, QUALIFICADORES_CIF, TETOS_POR_MEMBRO } = __modulos['src/pedidos/tabelas-acidente.js'];
   const { TABUA_IBGE, expectativaAoNascer, sobrevidaNaIdade, sexoPorValor } = __modulos['src/pedidos/tabua-ibge.js'];
 
 /** Ciência a partir desta data: prescrição trabalhista (EC 45/2004, de 31/12/2004). */
@@ -4001,8 +4036,49 @@ function lesoesEscolhidas(dados) {
     ids.push(dados.lesao2);
     if (dados.lesao3 && dados.lesao3 !== 'nenhuma') ids.push(dados.lesao3);
   }
-  return ids.map((id, i) => ({ lesao: lesaoPorId(id), grau: dados[`grau${i + 1}`] }))
-    .filter((e) => e.lesao);
+  return ids.map((id, i) => ({
+    lesao: lesaoPorId(id),
+    grau: dados[`grau${i + 1}`],
+    lado: dados[`lado${i + 1}`] === 'esquerdo' ? 'esquerdo' : 'direito',
+  })).filter((e) => e.lesao);
+}
+
+/**
+ * Soma as lesões respeitando o teto de cada membro: o pé não passa de 50%, e
+ * o braço ou a perna, de 70% — a perda total deles na tabela. Lesões de lados
+ * diferentes não se somam para esse fim; as que não são de membro entram
+ * inteiras. O total geral ainda se limita a 100%, fora daqui.
+ *
+ * @returns {{soma: number, ajustes: string[]}}
+ */
+function somarComTetos(lesoes) {
+  const ajustes = [];
+  const limitar = (valor, { teto, nome }, lado) => {
+    if (valor <= teto + 1e-9) return valor;
+    ajustes.push(`As lesões do ${nome} ${lado} somam ${pct(valor)}, mais que a perda total dele (${teto}%): `
+      + `valem ${teto}%. Lesões no mesmo membro não passam da perda do membro inteiro (regra da tabela da `
+      + 'Circular SUSEP 29/91, da qual a do DPVAT descende).');
+    return teto;
+  };
+
+  let soma = 0;
+  const porMembro = new Map();
+  for (const l of lesoes) {
+    if (!l.membro) {
+      soma += l.percentual;
+      continue;
+    }
+    const chave = `${l.membro}:${l.lado}`;
+    const grupo = porMembro.get(chave) ?? { membro: l.membro, lado: l.lado, pe: 0, resto: 0 };
+    if (l.segmento === 'pe') grupo.pe += l.percentual;
+    else grupo.resto += l.percentual;
+    porMembro.set(chave, grupo);
+  }
+  for (const g of porMembro.values()) {
+    const pe = g.pe ? limitar(g.pe, TETOS_POR_MEMBRO.pe, g.lado) : 0;
+    soma += limitar(pe + g.resto, TETOS_POR_MEMBRO[g.membro], g.lado);
+  }
+  return { soma, ajustes };
 }
 
 function apurarPercentual(dados, erros, alertas) {
@@ -4048,7 +4124,7 @@ function apurarPercentual(dados, erros, alertas) {
     return { criterio: 'dpvat', percentual: 0, lesoes: [], origem: 'Tabela DPVAT' };
   }
 
-  const lesoes = escolhidas.map(({ lesao, grau }) => {
+  const lesoes = escolhidas.map(({ lesao, grau, lado }) => {
     const total = eLesaoTotal(lesao.id);
     // A invalidez total não se gradua: a lei só subdivide a parcial.
     const repercussao = total ? REPERCUSSOES[0] : repercussaoPorValor(grau) ?? REPERCUSSOES[0];
@@ -4056,17 +4132,26 @@ function apurarPercentual(dados, erros, alertas) {
     const conta = repercussao.fator === 100
       ? `${lesao.percentual}%`
       : `${lesao.percentual}% x ${repercussao.fator}% (repercussão ${repercussao.nome}) = ${pct(percentual)}`;
-    return { ...lesao, repercussao, percentual, conta };
+    return {
+      ...lesao,
+      lado: lesao.membro ? lado : null,
+      nome: lesao.membro ? `${lesao.nome}, lado ${lado}` : lesao.nome,
+      repercussao,
+      percentual,
+      conta,
+    };
   });
 
-  const soma = lesoes.reduce((s, l) => s + l.percentual, 0);
-  if (soma > 100) {
-    alertas.push(`As lesões somam ${pct(soma)}; a perda fica limitada a 100%.`);
+  const { soma, ajustes } = somarComTetos(lesoes);
+  alertas.push(...ajustes);
+  if (soma > 100 + 1e-9) {
+    alertas.push(`As lesões somam ${pct(soma)}; a perda fica limitada a 100% (tabela da Circular SUSEP 29/91).`);
   }
   return {
     criterio: 'dpvat',
     percentual: Math.min(100, arredondar(soma)),
     lesoes,
+    tetoPorMembro: ajustes.length > 0,
     origem: 'Tabela DPVAT (anexo da Lei 6.194/74)',
   };
 }
@@ -4141,6 +4226,26 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
     alertas.push(`Aos ${tabua.idade} anos, a tábua do IBGE (${nomeDaTabua}) só traz o grupo aberto `
       + `"90 ou mais", com sobrevida de ${curto(tabua.anos)} anos.`);
   }
+  // Tema 155 do TST (tese vinculante): na parcela única, o termo final é a
+  // expectativa de sobrevida da tábua do IBGE do início do pensionamento,
+  // conforme o sexo do trabalhador. O que se afastar disso é avisado.
+  if (porIdade) {
+    alertas.push('Termo final por idade fixa: o Tema 155 do TST manda fixá-lo pela expectativa de sobrevida '
+      + 'da tábua do IBGE do início do pensionamento, conforme o sexo — use "Expectativa de sobrevida" '
+      + 'para seguir a tese.');
+  }
+  if (porSobrevida && !(informada > 0) && tabua) {
+    if (sexo === 'ambos') {
+      alertas.push('Tábua de ambos os sexos: o Tema 155 do TST manda usar a tábua do sexo do trabalhador.');
+    }
+    if (inicio.getUTCFullYear() !== TABUA_IBGE.ano) {
+      alertas.push(`A pensão começa em ${inicio.getUTCFullYear()}, e o Tema 155 do TST manda usar a tábua do `
+        + `IBGE do início do pensionamento. A embutida é a de ${TABUA_IBGE.ano}: para seguir a tese à risca, `
+        + `digite no campo "Sobrevida de outra tábua" a da tábua de ${inicio.getUTCFullYear()}, `
+        + `na idade de ${idadeNaCiencia} anos.`);
+    }
+  }
+
   // Idade final abaixo do que a tábua projeta para a vítima: a expectativa ao
   // nascer subestima a de quem já passou da infância, e o erro é comum.
   const idadeProjetada = tabua ? idadeNaCiencia + tabua.anos : null;
@@ -4155,7 +4260,19 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   const percentualPensao = integral ? 100 : percentual;
   const com13 = dados.incluir13 !== false;
   const comTerco = dados.incluirTerco !== false;
-  const base = (remuneracao * percentualPensao) / 100;
+
+  // Concausa (Tema 76 do TST, tese vinculante): fixado o percentual da
+  // incapacidade, a pensão é reduzida em até 50% — salvo se o laudo indicar o
+  // grau de contribuição do trabalho, que então a mede.
+  const concausa = Boolean(dados.concausa);
+  const contribuicao = concausa ? Math.min(100, num(dados.contribuicaoTrabalho)) : 0;
+  const reducao = concausa && !(contribuicao > 0)
+    ? Math.min(50, dados.reducaoConcausa === undefined || dados.reducaoConcausa === ''
+      ? 50 : num(dados.reducaoConcausa))
+    : 0;
+  const fatorConcausa = !concausa ? 1 : contribuicao > 0 ? contribuicao / 100 : 1 - reducao / 100;
+
+  const base = (remuneracao * percentualPensao * fatorConcausa) / 100;
   const acrescimos = [com13 && '1/12 de 13º', comTerco && '1/12 do terço de férias'].filter(Boolean);
   const mensal = arredondar(base * (1 + (com13 ? 1 / 12 : 0) + (comTerco ? 1 / 36 : 0)));
 
@@ -4163,13 +4280,18 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   // ajuizamento; depois dele, a data escolhida; sem nada, hoje.
   const corte = parseData(dados.dataCalculo) ?? ajuizamento ?? parseData(dados.dataReferencia);
   const limiteVencidas = termo && corte ? menor(corte, termo) : corte;
-  const mesesVencidos = limiteVencidas && limiteVencidas > inicio
-    ? contarPeriodo(inicio, menosUmDia(limiteVencidas)).meses
-    : 0;
-  const vencidas = arredondar(mensal * mesesVencidos);
+  // Os meses entram na conta pela fração exata dos dias; o número de duas
+  // casas é só para mostrar. Numa pensão alta, arredondar os meses antes de
+  // multiplicar custaria dezenas de reais.
+  const periodoVencido = limiteVencidas && limiteVencidas > inicio
+    ? contarPeriodo(inicio, menosUmDia(limiteVencidas))
+    : { meses: 0, proporcao: 0 };
+  const mesesVencidos = periodoVencido.meses;
+  const vencidas = arredondar(mensal * periodoVencido.proporcao);
 
   const contexto = {
     remuneracao, percentualPensao, integral, mensal, acrescimos, inicio, corte, unica, termo,
+    concausa: concausa ? { contribuicao, reducao, fator: fatorConcausa } : null,
     mesesVencidos, vencidas, nascimento, idadeNaCiencia,
     idadeFinal: porIdade ? idadeFinal : null,
     idadeFinalDaTabua: porIdade && !(idadeFinalInformada > 0),
@@ -4192,9 +4314,11 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   }
 
   const inicioVincendas = corte ? maior(corte, inicio) : inicio;
-  const mesesVincendos = termo > inicioVincendas
-    ? contarPeriodo(inicioVincendas, menosUmDia(termo)).meses
-    : 0;
+  const periodoVincendo = termo > inicioVincendas
+    ? contarPeriodo(inicioVincendas, menosUmDia(termo))
+    : { meses: 0, proporcao: 0 };
+  const mesesVincendos = periodoVincendo.meses;
+  const n = periodoVincendo.proporcao;
   if (corte && termo <= corte) {
     alertas.push(`O termo final estimado (${formatarData(termo)}) já passou na data do cálculo: todas as `
       + 'parcelas estão vencidas. Como a pensão da vítima é vitalícia, as seguintes continuam devidas mês a mês.');
@@ -4203,13 +4327,13 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
     alertas.push('A ciência da incapacidade é posterior à data do cálculo: todas as parcelas são vincendas.');
   }
 
-  const nominalVincendas = arredondar(mensal * mesesVincendos);
+  const nominalVincendas = arredondar(mensal * n);
   const porDesagio = dados.metodoDesconto === 'desagio';
   const taxa = dados.taxaJuros === undefined || dados.taxaJuros === '' ? TAXA_VALOR_PRESENTE : num(dados.taxaJuros);
   const desagio = dados.desagio === undefined || dados.desagio === '' ? DESAGIO_PADRAO : num(dados.desagio);
   const vincendas = porDesagio
     ? arredondar(nominalVincendas * (1 - desagio / 100))
-    : arredondar(valorPresente(mensal, mesesVincendos, taxa / 100));
+    : arredondar(valorPresente(mensal, n, taxa / 100));
   const desagioEfetivo = nominalVincendas > 0 ? (1 - vincendas / nominalVincendas) * 100 : 0;
 
   return {
@@ -4262,6 +4386,13 @@ function calcularAcidente(dados) {
 
   const itens = [];
   if (pensao) {
+    if (pensao.concausa) {
+      alertas.push(pensao.concausa.contribuicao > 0
+        ? `Concausa: a pensão segue o grau de contribuição do trabalho fixado no laudo, `
+          + `${pct(pensao.concausa.contribuicao)} (Tema 76 do TST).`
+        : `Concausa sem o grau de contribuição no laudo: a pensão foi reduzida em ${pct(pensao.concausa.reducao)} `
+          + '(Tema 76 do TST: redução de até 50%). O dano moral não muda — a tese trata só da pensão.');
+    }
     if (pensao.integral) {
       alertas.push('Marcada a incapacidade total para o ofício: a pensão corresponde à remuneração inteira '
         + '(art. 950 do CC — "importância do trabalho para que se inabilitou"), ainda que a vítima possa '
@@ -4380,7 +4511,7 @@ function calcularAcidente(dados) {
   const { calcularAdicionalRiscoPedido } = __modulos['src/pedidos/insalubridade.js'];
   const { calcularMultas } = __modulos['src/pedidos/multas.js'];
   const { calcularAcidente, TAXA_VALOR_PRESENTE, DESAGIO_PADRAO } = __modulos['src/pedidos/acidente.js'];
-  const { LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal, classificarCIF } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal, classificarCIF, eLesaoDeMembro, LADOS } = __modulos['src/pedidos/tabelas-acidente.js'];
   const { TABUA_IBGE, SEXOS, expectativaAoNascer } = __modulos['src/pedidos/tabua-ibge.js'];
   const { DIVISOR_PADRAO } = __modulos['src/pedidos/comum.js'];
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
@@ -4509,6 +4640,9 @@ const camposDeLesao = (n, primeira, visivel) => [
   { id: `grau${n}`, rotulo: 'Repercussão da perda', tipo: 'select', valor: 'completa', opcoes: opcoesDeRepercussao,
     aparece: (d) => visivel(d) && Boolean(d[`lesao${n}`]) && d[`lesao${n}`] !== 'nenhuma' && !eLesaoTotal(d[`lesao${n}`]),
     dica: 'Perda incompleta: o art. 3º, §1º, II, da Lei 6.194/74 reduz o percentual da tabela.' },
+  { id: `lado${n}`, rotulo: 'Lado', tipo: 'select', valor: 'direito', opcoes: LADOS,
+    aparece: (d) => visivel(d) && eLesaoDeMembro(d[`lesao${n}`]),
+    dica: 'Lesões no mesmo braço ou perna não passam da perda do membro inteiro (70%; o pé, 50%).' },
 ];
 
 const peloDpvat = (d) => (d.criterio ?? 'dpvat') === 'dpvat';
@@ -4529,7 +4663,11 @@ const resumoAcidente = (c) => {
     ...(p ? [
       ['Remuneração da pensão', moeda.format(p.remuneracao)],
       ['Pensão mensal', `${moeda.format(p.mensal)} — ${curto(p.percentualPensao)}% da remuneração${
+        p.concausa ? ` x ${curto(p.concausa.fator * 100)}% (concausa)` : ''}${
         p.acrescimos.length ? ` + ${p.acrescimos.join(' + ')}` : ''}`],
+      ...(p.concausa ? [['Concausa (Tema 76 do TST)', p.concausa.contribuicao > 0
+        ? `contribuição do trabalho de ${curto(p.concausa.contribuicao)}%, fixada no laudo`
+        : `redução de ${curto(p.concausa.reducao)}%, sem o grau no laudo`]] : []),
       ['Início da pensão', formatarData(p.inicio)],
       ...(p.idadeNaCiencia !== null ? [['Idade na ciência', `${p.idadeNaCiencia} anos`]] : []),
       ...(p.sobrevida !== null ? [['Expectativa de sobrevida', p.sobrevidaInformada
@@ -4668,6 +4806,14 @@ const pedidoAcidente = {
           valor: true, largo: true },
         { id: 'incapacidadeTotalOficio', rotulo: 'Incapacidade total para o ofício que exercia (pensão integral)',
           tipo: 'checkbox', valor: false, largo: true, aparece: (d) => d.pedirPensao },
+        { id: 'concausa', rotulo: 'Concausa: o trabalho contribuiu para o dano, sem ser a única causa (Tema 76 do TST)',
+          tipo: 'checkbox', valor: false, largo: true, aparece: (d) => d.pedirPensao },
+        { id: 'contribuicaoTrabalho', rotulo: 'Contribuição do trabalho fixada no laudo', tipo: 'percentual',
+          min: 0, max: 100, aparece: (d) => d.pedirPensao && d.concausa,
+          dica: 'Se o laudo indicou o grau de contribuição, é ele que mede a pensão.' },
+        { id: 'reducaoConcausa', rotulo: 'Redução pela concausa', tipo: 'percentual', valor: 50, min: 0, max: 50,
+          aparece: (d) => d.pedirPensao && d.concausa,
+          dica: 'Sem o grau no laudo, a pensão é reduzida em até 50% (Tema 76 do TST).' },
         { id: 'incluir13', rotulo: 'Incluir o 13º salário (1/12 por mês)', tipo: 'checkbox', valor: true, largo: true,
           aparece: (d) => d.pedirPensao },
         { id: 'incluirTerco', rotulo: 'Incluir o terço de férias (1/12 do terço por mês)', tipo: 'checkbox',
@@ -4696,7 +4842,7 @@ const pedidoAcidente = {
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica',
           opcoes: [
             { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima (tábua do IBGE)' },
-            { valor: 'idade', label: 'Até uma idade' },
+            { valor: 'idade', label: 'Até uma idade (fora do critério do Tema 155)' },
           ] },
         { id: 'sobrevida', rotulo: 'Sobrevida de outra tábua (anos)', tipo: 'decimal', min: 0, max: 100,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal !== 'idade',

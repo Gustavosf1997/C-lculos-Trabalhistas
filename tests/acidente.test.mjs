@@ -56,6 +56,32 @@ test('danos totais valem 100% e não se graduam', () => {
   assert.equal(r.contexto.perda.percentual, 100);
 });
 
+test('lesões no mesmo membro não passam da perda do membro inteiro', () => {
+  const pct = (d) => calcularAcidente({ ...joelho, ...d }).contexto.perda.percentual;
+  // ombro + cotovelo + punho do mesmo braço: 75% viram 70% (o braço inteiro)
+  assert.equal(pct({ lesao1: 'ombro', grau1: 'completa', lesao2: 'cotovelo', grau2: 'completa',
+    lesao3: 'punho', grau3: 'completa' }), 70);
+  // de braços diferentes, somam
+  assert.equal(pct({ lesao1: 'ombro', grau1: 'completa', lesao2: 'cotovelo', grau2: 'completa',
+    lesao3: 'punho', grau3: 'completa', lado3: 'esquerdo' }), 75);
+  // o braço inteiro e um dedo da mesma mão: o dedo já está no braço
+  assert.equal(pct({ lesao1: 'membro_superior', grau1: 'completa', lesao2: 'dedo_mao', grau2: 'completa' }), 70);
+  // pé + dedo do mesmo pé: 60% viram 50% (o pé inteiro); com o joelho, a perna fica em 70%
+  assert.equal(pct({ lesao1: 'pe', grau1: 'completa', lesao2: 'dedo_pe', grau2: 'completa' }), 50);
+  assert.equal(pct({ lesao1: 'pe', grau1: 'completa', lesao2: 'dedo_pe', grau2: 'completa',
+    lesao3: 'joelho', grau3: 'completa' }), 70);
+  // os dois joelhos: pernas diferentes, 50%
+  assert.equal(pct({ lesao1: 'joelho', grau1: 'completa', lesao2: 'joelho', grau2: 'completa', lado2: 'esquerdo' }), 50);
+  // abaixo do teto, nada muda
+  assert.equal(pct({ lesao1: 'ombro', grau1: 'completa', lesao2: 'cotovelo', grau2: 'media' }), 37.5);
+  // o lado não muda lesão que não é de membro
+  assert.equal(pct({ lesao1: 'coluna', grau1: 'completa', lado1: 'esquerdo', lesao2: 'baco', grau2: 'completa' }), 35);
+  const r = calcularAcidente({ ...joelho, lesao1: 'ombro', grau1: 'completa', lesao2: 'cotovelo', grau2: 'completa',
+    lesao3: 'punho', grau3: 'completa' });
+  assert.ok(r.alertas.some((a) => a.includes('membro superior direito somam 75%')));
+  assert.ok(r.contexto.perda.lesoes[0].nome.endsWith('lado direito'));
+});
+
 test('lesões do mesmo acidente somam, até 100%', () => {
   const r = calcularAcidente({ ...joelho, lesao1: 'dedo_mao', grau1: 'completa', lesao2: 'dedo_mao', grau2: 'completa' });
   assert.equal(r.contexto.perda.percentual, 20); // dois dedos: 10% + 10%
@@ -307,7 +333,59 @@ test('idade final abaixo do que a tábua projeta gera aviso', () => {
   assert.deepEqual(r.erros, []);
   assert.ok(r.alertas.some((a) => a.includes('80,8') && a.includes('homens')), r.alertas.join(' | '));
   const jovem = calcularAcidente({ ...nascido1990, sexo: 'homem', termoFinal: 'idade', idadeFinal: 80 });
-  assert.ok(!jovem.alertas.some((a) => a.includes('tábua do IBGE')));
+  assert.ok(!jovem.alertas.some((a) => a.includes('viveria até')));
+});
+
+/* ------------------------------------------- teses vinculantes do TST --- */
+
+test('Tema 155: idade fixa, tábua geral e tábua de outro ano geram aviso', () => {
+  const idade = calcularAcidente({ ...nascido1990, sexo: 'homem', termoFinal: 'idade', idadeFinal: 80 });
+  assert.ok(idade.alertas.some((a) => a.includes('Tema 155') && a.includes('idade fixa')));
+  const ambos = calcularAcidente({ ...nascido1990, sexo: 'ambos' });
+  assert.ok(ambos.alertas.some((a) => a.includes('Tema 155') && a.includes('sexo do trabalhador')));
+  const outroAno = calcularAcidente({ ...nascido1990, sexo: 'mulher', dataCiencia: '2021-06-01',
+    dataAjuizamento: '2022-01-10' });
+  assert.ok(outroAno.alertas.some((a) => a.includes('tábua de 2021') && a.includes('31 anos')),
+    outroAno.alertas.join(' | '));
+  // pela tese — sexo da vítima, tábua do ano do início —, nenhum aviso
+  const pelaTese = calcularAcidente({ ...nascido1990, sexo: 'mulher' });
+  assert.ok(!pelaTese.alertas.some((a) => a.includes('Tema 155')));
+  // sobrevida digitada de outra tábua: também nenhum
+  const digitada = calcularAcidente({ ...joelho, sexo: 'ambos', dataNascimento: '1990-03-01', dataCiencia: '2021-06-01',
+    dataAjuizamento: '2022-01-10', sobrevida: 44 });
+  assert.ok(!digitada.alertas.some((a) => a.includes('Tema 155')));
+});
+
+test('Tema 76: concausa reduz a pensão em até 50%, ou segue o grau do laudo', () => {
+  const semConcausa = calcularAcidente(joelho).contexto.pensao.mensal; // 416,67
+  const metade = calcularAcidente({ ...joelho, concausa: true });
+  assert.equal(metade.contexto.pensao.mensal, 208.33); // 375 x 50% x (1 + 1/12 + 1/36)
+  assert.ok(metade.alertas.some((a) => a.includes('Tema 76') && a.includes('50%')));
+  const menor = calcularAcidente({ ...joelho, concausa: true, reducaoConcausa: 20 });
+  assert.equal(menor.contexto.pensao.mensal, 333.33); // 375 x 80% x 1,1111
+  const acima = calcularAcidente({ ...joelho, concausa: true, reducaoConcausa: 80 });
+  assert.equal(acima.contexto.pensao.mensal, 208.33, 'a redução não passa de 50%');
+  const laudo = calcularAcidente({ ...joelho, concausa: true, contribuicaoTrabalho: 30, reducaoConcausa: 50 });
+  assert.equal(laudo.contexto.pensao.mensal, 125); // 375 x 30% x 1,1111
+  assert.ok(laudo.alertas.some((a) => a.includes('grau de contribuição')));
+  // campos da concausa esquecidos com ela desmarcada não contam
+  assert.equal(calcularAcidente({ ...joelho, concausa: false, contribuicaoTrabalho: 30 }).contexto.pensao.mensal,
+    semConcausa);
+  // a concausa não mexe no dano moral
+  assert.equal(item(metade, 'danos_morais'), item(calcularAcidente(joelho), 'danos_morais'));
+});
+
+/* ------------------------------------------------- precisão dos meses --- */
+
+test('pensão vencida usa a fração exata dos meses, e não a arredondada', () => {
+  // 10/03/2024 a 28/02/2025: 22/31 de março + 11 meses = 11,709677 meses
+  const r = calcularAcidente({
+    salarioBase: 10000, criterio: 'laudo', percentualLaudo: 100, incluir13: false, incluirTerco: false,
+    pedirMorais: false, dataCiencia: '2024-03-10', dataAjuizamento: '2025-03-01', sobrevida: 30,
+  });
+  assert.equal(r.contexto.pensao.mensal, 10000);
+  assert.equal(r.contexto.pensao.mesesVencidos, 11.71); // o que a tela mostra
+  assert.equal(item(r, 'pensao_vencida'), 117096.77); // e não 117.100,00
 });
 
 test('acima de 90 anos vale o grupo aberto da tábua', () => {
@@ -475,5 +553,155 @@ test('o resumo do catálogo não quebra em nenhuma das formas', () => {
     for (const [rotulo, valor] of pedido.resumo(r.contexto)) {
       assert.ok(!/NaN|undefined|Invalid Date|null/.test(String(valor)), `${rotulo}: ${valor}`);
     }
+  }
+});
+
+/* ---------------------------------------- conferência independente --- */
+
+// Casos sorteados e recalculados por um programa à parte, escrito em Python a
+// partir das regras (anexo da Lei 6.194/74, Circular SUSEP 29/91, CIF, art.
+// 950 do CC, Temas 76, 155 e 250 do TST, art. 223-G da CLT e art. 292 do
+// CPC), sem aproveitar nada deste código, e com a expectativa de vida lida
+// direto das planilhas do IBGE. Na revisão, 5.000 casos bateram centavo a
+// centavo; estes ficam aqui para que qualquer mudança que os altere apareça.
+const CONFERIDOS = [
+  {
+    dados: {
+      criterio: 'dpvat', lesao1: 'quadril', grau1: 'residual', lado1: 'esquerdo', lesao2: 'coluna',
+      grau2: 'intensa', lado2: 'esquerdo', lesao3: 'nenhuma', grau3: 'completa', lado3: 'esquerdo',
+      qualificadorCif: '4', percentualCif: 7.5, percentualLaudo: 37.25, salarioBase: 12999.99,
+      outrasParcelas: 0, dataCiencia: '2018-10-25', dataNascimento: '1935-08-20', sexo: 'mulher',
+      dataAjuizamento: '2023-06-02', incapacidadeTotalOficio: false, incluir13: true, incluirTerco: true,
+      concausa: false, contribuicaoTrabalho: 30, reducaoConcausa: 50, formaPensao: 'unica',
+      metodoDesconto: 'desagio', taxaJuros: 0, desagio: 30, termoFinal: 'sobrevida', sobrevida: 41,
+      idadeFinal: 0, naturezaOfensa: 'auto', multiplicadorMorais: 2, pedirMorais: true, pedirEsteticos: true,
+      multiplicadorEsteticos: 3.25, danosEmergentes: 1234.56, dataReferencia: '2026-09-25',
+    },
+    itens: {
+      pensao_vencida: 169614.61, pensao_vincenda: 938384.91, danos_emergentes: 1234.56, danos_morais: 25999.98,
+      danos_esteticos: 42249.97,
+    },
+    total: 1177484.03,
+  },
+  {
+    dados: {
+      criterio: 'dpvat', lesao1: 'ombro', grau1: 'media', lado1: 'direito', lesao2: 'cegueira',
+      grau2: 'intensa', lado2: 'direito', lesao3: 'neurologica', grau3: 'leve', lado3: 'esquerdo',
+      qualificadorCif: '1', percentualCif: 25, percentualLaudo: 37.25, salarioBase: 12999.99,
+      outrasParcelas: 0, dataCiencia: '2009-03-22', dataNascimento: '1980-10-23', sexo: 'ambos',
+      dataAjuizamento: '2012-03-15', incapacidadeTotalOficio: false, incluir13: false, incluirTerco: true,
+      concausa: false, contribuicaoTrabalho: 0, reducaoConcausa: 20, formaPensao: 'unica',
+      metodoDesconto: 'valor_presente', taxaJuros: 1, desagio: 25, termoFinal: 'idade', sobrevida: 12.5,
+      idadeFinal: 0, naturezaOfensa: 'auto', multiplicadorMorais: 0, pedirMorais: true, pedirEsteticos: true,
+      multiplicadorEsteticos: 1, danosEmergentes: 0, dataReferencia: '2026-09-25',
+    },
+    itens: {
+      pensao_vencida: 477982.58, pensao_vincenda: 1330070.52, danos_morais: 649999.5,
+      danos_esteticos: 12999.99,
+    },
+    total: 2471052.59,
+  },
+  {
+    dados: {
+      criterio: 'dpvat', lesao1: 'dedo_pe', grau1: 'media', lado1: 'esquerdo', lesao2: 'quadril',
+      grau2: 'completa', lado2: 'esquerdo', lesao3: 'dedo_mao', grau3: 'media', lado3: 'direito',
+      qualificadorCif: '4', percentualCif: 0, percentualLaudo: 1, salarioBase: 2345.67, outrasParcelas: 0,
+      dataCiencia: '2007-02-21', dataNascimento: '1981-11-30', sexo: 'mulher', incapacidadeTotalOficio: false,
+      incluir13: true, incluirTerco: true, concausa: true, contribuicaoTrabalho: 65, reducaoConcausa: 20,
+      formaPensao: 'mensal', metodoDesconto: 'desagio', taxaJuros: 0.5, desagio: 20, termoFinal: 'sobrevida',
+      sobrevida: 12.5, idadeFinal: 80.5, naturezaOfensa: 'auto', multiplicadorMorais: 2, pedirMorais: true,
+      pedirEsteticos: false, multiplicadorEsteticos: 3.25, danosEmergentes: 0, dataReferencia: '2026-09-25',
+    },
+    itens: { pensao_vencida: 139389.37, pensao_vincenda: 7115.16, danos_morais: 4691.34 },
+    total: 151195.87,
+  },
+  {
+    dados: {
+      criterio: 'laudo', lesao1: 'pe', grau1: 'leve', lado1: 'direito', lesao2: 'cotovelo', grau2: 'intensa',
+      lado2: 'esquerdo', lesao3: 'organica_vital', grau3: 'residual', lado3: 'direito', qualificadorCif: '4',
+      percentualCif: 7.5, percentualLaudo: 12.5, salarioBase: 2345.67, outrasParcelas: 0,
+      dataCiencia: '2023-03-08', dataNascimento: '1950-08-25', sexo: 'homem', dataCalculo: '2029-05-31',
+      incapacidadeTotalOficio: false, incluir13: true, incluirTerco: true, concausa: false,
+      contribuicaoTrabalho: 30, reducaoConcausa: 0, formaPensao: 'unica', metodoDesconto: 'valor_presente',
+      taxaJuros: 0.5, desagio: 30, termoFinal: 'sobrevida', sobrevida: 12.5, idadeFinal: 75,
+      naturezaOfensa: 'auto', multiplicadorMorais: 0, pedirMorais: true, pedirEsteticos: false,
+      multiplicadorEsteticos: 1, danosEmergentes: 0, dataReferencia: '2026-09-25',
+    },
+    itens: { pensao_vencida: 24350.18, pensao_vincenda: 20385.64, danos_morais: 7037.01 },
+    total: 51772.83,
+  },
+  {
+    dados: {
+      criterio: 'dpvat', lesao1: 'ambas_maos_pes', grau1: 'intensa', lado1: 'esquerdo', lesao2: 'cegueira',
+      grau2: 'residual', lado2: 'direito', lesao3: 'ambas_maos_pes', grau3: 'residual', lado3: 'direito',
+      qualificadorCif: '4', percentualCif: 25, percentualLaudo: 12.5, salarioBase: 4800, outrasParcelas: 0,
+      dataCiencia: '2006-02-01', dataNascimento: '1962-01-29', sexo: 'mulher', dataAjuizamento: '2008-08-25',
+      incapacidadeTotalOficio: false, incluir13: true, incluirTerco: true, concausa: false,
+      contribuicaoTrabalho: 30, reducaoConcausa: 0, formaPensao: 'mensal', metodoDesconto: 'valor_presente',
+      taxaJuros: 1, desagio: 25, termoFinal: 'idade', sobrevida: 0, idadeFinal: 75, naturezaOfensa: 'media',
+      multiplicadorMorais: 0, pedirMorais: true, pedirEsteticos: false, multiplicadorEsteticos: 1,
+      danosEmergentes: 1234.56, dataReferencia: '2026-09-25',
+    },
+    itens: { pensao_vencida: 164128.93, pensao_vincenda: 63999.96, danos_emergentes: 1234.56, danos_morais: 24000 },
+    total: 253363.45,
+  },
+  {
+    dados: {
+      criterio: 'cif', lesao1: 'dedo_mao', grau1: 'completa', lado1: 'esquerdo', lesao2: 'membro_superior',
+      grau2: 'completa', lado2: 'esquerdo', lesao3: 'membro_inferior', grau3: 'completa', lado3: 'esquerdo',
+      qualificadorCif: '3', percentualCif: 49.99, percentualLaudo: 1, salarioBase: 2345.67,
+      outrasParcelas: 612.34, dataCiencia: '2010-01-13', dataNascimento: '1959-09-16', sexo: 'ambos',
+      dataAjuizamento: '2012-05-16', incapacidadeTotalOficio: false, incluir13: false, incluirTerco: true,
+      concausa: false, contribuicaoTrabalho: 30, reducaoConcausa: 20, formaPensao: 'mensal',
+      metodoDesconto: 'desagio', taxaJuros: 0.5, desagio: 30, termoFinal: 'idade', sobrevida: 0, idadeFinal: 0,
+      naturezaOfensa: 'auto', multiplicadorMorais: 2, pedirMorais: true, pedirEsteticos: false,
+      multiplicadorEsteticos: 1, danosEmergentes: 1234.56, dataReferencia: '2026-09-25',
+    },
+    itens: {
+      pensao_vencida: 42700.92, pensao_vincenda: 18237.36, danos_emergentes: 1234.56, danos_morais: 4691.34,
+    },
+    total: 66864.18,
+  },
+  {
+    dados: {
+      criterio: 'laudo', lesao1: 'cegueira', grau1: 'media', lado1: 'esquerdo', lesao2: 'membro_inferior',
+      grau2: 'completa', lado2: 'direito', lesao3: 'ambos_membros', grau3: 'completa', lado3: 'direito',
+      qualificadorCif: '1', percentualCif: 95.5, percentualLaudo: 37.25, salarioBase: 4800,
+      outrasParcelas: 612.34, dataCiencia: '2021-08-15', dataNascimento: '1968-03-22', sexo: 'homem',
+      incapacidadeTotalOficio: false, incluir13: true, incluirTerco: true, concausa: false,
+      contribuicaoTrabalho: 30, reducaoConcausa: 20, formaPensao: 'unica', metodoDesconto: 'desagio',
+      taxaJuros: 0.5, desagio: 20, termoFinal: 'sobrevida', sobrevida: 0, idadeFinal: 75,
+      naturezaOfensa: 'media', multiplicadorMorais: 0, pedirMorais: false, pedirEsteticos: true,
+      multiplicadorEsteticos: 3.25, danosEmergentes: 1234.56, dataReferencia: '2026-09-25',
+    },
+    itens: {
+      pensao_vencida: 137427.14, pensao_vincenda: 454473.52, danos_emergentes: 1234.56, danos_esteticos: 15600,
+    },
+    total: 608735.22,
+  },
+  {
+    dados: {
+      criterio: 'cif', lesao1: 'punho', grau1: 'media', lado1: 'esquerdo', lesao2: 'surdez', grau2: 'completa',
+      lado2: 'esquerdo', lesao3: 'organica_vital', grau3: 'intensa', lado3: 'esquerdo', qualificadorCif: '2',
+      percentualCif: 24.5, percentualLaudo: 1, salarioBase: 1621, outrasParcelas: 612.34,
+      dataCiencia: '2015-09-25', dataNascimento: '1975-07-21', sexo: 'ambos', dataAjuizamento: '2016-01-15',
+      incapacidadeTotalOficio: false, incluir13: true, incluirTerco: true, concausa: false,
+      contribuicaoTrabalho: 0, reducaoConcausa: 50, formaPensao: 'unica', metodoDesconto: 'valor_presente',
+      taxaJuros: 0.5, desagio: 20, termoFinal: 'sobrevida', sobrevida: 0, idadeFinal: 0,
+      naturezaOfensa: 'grave', multiplicadorMorais: 2, pedirMorais: true, pedirEsteticos: true,
+      multiplicadorEsteticos: 3.25, danosEmergentes: 0, dataReferencia: '2026-09-25',
+    },
+    itens: { pensao_vencida: 2220.03, pensao_vincenda: 110141.6, danos_morais: 3242, danos_esteticos: 5268.25 },
+    total: 120871.88,
+  },
+];
+
+test('os valores batem com o cálculo independente, centavo a centavo', () => {
+  for (const [i, caso] of CONFERIDOS.entries()) {
+    const r = calcularAcidente(caso.dados);
+    assert.deepEqual(r.erros, [], `caso ${i}`);
+    const itens = Object.fromEntries(r.periodo.map((it) => [it.chave, it.valor]));
+    assert.deepEqual(itens, caso.itens, `caso ${i}`);
+    assert.equal(r.totais.geral, caso.total, `caso ${i}`);
   }
 });

@@ -405,6 +405,20 @@ checar('vincendas a valor presente', acidente.includes('R$ 75.259,69'), null);
 checar('danos morais pela faixa leve', acidente.includes('R$ 7.500,00'), null);
 checar('nota da isenção de imposto de renda', acidente.includes('7.713/88'), null);
 checar('sem cartão de FGTS', (await page.locator('#resultado .fgts-card').count()) === 0, null);
+checar('lesão de membro pede o lado', await page.locator('#campo-lado1').isVisible(), null);
+
+// concausa (Tema 76 do TST): redução de até 50%, ou o grau do laudo
+checar('campos da concausa escondidos sem ela', await page.locator('#campo-reducaoConcausa').isHidden(), null);
+await page.check('#concausa');
+await page.waitForTimeout(300);
+checar('concausa reduz a pensão à metade', (await texto()).includes('R$ 208,33'), null);
+await page.fill('#contribuicaoTrabalho', '30');
+await page.waitForTimeout(300);
+checar('grau de contribuição do laudo mede a pensão', (await texto()).includes('R$ 125,00'), null);
+await page.fill('#contribuicaoTrabalho', '');
+await page.uncheck('#concausa');
+await page.waitForTimeout(300);
+checar('sem a concausa, a pensão volta', (await texto()).includes('R$ 416,67'), null);
 
 // tábuas do IBGE embutidas: com o nascimento e o sexo, a sobrevida vem sozinha
 await page.fill('#sobrevida', '');
@@ -445,6 +459,7 @@ await page.waitForTimeout(300);
 await page.selectOption('#lesao1', 'cegueira');
 await page.waitForTimeout(300);
 checar('dano total não se gradua', await page.locator('#campo-grau1').isHidden(), null);
+checar('lesão que não é de membro não pede lado', await page.locator('#campo-lado1').isHidden(), null);
 checar('cegueira bilateral vale 100%', /Percentual da perda\n100%/i.test(await texto()), null);
 await page.selectOption('#lesao1', 'joelho');
 checar('terceira lesão escondida sem a segunda', await page.locator('#campo-lesao3').isHidden(), null);
@@ -453,6 +468,23 @@ await page.waitForTimeout(300);
 checar('escolhida a segunda, a terceira aparece', await page.locator('#campo-lesao3').isVisible(), null);
 checar('as lesões somam', /Percentual da perda\n22,5%/i.test(await texto()), null);
 await page.selectOption('#lesao2', 'nenhuma');
+
+// teto por membro: ombro, cotovelo e punho do mesmo braço não passam do braço inteiro
+await page.selectOption('#lesao1', 'ombro');
+await page.selectOption('#grau1', 'completa');
+await page.selectOption('#lesao2', 'cotovelo');
+await page.selectOption('#grau2', 'completa');
+await page.selectOption('#lesao3', 'punho');
+await page.selectOption('#grau3', 'completa');
+await page.waitForTimeout(300);
+checar('três lesões do mesmo braço: 70%', /Percentual da perda\n70%/i.test(await texto()), null);
+checar('o teto por membro é explicado', (await texto()).includes('membro superior direito somam 75%'), null);
+await page.selectOption('#lado3', 'esquerdo');
+await page.waitForTimeout(300);
+checar('punho do outro braço: somam 75%', /Percentual da perda\n75%/i.test(await texto()), null);
+await page.selectOption('#lesao2', 'nenhuma');
+await page.selectOption('#lesao1', 'joelho');
+await page.selectOption('#grau1', 'media');
 
 await page.check('input[name="criterio"][value="cif"]');
 await page.waitForTimeout(300);

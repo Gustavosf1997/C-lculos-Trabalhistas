@@ -367,7 +367,11 @@ três passos:
      não é completa, o percentual da tabela é reduzido pela **repercussão**:
      75% (intensa), 50% (média), 25% (leve) ou 10% (residual), conforme o
      art. 3º, §1º, II. Os **danos totais** valem 100% e não se graduam. Até
-     três lesões do mesmo acidente, somadas até 100%;
+     três lesões do mesmo acidente, somadas até 100%. Lesões de braço ou
+     perna pedem o **lado**: no mesmo membro, a soma não passa da perda do
+     membro inteiro (70%; o pé, 50%) — regra da tabela da Circular SUSEP
+     29/91, da qual a do DPVAT descende. Ombro, cotovelo e punho do mesmo
+     braço valem 70%, e não 75%; de braços diferentes, somam;
    - **qualificador da CIF** fixado pelo perito — 1 ligeira (5% a 24%),
      2 moderada (25% a 49%), 3 grave (50% a 95%), 4 completa (96% a 100%).
      Sem número no laudo, vale o meio da faixa. Com número, **ele manda**: o
@@ -382,15 +386,22 @@ três passos:
    quanto a perda valeria no teto do DPVAT (R$ 13.500,00), como referência.
 2. **Pensão (art. 950 do CC)** — a última remuneração (salário mais parcelas
    habituais) vezes o percentual da perda, com 1/12 de 13º e 1/12 do terço de
-   férias por mês, sem FGTS (jurisprudência do TST). Marcada a **incapacidade
-   total para o ofício**, a pensão é integral, ainda que a vítima possa
-   exercer outra atividade. As parcelas vão da **ciência inequívoca** da
+   férias por mês, sem FGTS (Tema 250 do TST, tese vinculante). Marcada a
+   **incapacidade total para o ofício**, a pensão é integral, ainda que a
+   vítima possa exercer outra atividade (SDI-1 do TST). Havendo **concausa**,
+   a pensão é reduzida em até 50% — ou segue o grau de contribuição do
+   trabalho, se o laudo o fixou (Tema 76 do TST, tese vinculante); o dano
+   moral não muda. As parcelas vão da **ciência inequívoca** da
    incapacidade; as **vencidas** vão até a data do cálculo (em branco, o
-   ajuizamento ou, sem ele, hoje). As **vincendas**:
+   ajuizamento ou, sem ele, hoje). Os meses entram na conta pela fração exata
+   dos dias — o número de duas casas é só o que a tela mostra. As
+   **vincendas**:
    - em **parcela única** (parágrafo único do art. 950), até o termo final —
-     a expectativa de sobrevida na idade da vítima, ou uma idade (a
-     expectativa ao nascer, 76,61 anos, por padrão) —, descontadas pela
-     antecipação: pela **fórmula do valor presente**
+     a expectativa de sobrevida da tábua do IBGE do início do pensionamento,
+     conforme o sexo, como manda o **Tema 155 do TST** (tese vinculante); a
+     idade fixa segue disponível, mas com aviso de que foge da tese, como a
+     tábua de ambos os sexos e a tábua de ano diferente do início da
+     pensão —, descontadas pela antecipação, só nelas: pela **fórmula do valor presente**
      VP = P × [1 − (1 + i)^−n] / i, a 0,5% ao mês, como faz a 1ª Turma do
      TST, ou por **deságio fixo** (o TST admite de 20% a 30%);
    - em **pensão mensal vitalícia**, doze prestações entram no valor do
@@ -540,12 +551,16 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Percentuais de perda por lesão, com redução por repercussão de 75/50/25/10% | Lei 6.194/74, art. 3º, §1º, e anexo (Lei 11.945/2009) | `tabelas-acidente.js` |
 | Qualificadores da CIF: 5–24%, 25–49%, 50–95%, 96–100% | Classificação Internacional de Funcionalidade (OMS, 2001) | `classificarCIF` |
 | Pensão pela depreciação da capacidade; integral se inabilitado para o ofício | art. 950 do CC | `acidente.js` |
-| Pensão com 13º e terço de férias, sem FGTS | jurisprudência do TST (restituição integral, art. 944 do CC) | `apurarPensao` |
+| Pensão com 13º e terço de férias, sem FGTS | Tema 250 do TST (tese vinculante); art. 944 do CC | `apurarPensao` |
+| Concausa: pensão reduzida em até 50%, ou pelo grau de contribuição do laudo | Tema 76 do TST (tese vinculante) | `fatorConcausa` |
+| Lesões no mesmo membro não passam da perda do membro inteiro | tabela da Circular SUSEP 29/91 | `somarComTetos` |
+| Parcela única pela tábua do IBGE do início do pensionamento, conforme o sexo | Tema 155 do TST (tese vinculante) | `apurarPensao` |
 | Parcela única: valor presente a 0,5% ao mês ou deságio de 20% a 30% | art. 950, parágrafo único, do CC; 1ª Turma e demais Turmas do TST | `valorPresente` |
 | Danos morais em múltiplos do último salário contratual | art. 223-G, §1º, da CLT; ADIs 6050, 6069 e 6082 | `NATUREZAS_OFENSA` |
 | Dano estético cumulável com o moral | Súmula 387 do STJ | `acidente.js` |
 | Prescrição acidentária contada da ciência inequívoca da incapacidade | Súmula 278 do STJ e art. 7º, XXIX, da CF | `apurarPrescricaoAcidentaria` |
-| Termo final da parcela única pela expectativa de sobrevida da tábua do IBGE, do sexo da vítima | jurisprudência do TST; Tábuas Completas de Mortalidade do IBGE (2024) | `tabua-ibge.js` |
+| Termo final da parcela única pela expectativa de sobrevida da tábua do IBGE, do sexo da vítima | Tema 155 do TST; Tábuas Completas de Mortalidade do IBGE (2024) | `tabua-ibge.js` |
+| Desconto da antecipação só sobre as vincendas | jurisprudência do TST | `apurarPensao` |
 | Indenização por acidente do trabalho isenta de IR | art. 6º, IV, da Lei 7.713/88 | nota do resultado |
 | INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
 | Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
