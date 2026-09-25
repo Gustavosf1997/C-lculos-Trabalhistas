@@ -140,6 +140,13 @@ await page.selectOption('#sexo', 'homem');
 await page.waitForTimeout(300);
 checar('acidente: sobrevida da tábua dos homens embutida',
   (await texto()).includes('42,66 anos — tábua do IBGE de 2024 (homens), aos 34 anos'), null);
+await page.check('input[name="criterio"][value="cif"]');
+await page.selectOption('#qualificadorCif', '1');
+await page.locator('#percentualCif').click();
+await page.locator('#percentualCif').pressSequentially('26');
+await page.waitForTimeout(300);
+checar('acidente: 26% leva o qualificador à faixa 2', (await page.inputValue('#qualificadorCif')) === '2', null);
+await page.check('input[name="criterio"][value="dpvat"]');
 await page.fill('#dataAjuizamento', '01/04/2029');
 await page.waitForTimeout(300);
 checar('acidente: quinquênio da ciência bloqueia', await page.locator('#salarioBase').isDisabled(), null);

@@ -294,6 +294,28 @@ function bloquearEntrada(bloqueado) {
 
 /* ------------------------------------------------------------- atualização */
 
+/**
+ * Deixa o pedido reescrever campos que dependem do que acabou de mudar —
+ * o qualificador da CIF que acompanha o percentual digitado, por exemplo. O
+ * campo reescrito pisca, para que a troca não passe despercebida.
+ */
+function sincronizar(evento) {
+  const pedido = pedidoAtual();
+  const alterado = evento?.target?.id || evento?.target?.name;
+  if (!pedido?.sincronizar || !alterado) return;
+  const ajustes = pedido.sincronizar(alterado, coletarDados()) ?? {};
+  for (const [id, valor] of Object.entries(ajustes)) {
+    const campo = $(`#${id}`);
+    if (!campo || campo.value === valor) continue;
+    campo.value = valor;
+    const bloco = campo.closest('.campo');
+    if (!bloco) continue;
+    bloco.classList.remove('campo--ajustado');
+    void bloco.offsetWidth; // reinicia a animação se a troca se repetir
+    bloco.classList.add('campo--ajustado');
+  }
+}
+
 function atualizar() {
   if (!pedidoSelecionado) return;
   aplicarVisibilidade();
@@ -330,8 +352,8 @@ montarPedidos();
 $('#badge-vigencia').textContent = VIGENCIA;
 $('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
 $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
-$('#formulario').addEventListener('input', atualizar);
-$('#formulario').addEventListener('change', atualizar);
+$('#formulario').addEventListener('input', (evento) => { sincronizar(evento); atualizar(); });
+$('#formulario').addEventListener('change', (evento) => { sincronizar(evento); atualizar(); });
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por
 // Enter é neutralizado para que a página nunca recarregue e perca os dados.
 $('#formulario').addEventListener('submit', (evento) => {

@@ -36,7 +36,7 @@ import { arredondar, num, contarPeriodo, resultadoComErros, resultadoImpedido } 
 import { apurarBienal, dataDaPrescricao } from '../prescricao.js';
 import {
   TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor,
-  qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida,
+  qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida, QUALIFICADORES_CIF,
 } from './tabelas-acidente.js';
 import { TABUA_IBGE, expectativaAoNascer, sobrevidaNaIdade, sexoPorValor } from './tabua-ibge.js';
 
@@ -186,14 +186,24 @@ function apurarPercentual(dados, erros, alertas) {
   }
 
   if (criterio === 'cif') {
-    const q = qualificadorPorCodigo(dados.qualificadorCif);
+    // O percentual do laudo, quando há, manda: é ele que diz em que faixa a
+    // perda está, e o qualificador o acompanha (a tela troca a escolha
+    // sozinha). Abaixo de 5%, a CIF não vê deficiência — qualificador 0.
+    const informado = num(dados.percentualCif);
+    if (informado > 0 && informado < QUALIFICADORES_CIF[1].de) {
+      erros.push(`Abaixo de ${QUALIFICADORES_CIF[1].de}%, a CIF classifica a perda como nenhuma deficiência `
+        + '(qualificador 0). Para estimar uma perda menor, use o critério "Percentual do laudo".');
+      return { criterio, percentual: 0, lesoes: [], origem: 'Qualificador da CIF' };
+    }
+    const escolhido = qualificadorPorCodigo(dados.qualificadorCif);
+    const q = informado > 0 ? classificarCIF(informado) : escolhido;
     if (!q || q.codigo === 0) {
       erros.push('Escolha o qualificador da CIF fixado na perícia.');
       return { criterio, percentual: 0, lesoes: [], origem: 'Qualificador da CIF' };
     }
-    const informado = num(dados.percentualCif);
-    if (informado > 0 && (informado < q.de || informado > q.ate)) {
-      erros.push(`O percentual deve ficar dentro da faixa do qualificador ${q.codigo}: de ${q.de}% a ${q.ate}%.`);
+    if (informado > 0 && escolhido && escolhido.codigo !== q.codigo) {
+      alertas.push(`${pct(informado)} está na faixa do qualificador ${q.codigo} da CIF (${q.nome}, `
+        + `${q.de}% a ${q.ate}%), e não na do ${escolhido.codigo}: o enquadramento segue o percentual.`);
     }
     const percentual = informado > 0 ? informado : (q.de + q.ate) / 2;
     if (!(informado > 0)) {

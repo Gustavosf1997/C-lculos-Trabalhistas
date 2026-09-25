@@ -370,7 +370,12 @@ três passos:
      três lesões do mesmo acidente, somadas até 100%;
    - **qualificador da CIF** fixado pelo perito — 1 ligeira (5% a 24%),
      2 moderada (25% a 49%), 3 grave (50% a 95%), 4 completa (96% a 100%).
-     Sem número no laudo, vale o meio da faixa;
+     Sem número no laudo, vale o meio da faixa. Com número, **ele manda**: o
+     qualificador passa sozinho à faixa do percentual digitado (e pisca, para
+     a troca não passar despercebida); trocado o qualificador para uma faixa
+     que não contém o número, o número é apagado e volta a valer o meio da
+     nova faixa. Abaixo de 5%, a CIF não vê deficiência (qualificador 0), e a
+     tela indica o critério do percentual do laudo;
    - **percentual do laudo**, digitado.
 
    Qualquer que seja o critério, o resultado mostra o enquadramento na CIF e

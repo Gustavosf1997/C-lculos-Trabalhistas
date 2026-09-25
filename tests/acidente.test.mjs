@@ -101,9 +101,48 @@ test('pelo qualificador da CIF, sem número no laudo, vale o meio da faixa', () 
     .contexto.perda.percentual, 30);
 });
 
-test('percentual fora da faixa do qualificador é recusado', () => {
-  const r = calcularAcidente({ ...joelho, criterio: 'cif', qualificadorCif: '2', percentualCif: 60 });
-  assert.ok(r.erros.some((e) => e.includes('de 25% a 49%')));
+test('o percentual digitado leva o qualificador à faixa dele', () => {
+  // O caso da tela: qualificador 1 (5% a 24%) escolhido e 26% digitado
+  const r = calcularAcidente({ ...joelho, criterio: 'cif', qualificadorCif: '1', percentualCif: 26 });
+  assert.deepEqual(r.erros, []);
+  assert.equal(r.contexto.perda.percentual, 26);
+  assert.equal(r.contexto.qualificador.codigo, 2);
+  assert.ok(r.contexto.perda.origem.includes('Qualificador 2'));
+  assert.ok(r.alertas.some((a) => a.includes('enquadramento segue o percentual')));
+  const alto = calcularAcidente({ ...joelho, criterio: 'cif', qualificadorCif: '2', percentualCif: 60 });
+  assert.equal(alto.contexto.qualificador.codigo, 3);
+});
+
+test('percentual fracionado na borda da faixa fica nela', () => {
+  // 24,5% ainda é qualificador 1: a faixa seguinte começa em 25%
+  const r = calcularAcidente({ ...joelho, criterio: 'cif', qualificadorCif: '1', percentualCif: 24.5 });
+  assert.deepEqual(r.erros, []);
+  assert.equal(r.contexto.qualificador.codigo, 1);
+  assert.ok(!r.alertas.some((a) => a.includes('enquadramento segue')));
+});
+
+test('abaixo de 5%, a CIF não vê deficiência, e o cálculo explica', () => {
+  const r = calcularAcidente({ ...joelho, criterio: 'cif', qualificadorCif: '1', percentualCif: 3 });
+  assert.ok(r.erros.some((e) => e.includes('nenhuma deficiência') && e.includes('Percentual do laudo')));
+});
+
+test('a tela sincroniza qualificador e percentual', () => {
+  const sincronizar = pedidoPorId('acidente').sincronizar;
+  const cif = { criterio: 'cif' };
+  // digitar um número de outra faixa troca o qualificador
+  assert.deepEqual(sincronizar('percentualCif', { ...cif, qualificadorCif: '1', percentualCif: 26 }), { qualificadorCif: '2' });
+  assert.deepEqual(sincronizar('percentualCif', { ...cif, qualificadorCif: '2', percentualCif: 97 }), { qualificadorCif: '4' });
+  // número da mesma faixa, vazio ou abaixo de 5%: nada muda
+  assert.equal(sincronizar('percentualCif', { ...cif, qualificadorCif: '2', percentualCif: 26 }), null);
+  assert.equal(sincronizar('percentualCif', { ...cif, qualificadorCif: '1', percentualCif: 24.5 }), null);
+  assert.equal(sincronizar('percentualCif', { ...cif, qualificadorCif: '1', percentualCif: 0 }), null);
+  assert.equal(sincronizar('percentualCif', { ...cif, qualificadorCif: '1', percentualCif: 3 }), null);
+  // trocar o qualificador para uma faixa que não tem o número apaga o número
+  assert.deepEqual(sincronizar('qualificadorCif', { ...cif, qualificadorCif: '3', percentualCif: 26 }), { percentualCif: '' });
+  assert.equal(sincronizar('qualificadorCif', { ...cif, qualificadorCif: '2', percentualCif: 26 }), null);
+  // fora do critério CIF, ou mudando outro campo, nada
+  assert.equal(sincronizar('percentualCif', { criterio: 'dpvat', qualificadorCif: '1', percentualCif: 26 }), null);
+  assert.equal(sincronizar('salarioBase', { ...cif, qualificadorCif: '1', percentualCif: 26 }), null);
 });
 
 /* --------------------------------------------------------------- pensão --- */

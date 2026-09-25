@@ -264,6 +264,16 @@ body {
   font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
   color: var(--tinta-fraca); margin: 16px 0 6px;
 }
+/* Campo reescrito pela tela (o qualificador que acompanha o percentual). */
+.campo--ajustado select, .campo--ajustado input { animation: ajustado 1.6s ease-out; }
+@keyframes ajustado {
+  0%, 35% { border-color: var(--destaque-escuro); box-shadow: 0 0 0 3px rgba(255, 198, 0, .45); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 198, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .campo--ajustado select, .campo--ajustado input { animation: none; }
+}
+
 .linhas { width: 100%; border-collapse: collapse; }
 .linhas td { padding: 6px 0; border-bottom: 1px dashed var(--linha); font-size: 13.5px; vertical-align: top; }
 .linhas td:last-child { padding-left: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -3856,7 +3866,7 @@ function sobrevidaNaIdade(idade, sexo) {
   const { moeda } = __modulos['src/formato.js'];
   const { arredondar, num, contarPeriodo, resultadoComErros, resultadoImpedido } = __modulos['src/pedidos/comum.js'];
   const { apurarBienal, dataDaPrescricao } = __modulos['src/prescricao.js'];
-  const { TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida, QUALIFICADORES_CIF } = __modulos['src/pedidos/tabelas-acidente.js'];
   const { TABUA_IBGE, expectativaAoNascer, sobrevidaNaIdade, sexoPorValor } = __modulos['src/pedidos/tabua-ibge.js'];
 
 /** Ciência a partir desta data: prescrição trabalhista (EC 45/2004, de 31/12/2004). */
@@ -4005,14 +4015,24 @@ function apurarPercentual(dados, erros, alertas) {
   }
 
   if (criterio === 'cif') {
-    const q = qualificadorPorCodigo(dados.qualificadorCif);
+    // O percentual do laudo, quando há, manda: é ele que diz em que faixa a
+    // perda está, e o qualificador o acompanha (a tela troca a escolha
+    // sozinha). Abaixo de 5%, a CIF não vê deficiência — qualificador 0.
+    const informado = num(dados.percentualCif);
+    if (informado > 0 && informado < QUALIFICADORES_CIF[1].de) {
+      erros.push(`Abaixo de ${QUALIFICADORES_CIF[1].de}%, a CIF classifica a perda como nenhuma deficiência `
+        + '(qualificador 0). Para estimar uma perda menor, use o critério "Percentual do laudo".');
+      return { criterio, percentual: 0, lesoes: [], origem: 'Qualificador da CIF' };
+    }
+    const escolhido = qualificadorPorCodigo(dados.qualificadorCif);
+    const q = informado > 0 ? classificarCIF(informado) : escolhido;
     if (!q || q.codigo === 0) {
       erros.push('Escolha o qualificador da CIF fixado na perícia.');
       return { criterio, percentual: 0, lesoes: [], origem: 'Qualificador da CIF' };
     }
-    const informado = num(dados.percentualCif);
-    if (informado > 0 && (informado < q.de || informado > q.ate)) {
-      erros.push(`O percentual deve ficar dentro da faixa do qualificador ${q.codigo}: de ${q.de}% a ${q.ate}%.`);
+    if (informado > 0 && escolhido && escolhido.codigo !== q.codigo) {
+      alertas.push(`${pct(informado)} está na faixa do qualificador ${q.codigo} da CIF (${q.nome}, `
+        + `${q.de}% a ${q.ate}%), e não na do ${escolhido.codigo}: o enquadramento segue o percentual.`);
     }
     const percentual = informado > 0 ? informado : (q.de + q.ate) / 2;
     if (!(informado > 0)) {
@@ -4360,7 +4380,7 @@ function calcularAcidente(dados) {
   const { calcularAdicionalRiscoPedido } = __modulos['src/pedidos/insalubridade.js'];
   const { calcularMultas } = __modulos['src/pedidos/multas.js'];
   const { calcularAcidente, TAXA_VALOR_PRESENTE, DESAGIO_PADRAO } = __modulos['src/pedidos/acidente.js'];
-  const { LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal, classificarCIF } = __modulos['src/pedidos/tabelas-acidente.js'];
   const { TABUA_IBGE, SEXOS, expectativaAoNascer } = __modulos['src/pedidos/tabua-ibge.js'];
   const { DIVISOR_PADRAO } = __modulos['src/pedidos/comum.js'];
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
@@ -4535,6 +4555,28 @@ const resumoAcidente = (c) => {
 
 const arredondarPct = (v) => Math.round(v * 100) / 100;
 
+/**
+ * Mantém o qualificador da CIF e o percentual coerentes enquanto se digita.
+ *
+ * O percentual manda: digitado um número de outra faixa, o qualificador passa
+ * à faixa dele. Trocado o qualificador para uma faixa que não contém o número
+ * digitado, é o número que sai — e a estimativa volta ao meio da nova faixa.
+ *
+ * @param {string} alterado id do campo que acabou de mudar
+ * @param {object} d valores atuais da tela
+ * @returns {object|null} campos a reescrever, por id
+ */
+function sincronizarCIF(alterado, d) {
+  if (d.criterio !== 'cif') return null;
+  const percentual = Number(d.percentualCif) || 0;
+  const faixaDoNumero = percentual >= QUALIFICADORES_CIF[1].de && percentual <= 100
+    ? String(classificarCIF(percentual).codigo) : null;
+  if (!faixaDoNumero || faixaDoNumero === d.qualificadorCif) return null;
+  if (alterado === 'percentualCif') return { qualificadorCif: faixaDoNumero };
+  if (alterado === 'qualificadorCif') return { percentualCif: '' };
+  return null;
+}
+
 const pedidoAcidente = {
   id: 'acidente',
   nome: 'Indenização acidentária',
@@ -4555,6 +4597,7 @@ const pedidoAcidente = {
   semPeriodo: true,
   resumo: resumoAcidente,
   saidaDoImpedimento: 'Corrija a data da ciência, a do fim do contrato ou a do ajuizamento',
+  sincronizar: sincronizarCIF,
   observacao: 'Estimativa, sem juros e sem correção monetária. O percentual que vale é o fixado na perícia; '
     + 'a tabela DPVAT e a CIF servem de referência. As indenizações por acidente do trabalho são isentas de '
     + 'imposto de renda (art. 6º, IV, da Lei 7.713/88) e não sofrem contribuição previdenciária.',
@@ -4589,7 +4632,7 @@ const pedidoAcidente = {
           dica: 'Qualificador genérico da Classificação Internacional de Funcionalidade (OMS).' },
         { id: 'percentualCif', rotulo: 'Percentual dentro da faixa', tipo: 'percentual', min: 0, max: 100,
           aparece: (d) => d.criterio === 'cif',
-          dica: 'Se o laudo fixou um número. Em branco: o meio da faixa.' },
+          dica: 'Se o laudo fixou um número, o qualificador passa à faixa dele. Em branco: o meio da faixa.' },
         { id: 'percentualLaudo', rotulo: 'Percentual de perda', tipo: 'percentual', min: 0, max: 100,
           aparece: (d) => d.criterio === 'laudo', dica: 'Redução da capacidade de trabalho fixada pelo perito.' },
       ],
@@ -4933,7 +4976,7 @@ const PEDIDOS = [
 
 const pedidoPorId = (id) => PEDIDOS.find((p) => p.id === id) ?? null;
 
-    return { JORNADAS, PEDIDOS, pedidoPorId };
+    return { JORNADAS, sincronizarCIF, PEDIDOS, pedidoPorId };
   })();
 
   /* src/app-rescisao.js */
@@ -5713,6 +5756,28 @@ function bloquearEntrada(bloqueado) {
 
 /* ------------------------------------------------------------- atualização */
 
+/**
+ * Deixa o pedido reescrever campos que dependem do que acabou de mudar —
+ * o qualificador da CIF que acompanha o percentual digitado, por exemplo. O
+ * campo reescrito pisca, para que a troca não passe despercebida.
+ */
+function sincronizar(evento) {
+  const pedido = pedidoAtual();
+  const alterado = evento?.target?.id || evento?.target?.name;
+  if (!pedido?.sincronizar || !alterado) return;
+  const ajustes = pedido.sincronizar(alterado, coletarDados()) ?? {};
+  for (const [id, valor] of Object.entries(ajustes)) {
+    const campo = $(`#${id}`);
+    if (!campo || campo.value === valor) continue;
+    campo.value = valor;
+    const bloco = campo.closest('.campo');
+    if (!bloco) continue;
+    bloco.classList.remove('campo--ajustado');
+    void bloco.offsetWidth; // reinicia a animação se a troca se repetir
+    bloco.classList.add('campo--ajustado');
+  }
+}
+
 function atualizar() {
   if (!pedidoSelecionado) return;
   aplicarVisibilidade();
@@ -5749,8 +5814,8 @@ montarPedidos();
 $('#badge-vigencia').textContent = VIGENCIA;
 $('#versao').textContent = `Ferramenta de cálculos trabalhistas — ${CARIMBO}`;
 $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
-$('#formulario').addEventListener('input', atualizar);
-$('#formulario').addEventListener('change', atualizar);
+$('#formulario').addEventListener('input', (evento) => { sincronizar(evento); atualizar(); });
+$('#formulario').addEventListener('change', (evento) => { sincronizar(evento); atualizar(); });
 // Não há botão de calcular: o resultado acompanha a digitação. O submit por
 // Enter é neutralizado para que a página nunca recarregue e perca os dados.
 $('#formulario').addEventListener('submit', (evento) => {

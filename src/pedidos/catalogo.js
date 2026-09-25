@@ -20,6 +20,7 @@ import {
 } from './acidente.js';
 import {
   LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal,
+  classificarCIF,
 } from './tabelas-acidente.js';
 import { TABUA_IBGE, SEXOS, expectativaAoNascer } from './tabua-ibge.js';
 import { DIVISOR_PADRAO } from './comum.js';
@@ -195,6 +196,28 @@ const resumoAcidente = (c) => {
 
 const arredondarPct = (v) => Math.round(v * 100) / 100;
 
+/**
+ * Mantém o qualificador da CIF e o percentual coerentes enquanto se digita.
+ *
+ * O percentual manda: digitado um número de outra faixa, o qualificador passa
+ * à faixa dele. Trocado o qualificador para uma faixa que não contém o número
+ * digitado, é o número que sai — e a estimativa volta ao meio da nova faixa.
+ *
+ * @param {string} alterado id do campo que acabou de mudar
+ * @param {object} d valores atuais da tela
+ * @returns {object|null} campos a reescrever, por id
+ */
+export function sincronizarCIF(alterado, d) {
+  if (d.criterio !== 'cif') return null;
+  const percentual = Number(d.percentualCif) || 0;
+  const faixaDoNumero = percentual >= QUALIFICADORES_CIF[1].de && percentual <= 100
+    ? String(classificarCIF(percentual).codigo) : null;
+  if (!faixaDoNumero || faixaDoNumero === d.qualificadorCif) return null;
+  if (alterado === 'percentualCif') return { qualificadorCif: faixaDoNumero };
+  if (alterado === 'qualificadorCif') return { percentualCif: '' };
+  return null;
+}
+
 const pedidoAcidente = {
   id: 'acidente',
   nome: 'Indenização acidentária',
@@ -215,6 +238,7 @@ const pedidoAcidente = {
   semPeriodo: true,
   resumo: resumoAcidente,
   saidaDoImpedimento: 'Corrija a data da ciência, a do fim do contrato ou a do ajuizamento',
+  sincronizar: sincronizarCIF,
   observacao: 'Estimativa, sem juros e sem correção monetária. O percentual que vale é o fixado na perícia; '
     + 'a tabela DPVAT e a CIF servem de referência. As indenizações por acidente do trabalho são isentas de '
     + 'imposto de renda (art. 6º, IV, da Lei 7.713/88) e não sofrem contribuição previdenciária.',
@@ -249,7 +273,7 @@ const pedidoAcidente = {
           dica: 'Qualificador genérico da Classificação Internacional de Funcionalidade (OMS).' },
         { id: 'percentualCif', rotulo: 'Percentual dentro da faixa', tipo: 'percentual', min: 0, max: 100,
           aparece: (d) => d.criterio === 'cif',
-          dica: 'Se o laudo fixou um número. Em branco: o meio da faixa.' },
+          dica: 'Se o laudo fixou um número, o qualificador passa à faixa dele. Em branco: o meio da faixa.' },
         { id: 'percentualLaudo', rotulo: 'Percentual de perda', tipo: 'percentual', min: 0, max: 100,
           aparece: (d) => d.criterio === 'laudo', dica: 'Redução da capacidade de trabalho fixada pelo perito.' },
       ],

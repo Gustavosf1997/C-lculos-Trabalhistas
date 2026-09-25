@@ -455,6 +455,27 @@ await page.waitForTimeout(300);
 checar('pela CIF, a tabela DPVAT some', await page.locator('#campo-lesao1').isHidden(), null);
 checar('pela CIF, o qualificador aparece', await page.locator('#qualificadorCif').isVisible(), null);
 checar('qualificador moderado sem número: meio da faixa', /Percentual da perda\n37%/i.test(await texto()), null);
+
+// o caso do print: qualificador 1 escolhido e 26% digitado
+await page.selectOption('#qualificadorCif', '1');
+await page.locator('#percentualCif').click();
+await page.locator('#percentualCif').pressSequentially('26');
+await page.waitForTimeout(300);
+checar('26% leva o qualificador à faixa 2', (await page.inputValue('#qualificadorCif')) === '2',
+  await page.inputValue('#qualificadorCif'));
+checar('sem erro de faixa na tela', !(await texto()).includes('dentro da faixa'), null);
+checar('o qualificador ajustado pisca', (await page.locator('#campo-qualificadorCif.campo--ajustado').count()) === 1, null);
+checar('percentual de 26% no resultado', /Percentual da perda\n26%/i.test(await texto()), null);
+await page.selectOption('#qualificadorCif', '3');
+await page.waitForTimeout(300);
+checar('trocar para faixa que não tem o número apaga o número', (await page.inputValue('#percentualCif')) === '',
+  await page.inputValue('#percentualCif'));
+checar('e volta ao meio da nova faixa', /Percentual da perda\n72,5%/i.test(await texto()), null);
+await page.fill('#percentualCif', '3');
+await page.waitForTimeout(300);
+checar('abaixo de 5% a tela explica', (await texto()).includes('nenhuma deficiência'), null);
+checar('abaixo de 5% o qualificador fica como está', (await page.inputValue('#qualificadorCif')) === '3', null);
+await page.fill('#percentualCif', '');
 await page.check('input[name="criterio"][value="dpvat"]');
 
 await page.check('input[name="formaPensao"][value="mensal"]');
