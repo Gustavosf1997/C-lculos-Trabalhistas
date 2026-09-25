@@ -289,7 +289,7 @@ const dadosBase = async () => {
   await page.fill('#salarioBase', '2.200,00'); // divisor 220 -> hora de R$ 10,00
 };
 
-checar('catálogo traz os cinco pedidos', await page.locator('#pedidos .tipo').count() === 5,
+checar('catálogo traz os seis pedidos', await page.locator('#pedidos .tipo').count() === 6,
   await page.locator('#pedidos .tipo').count());
 
 // adicional noturno: hora ficta de 52min30s (art. 73, §1º)
@@ -377,6 +377,113 @@ await page.fill('#valorIncontroverso', '5.000,00');
 await page.waitForTimeout(350);
 checar('as duas multas somam R$ 5.000,00', (await texto()).includes('R$ 5.000,00'), null);
 
+// indenização acidentária: tabela DPVAT, CIF, pensão e art. 223-G
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(250);
+checar('acidente dispensa o período', (await page.locator('#dataInicio').count()) === 0, null);
+checar('lesões agrupadas como no anexo da lei', (await page.locator('#lesao1 optgroup').count()) === 3, null);
+checar('sem lesão escolhida, pede a lesão', (await texto()).includes('Escolha a lesão'), null);
+checar('a repercussão só aparece com a lesão', await page.locator('#campo-grau1').isHidden(), null);
+await page.selectOption('#lesao1', 'joelho');
+await page.selectOption('#grau1', 'media');
+await page.fill('#salarioBase', '2.500,00');
+await page.fill('#outrasParcelas', '500,00');
+await page.fill('#dataCiencia', '01/03/2024');
+await page.fill('#dataAjuizamento', '01/03/2025');
+await page.fill('#sobrevida', '40');
+await page.waitForTimeout(350);
+const acidente = await texto();
+checar('joelho com repercussão média: 12,5%', acidente.includes('25% x 50% (repercussão média) = 12,5%'), acidente.slice(0, 300));
+checar('enquadramento na CIF', acidente.includes('1 — deficiência ligeira'), null);
+checar('referência no teto do DPVAT', acidente.includes('R$ 1.687,50'), null);
+checar('pensão mensal com 13º e terço', acidente.includes('R$ 416,67'), null);
+checar('vincendas a valor presente', acidente.includes('R$ 75.259,69'), null);
+checar('danos morais pela faixa leve', acidente.includes('R$ 7.500,00'), null);
+checar('nota da isenção de imposto de renda', acidente.includes('7.713/88'), null);
+checar('sem cartão de FGTS', (await page.locator('#resultado .fgts-card').count()) === 0, null);
+
+// tábuas do IBGE embutidas: com o nascimento e o sexo, a sobrevida vem sozinha
+await page.fill('#sobrevida', '');
+await page.fill('#dataNascimento', '01/03/1990');
+await page.waitForTimeout(350);
+checar('sem o sexo, a tela pede o sexo', (await texto()).includes('Escolha o sexo da vítima'), null);
+checar('o sexo começa sem escolha', (await page.inputValue('#sexo')) === '', await page.inputValue('#sexo'));
+await page.selectOption('#sexo', 'homem');
+await page.waitForTimeout(350);
+const homem = await texto();
+checar('sobrevida da tábua dos homens aos 34 anos',
+  homem.includes('42,66 anos — tábua do IBGE de 2024 (homens), aos 34 anos'), homem.slice(0, 900));
+checar('termo final pela tábua dos homens', homem.includes('27/10/2066 (aos 76,66 anos)'), null);
+await page.selectOption('#sexo', 'mulher');
+await page.waitForTimeout(350);
+const mulher = await texto();
+checar('sobrevida da tábua das mulheres aos 34 anos',
+  mulher.includes('47,75 anos — tábua do IBGE de 2024 (mulheres), aos 34 anos'), null);
+checar('termo final pela tábua das mulheres', mulher.includes('29/11/2071 (aos 81,75 anos)'), null);
+await page.selectOption('#sexo', 'ambos');
+await page.waitForTimeout(350);
+checar('tábua de ambos os sexos', (await texto()).includes('45,28 anos — tábua do IBGE de 2024 (ambos os sexos)'), null);
+await page.fill('#sobrevida', '40');
+await page.waitForTimeout(300);
+checar('sobrevida digitada prevalece e a da tábua fica à vista', (await texto()).includes('daria 45,28'), null);
+await page.check('input[name="termoFinal"][value="idade"]');
+await page.selectOption('#sexo', 'homem');
+await page.fill('#dataNascimento', '01/03/1964');
+await page.waitForTimeout(300);
+const idadeFinal = await texto();
+checar('idade final em branco é a expectativa ao nascer dos homens', idadeFinal.includes('expectativa ao nascer, homens'), null);
+checar('idade final abaixo da tábua gera aviso', idadeFinal.includes('80,8'), null);
+await page.check('input[name="termoFinal"][value="sobrevida"]');
+await page.fill('#dataNascimento', '');
+await page.selectOption('#sexo', '');
+await page.waitForTimeout(300);
+
+await page.selectOption('#lesao1', 'cegueira');
+await page.waitForTimeout(300);
+checar('dano total não se gradua', await page.locator('#campo-grau1').isHidden(), null);
+checar('cegueira bilateral vale 100%', /Percentual da perda\n100%/i.test(await texto()), null);
+await page.selectOption('#lesao1', 'joelho');
+checar('terceira lesão escondida sem a segunda', await page.locator('#campo-lesao3').isHidden(), null);
+await page.selectOption('#lesao2', 'baco');
+await page.waitForTimeout(300);
+checar('escolhida a segunda, a terceira aparece', await page.locator('#campo-lesao3').isVisible(), null);
+checar('as lesões somam', /Percentual da perda\n22,5%/i.test(await texto()), null);
+await page.selectOption('#lesao2', 'nenhuma');
+
+await page.check('input[name="criterio"][value="cif"]');
+await page.waitForTimeout(300);
+checar('pela CIF, a tabela DPVAT some', await page.locator('#campo-lesao1').isHidden(), null);
+checar('pela CIF, o qualificador aparece', await page.locator('#qualificadorCif').isVisible(), null);
+checar('qualificador moderado sem número: meio da faixa', /Percentual da perda\n37%/i.test(await texto()), null);
+
+// o caso do print: qualificador 1 escolhido e 26% digitado
+await page.selectOption('#qualificadorCif', '1');
+await page.locator('#percentualCif').click();
+await page.locator('#percentualCif').pressSequentially('26');
+await page.waitForTimeout(300);
+checar('26% leva o qualificador à faixa 2', (await page.inputValue('#qualificadorCif')) === '2',
+  await page.inputValue('#qualificadorCif'));
+checar('sem erro de faixa na tela', !(await texto()).includes('dentro da faixa'), null);
+checar('o qualificador ajustado pisca', (await page.locator('#campo-qualificadorCif.campo--ajustado').count()) === 1, null);
+checar('percentual de 26% no resultado', /Percentual da perda\n26%/i.test(await texto()), null);
+await page.selectOption('#qualificadorCif', '3');
+await page.waitForTimeout(300);
+checar('trocar para faixa que não tem o número apaga o número', (await page.inputValue('#percentualCif')) === '',
+  await page.inputValue('#percentualCif'));
+checar('e volta ao meio da nova faixa', /Percentual da perda\n72,5%/i.test(await texto()), null);
+await page.fill('#percentualCif', '3');
+await page.waitForTimeout(300);
+checar('abaixo de 5% a tela explica', (await texto()).includes('nenhuma deficiência'), null);
+checar('abaixo de 5% o qualificador fica como está', (await page.inputValue('#qualificadorCif')) === '3', null);
+await page.fill('#percentualCif', '');
+await page.check('input[name="criterio"][value="dpvat"]');
+
+await page.check('input[name="formaPensao"][value="mensal"]');
+await page.waitForTimeout(300);
+checar('pensão mensal esconde o termo final', await page.locator('#campo-sobrevida').isHidden(), null);
+checar('pensão mensal: 12 vincendas', (await texto()).includes('12 parcelas vincendas'), null);
+await page.check('input[name="formaPensao"][value="unica"]');
+
 // voltar ao primeiro pedido devolve os campos próprios dele
 await page.click('[data-pedido="horas_extras"]');
 checar('volta às horas extras com os campos certos', (await page.locator('#quantidadeHoras').count()) === 1, null);
@@ -440,6 +547,17 @@ await digitar('dataRescisao', '01/01/2000');
 await digitar('dataAjuizamento', '01/01/2020');
 await page.waitForTimeout(300);
 checar('só datas: multas acusam o biênio', (await vermelho()).includes('bienal'), await vermelho());
+
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(250);
+await digitar('dataCiencia', '01/01/2010');
+await digitar('dataAjuizamento', '01/01/2020');
+await page.waitForTimeout(300);
+checar('só datas: acidente acusa o quinquênio da ciência', (await vermelho()).includes('quinquenal'), await vermelho());
+checar('só datas: acidente trava o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('só datas: a ciência segue editável', !(await page.locator('#dataCiencia').isDisabled()), null);
+checar('só datas: a saída do bloqueio cita a ciência',
+  (await page.locator('#resultado .impedimento__saida').innerText()).includes('ciência'), null);
 
 await page.click('[data-pedido="horas_extras"]');
 await page.waitForTimeout(250);

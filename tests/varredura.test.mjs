@@ -15,6 +15,9 @@ import { calcularRescisao } from '../src/calculo.js';
 import { TIPOS, ORDEM_TIPOS } from '../src/tipos.js';
 import { PEDIDOS } from '../src/pedidos/catalogo.js';
 import { FGTS } from '../src/tabelas.js';
+import { LESOES_DPVAT } from '../src/pedidos/tabelas-acidente.js';
+import { sobrevidaNaIdade } from '../src/pedidos/tabua-ibge.js';
+import { contarPeriodo } from '../src/pedidos/comum.js';
 
 function gerador(semente) {
   let estado = semente;
@@ -145,6 +148,79 @@ test('pedidos: 3.000 combinações respeitam as invariantes', () => {
     }
     for (const [rotulo, valor] of pedido.resumo(r.contexto)) {
       if (valor !== undefined && valor !== null) assert.ok(!quebrado(valor), `${rotulo}: ${valor} em ${caso}`);
+    }
+  }
+});
+
+/* -------------------------------------------- indenização acidentária --- */
+
+test('acidente: 3.000 combinações respeitam as invariantes', () => {
+  const { aleatorio, escolher, dias } = gerador(1974);
+  const acidente = PEDIDOS.find((p) => p.id === 'acidente');
+  const lesoes = ['', 'nenhuma', ...LESOES_DPVAT.map((l) => l.id)];
+  const graus = ['completa', 'intensa', 'media', 'leve', 'residual', undefined];
+  for (let i = 0; i < 3000; i += 1) {
+    const ciencia = somarDias(new Date(Date.UTC(2003, 0, 1)), dias(8000));
+    const nascimento = somarDias(ciencia, -(6000 + dias(20000)));
+    const dados = {
+      criterio: escolher(['dpvat', 'dpvat', 'cif', 'laudo', undefined]),
+      lesao1: escolher(lesoes), grau1: escolher(graus),
+      lesao2: escolher(lesoes), grau2: escolher(graus),
+      lesao3: escolher(lesoes), grau3: escolher(graus),
+      qualificadorCif: escolher(['1', '2', '3', '4', '0', undefined]),
+      percentualCif: escolher([0, 0, 10, 30, 60, 97]),
+      percentualLaudo: escolher([0, 3.5, 12.5, 100]),
+      salarioBase: escolher([0, 1621, 4500.75]), outrasParcelas: escolher([0, 600]),
+      dataCiencia: aleatorio() < 0.9 ? iso(ciencia) : '',
+      dataExtincao: aleatorio() < 0.4 ? iso(somarDias(ciencia, dias(1500) - 500)) : '',
+      dataAjuizamento: aleatorio() < 0.6 ? iso(somarDias(ciencia, dias(2500))) : '',
+      dataCalculo: aleatorio() < 0.2 ? iso(somarDias(ciencia, dias(4000) - 200)) : '',
+      dataNascimento: aleatorio() < 0.7 ? iso(nascimento) : '',
+      pedirPensao: aleatorio() < 0.8, pedirMorais: aleatorio() < 0.8, pedirEsteticos: aleatorio() < 0.3,
+      incapacidadeTotalOficio: aleatorio() < 0.2, incluir13: aleatorio() < 0.8, incluirTerco: aleatorio() < 0.8,
+      formaPensao: escolher(['unica', 'mensal']), metodoDesconto: escolher(['valor_presente', 'desagio']),
+      taxaJuros: escolher([0, 0.5, 1]), desagio: escolher([0, 20, 30]),
+      termoFinal: escolher(['sobrevida', 'idade']), sobrevida: escolher([0, 0, 5.5, 40]),
+      sexo: escolher(['', 'homem', 'mulher', 'ambos']),
+      idadeFinal: escolher([0, 76.6, 90]),
+      naturezaOfensa: escolher(['auto', 'leve', 'media', 'grave', 'gravissima']),
+      multiplicadorMorais: escolher([0, 2, 60]), multiplicadorEsteticos: escolher([0, 1.5]),
+      danosEmergentes: escolher([0, 850.3]),
+      dataReferencia: '2026-09-25',
+    };
+    const r = acidente.calcular(dados);
+    if (r.erros.length || r.impedimento) continue;
+    const caso = JSON.stringify(dados);
+    const c = r.contexto;
+
+    for (const it of r.periodo) {
+      assert.ok(Number.isFinite(it.valor) && it.valor >= 0, `${it.chave}=${it.valor} em ${caso}`);
+      assert.ok(!quebrado(`${it.label} ${it.detalhe}`), `texto quebrado em ${it.chave}: ${caso}`);
+    }
+    assert.ok(Math.abs(r2(r.periodo.reduce((s, p) => s + p.valor, 0)) - r.totais.geral) < 0.011, caso);
+    if (c.perda) assert.ok(c.perda.percentual > 0 && c.perda.percentual <= 100, `perda ${c.perda.percentual}: ${caso}`);
+    if (c.pensao) {
+      const p = c.pensao;
+      // Nunca mais que a remuneração inteira com 13º e terço.
+      assert.ok(p.mensal <= r2(p.remuneracao * (1 + 1 / 12 + 1 / 36)) + 0.01, `pensão acima da remuneração: ${caso}`);
+      assert.ok(p.mesesVencidos >= 0 && p.mesesVincendos >= 0, caso);
+      // Sobrevida tirada da tábua: sempre a do sexo e da idade na ciência.
+      if (p.sobrevida !== null && !p.sobrevidaInformada) {
+        assert.equal(p.sobrevida, sobrevidaNaIdade(p.idadeNaCiencia, dados.sexo).anos, caso);
+      }
+      if (p.unica) {
+        // O desconto da antecipação nunca aumenta o valor.
+        assert.ok(p.vincendas <= p.nominalVincendas + 0.01, `vincendas acima do nominal: ${caso}`);
+        // Vencidas e vincendas cobrem, juntas, da ciência ao termo final.
+        if (!p.corte || p.corte >= p.inicio) {
+          const total = contarPeriodo(p.inicio, new Date(p.termo.getTime() - 86400000)).meses;
+          assert.ok(Math.abs(p.mesesVencidos + p.mesesVincendos - total) < 0.1,
+            `meses ${p.mesesVencidos} + ${p.mesesVincendos} ≠ ${total}: ${caso}`);
+        }
+      }
+    }
+    for (const [rotulo, valor] of acidente.resumo(c)) {
+      assert.ok(!quebrado(valor) && !/null/.test(String(valor)), `${rotulo}: ${valor} em ${caso}`);
     }
   }
 });

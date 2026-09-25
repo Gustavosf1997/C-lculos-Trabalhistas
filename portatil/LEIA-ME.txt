@@ -29,8 +29,9 @@ ONDE FICAM OS DADOS
 DUAS ABAS
     Verbas rescisórias — o acerto da rescisão, nas sete modalidades.
     Cálculo de pedidos — horas extras, adicional noturno, intervalo
-                         intrajornada, insalubridade/periculosidade e as
-                         multas dos arts. 467 e 477.
+                         intrajornada, insalubridade/periculosidade, as
+                         multas dos arts. 467 e 477 e a indenização
+                         acidentária (tabela DPVAT e CIF).
 
     Trocar de aba limpa a tela: cada cálculo começa do zero.
 

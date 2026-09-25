@@ -91,7 +91,7 @@ checar('data inexistente é recusada',
 /* --- troca de aba --- */
 await page.click('[data-pagina="pedidos"]');
 await page.waitForTimeout(350);
-checar('a aba de pedidos abre', (await page.locator('#pedidos .tipo').count()) === 5, null);
+checar('a aba de pedidos abre', (await page.locator('#pedidos .tipo').count()) === 6, null);
 checar('a aba anterior sai do documento', (await page.locator('#tipos').count()) === 0, null);
 checar('o título acompanha a aba', (await page.title()).includes('Pedidos'), await page.title());
 
@@ -116,6 +116,43 @@ await page.fill('#dataFim', '31/12/2025');
 await page.waitForTimeout(350);
 checar('corrigir a data desbloqueia', !(await page.locator('#salarioBase').isDisabled()), null);
 
+/* --- indenização acidentária --- */
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(250);
+await page.selectOption('#lesao1', 'joelho');
+await page.selectOption('#grau1', 'media');
+await page.fill('#salarioBase', '2.500,00');
+await page.fill('#outrasParcelas', '500,00');
+await page.fill('#dataCiencia', '01/03/2024');
+await page.fill('#dataAjuizamento', '01/03/2025');
+await page.fill('#sobrevida', '40');
+await page.waitForTimeout(350);
+checar('acidente: total igual ao da versão web',
+  (await page.locator('#resultado .liquido b').innerText()).replace(/\u00a0/g, ' ') === 'R$ 87.759,73',
+  await page.locator('#resultado .liquido b').innerText());
+await page.fill('#sobrevida', '');
+await page.fill('#dataNascimento', '01/03/1990');
+await page.selectOption('#sexo', 'mulher');
+await page.waitForTimeout(300);
+checar('acidente: sobrevida da tábua das mulheres embutida',
+  (await texto()).includes('47,75 anos — tábua do IBGE de 2024 (mulheres), aos 34 anos'), null);
+await page.selectOption('#sexo', 'homem');
+await page.waitForTimeout(300);
+checar('acidente: sobrevida da tábua dos homens embutida',
+  (await texto()).includes('42,66 anos — tábua do IBGE de 2024 (homens), aos 34 anos'), null);
+await page.check('input[name="criterio"][value="cif"]');
+await page.selectOption('#qualificadorCif', '1');
+await page.locator('#percentualCif').click();
+await page.locator('#percentualCif').pressSequentially('26');
+await page.waitForTimeout(300);
+checar('acidente: 26% leva o qualificador à faixa 2', (await page.inputValue('#qualificadorCif')) === '2', null);
+await page.check('input[name="criterio"][value="dpvat"]');
+await page.fill('#dataAjuizamento', '01/04/2029');
+await page.waitForTimeout(300);
+checar('acidente: quinquênio da ciência bloqueia', await page.locator('#salarioBase').isDisabled(), null);
+await page.click('[data-pedido="horas_extras"]');
+await page.waitForTimeout(250);
+
 /* --- voltar pela aba monta a tela de novo, zerada --- */
 await page.click('[data-pagina="rescisao"]');
 await page.waitForTimeout(350);
@@ -125,7 +162,7 @@ checar('a tela volta em branco', (await page.inputValue('#salarioBase')) === '',
 /* --- botão de voltar do navegador --- */
 await page.goBack();
 await page.waitForTimeout(350);
-checar('o botão voltar troca de aba', (await page.locator('#pedidos .tipo').count()) === 5, null);
+checar('o botão voltar troca de aba', (await page.locator('#pedidos .tipo').count()) === 6, null);
 await page.goForward();
 await page.waitForTimeout(350);
 checar('o botão avançar também', (await page.locator('#tipos .tipo').count()) === 7, null);

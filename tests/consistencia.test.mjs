@@ -100,12 +100,16 @@ test('o resumo de cada pedido sobrevive a um contexto mínimo', () => {
   // `resumo` é chamado logo depois do cálculo: se quebrar, a tela fica em
   // branco sem dizer por quê.
   for (const pedido of PEDIDOS) {
-    const dados = pedido.semPeriodo
-      ? { multa477: true, salarioBase: 2000, dataRescisao: '2026-01-10' }
+    const minimos = {
+      multas: { multa477: true, salarioBase: 2000, dataRescisao: '2026-01-10' },
+      acidente: { lesao1: 'joelho', salarioBase: 2000, dataCiencia: '2024-01-10', sobrevida: 40 },
+    };
+    const dados = minimos[pedido.id] ?? (pedido.semPeriodo
+      ? assert.fail(`${pedido.id}: sem dados mínimos para o teste`)
       : {
         dataInicio: '2024-01-01', dataFim: '2024-12-31', salarioBase: 2200, divisor: 220,
         quantidadeHoras: 10, horasNoturnas: 10, minutosSuprimidos: 30, risco: 'periculosidade',
-      };
+      });
     const r = pedido.calcular(dados);
     assert.deepEqual(r.erros, [], `${pedido.id}: ${r.erros.join('; ')}`);
     const linhas = pedido.resumo(r.contexto);
