@@ -205,7 +205,9 @@ export function contarPeriodo(inicio, fim) {
   }
 
   const meses = Math.round(proporcao * 100) / 100;
-  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses) };
+  // `meses` é para mostrar; `proporcao`, sem arredondar, para multiplicar
+  // valores altos sem perder centavos na segunda casa dos meses.
+  return { diasPeriodo, meses, mesesFracionados: !Number.isInteger(meses), proporcao };
 }
 
 /** Enumera em português: "a", "a e b", "a, b e c". */

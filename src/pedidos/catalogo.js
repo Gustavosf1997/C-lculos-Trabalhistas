@@ -20,7 +20,7 @@ import {
 } from './acidente.js';
 import {
   LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal,
-  classificarCIF,
+  classificarCIF, eLesaoDeMembro, LADOS,
 } from './tabelas-acidente.js';
 import { TABUA_IBGE, SEXOS, expectativaAoNascer } from './tabua-ibge.js';
 import { DIVISOR_PADRAO } from './comum.js';
@@ -150,6 +150,9 @@ const camposDeLesao = (n, primeira, visivel) => [
   { id: `grau${n}`, rotulo: 'Repercussão da perda', tipo: 'select', valor: 'completa', opcoes: opcoesDeRepercussao,
     aparece: (d) => visivel(d) && Boolean(d[`lesao${n}`]) && d[`lesao${n}`] !== 'nenhuma' && !eLesaoTotal(d[`lesao${n}`]),
     dica: 'Perda incompleta: o art. 3º, §1º, II, da Lei 6.194/74 reduz o percentual da tabela.' },
+  { id: `lado${n}`, rotulo: 'Lado', tipo: 'select', valor: 'direito', opcoes: LADOS,
+    aparece: (d) => visivel(d) && eLesaoDeMembro(d[`lesao${n}`]),
+    dica: 'Lesões no mesmo braço ou perna não passam da perda do membro inteiro (70%; o pé, 50%).' },
 ];
 
 const peloDpvat = (d) => (d.criterio ?? 'dpvat') === 'dpvat';
@@ -170,7 +173,11 @@ const resumoAcidente = (c) => {
     ...(p ? [
       ['Remuneração da pensão', moeda.format(p.remuneracao)],
       ['Pensão mensal', `${moeda.format(p.mensal)} — ${curto(p.percentualPensao)}% da remuneração${
+        p.concausa ? ` x ${curto(p.concausa.fator * 100)}% (concausa)` : ''}${
         p.acrescimos.length ? ` + ${p.acrescimos.join(' + ')}` : ''}`],
+      ...(p.concausa ? [['Concausa (Tema 76 do TST)', p.concausa.contribuicao > 0
+        ? `contribuição do trabalho de ${curto(p.concausa.contribuicao)}%, fixada no laudo`
+        : `redução de ${curto(p.concausa.reducao)}%, sem o grau no laudo`]] : []),
       ['Início da pensão', formatarData(p.inicio)],
       ...(p.idadeNaCiencia !== null ? [['Idade na ciência', `${p.idadeNaCiencia} anos`]] : []),
       ...(p.sobrevida !== null ? [['Expectativa de sobrevida', p.sobrevidaInformada
@@ -309,6 +316,14 @@ const pedidoAcidente = {
           valor: true, largo: true },
         { id: 'incapacidadeTotalOficio', rotulo: 'Incapacidade total para o ofício que exercia (pensão integral)',
           tipo: 'checkbox', valor: false, largo: true, aparece: (d) => d.pedirPensao },
+        { id: 'concausa', rotulo: 'Concausa: o trabalho contribuiu para o dano, sem ser a única causa (Tema 76 do TST)',
+          tipo: 'checkbox', valor: false, largo: true, aparece: (d) => d.pedirPensao },
+        { id: 'contribuicaoTrabalho', rotulo: 'Contribuição do trabalho fixada no laudo', tipo: 'percentual',
+          min: 0, max: 100, aparece: (d) => d.pedirPensao && d.concausa,
+          dica: 'Se o laudo indicou o grau de contribuição, é ele que mede a pensão.' },
+        { id: 'reducaoConcausa', rotulo: 'Redução pela concausa', tipo: 'percentual', valor: 50, min: 0, max: 50,
+          aparece: (d) => d.pedirPensao && d.concausa,
+          dica: 'Sem o grau no laudo, a pensão é reduzida em até 50% (Tema 76 do TST).' },
         { id: 'incluir13', rotulo: 'Incluir o 13º salário (1/12 por mês)', tipo: 'checkbox', valor: true, largo: true,
           aparece: (d) => d.pedirPensao },
         { id: 'incluirTerco', rotulo: 'Incluir o terço de férias (1/12 do terço por mês)', tipo: 'checkbox',
@@ -337,7 +352,7 @@ const pedidoAcidente = {
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica',
           opcoes: [
             { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima (tábua do IBGE)' },
-            { valor: 'idade', label: 'Até uma idade' },
+            { valor: 'idade', label: 'Até uma idade (fora do critério do Tema 155)' },
           ] },
         { id: 'sobrevida', rotulo: 'Sobrevida de outra tábua (anos)', tipo: 'decimal', min: 0, max: 100,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal !== 'idade',

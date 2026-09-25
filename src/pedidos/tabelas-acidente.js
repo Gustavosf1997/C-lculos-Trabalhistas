@@ -49,21 +49,30 @@ export const LESOES_DPVAT = [
     nome: 'Lesão de órgão crânio-facial, cervical, torácico, abdominal ou pélvico com prejuízo '
       + 'funcional não compensável e comprometimento de função vital' },
 
-  { id: 'membro_superior', grupo: 'membros', percentual: 70,
+  { id: 'membro_superior', grupo: 'membros', membro: 'superior', percentual: 70,
     nome: 'Perda completa de um membro superior ou de uma mão' },
-  { id: 'membro_inferior', grupo: 'membros', percentual: 70,
+  { id: 'membro_inferior', grupo: 'membros', membro: 'inferior', percentual: 70,
     nome: 'Perda completa de um membro inferior' },
-  { id: 'pe', grupo: 'membros', percentual: 50, nome: 'Perda completa de um pé' },
-  { id: 'ombro', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um ombro' },
-  { id: 'cotovelo', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um cotovelo' },
-  { id: 'punho', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um punho' },
-  { id: 'polegar', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um polegar' },
-  { id: 'quadril', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um quadril' },
-  { id: 'joelho', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um joelho' },
-  { id: 'tornozelo', grupo: 'membros', percentual: 25, nome: 'Perda completa da mobilidade de um tornozelo' },
-  { id: 'dedo_mao', grupo: 'membros', percentual: 10,
+  { id: 'pe', grupo: 'membros', membro: 'inferior', segmento: 'pe', percentual: 50,
+    nome: 'Perda completa de um pé' },
+  { id: 'ombro', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um ombro' },
+  { id: 'cotovelo', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um cotovelo' },
+  { id: 'punho', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um punho' },
+  { id: 'polegar', grupo: 'membros', membro: 'superior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um polegar' },
+  { id: 'quadril', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um quadril' },
+  { id: 'joelho', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um joelho' },
+  { id: 'tornozelo', grupo: 'membros', membro: 'inferior', percentual: 25,
+    nome: 'Perda completa da mobilidade de um tornozelo' },
+  { id: 'dedo_mao', grupo: 'membros', membro: 'superior', percentual: 10,
     nome: 'Perda completa de um dos outros dedos da mão (exceto o polegar)' },
-  { id: 'dedo_pe', grupo: 'membros', percentual: 10, nome: 'Perda completa de um dos dedos do pé' },
+  { id: 'dedo_pe', grupo: 'membros', membro: 'inferior', segmento: 'pe', percentual: 10,
+    nome: 'Perda completa de um dos dedos do pé' },
 
   { id: 'surdez', grupo: 'outros', percentual: 50, nome: 'Perda auditiva total bilateral (surdez completa)' },
   { id: 'mudez', grupo: 'outros', percentual: 50, nome: 'Perda completa da fonação (mudez)' },
@@ -74,6 +83,30 @@ export const LESOES_DPVAT = [
 ];
 
 export const lesaoPorId = (id) => LESOES_DPVAT.find((l) => l.id === id) ?? null;
+
+/** Lesão de um membro (braço ou perna): pede o lado, para o teto por membro. */
+export const eLesaoDeMembro = (id) => Boolean(lesaoPorId(id)?.membro);
+
+/**
+ * Teto de cada membro e segmento: a perda total dele na própria tabela.
+ *
+ * "Havendo duas ou mais lesões em um mesmo membro ou órgão, a soma das
+ * percentagens correspondentes não pode exceder à da indenização prevista para
+ * sua perda total" — regra da tabela da Circular SUSEP 29/91, da qual a do
+ * DPVAT descende, e que aqui se aplica por coerência: ombro, cotovelo e punho
+ * do mesmo braço não podem valer mais que o braço inteiro (70%). O pé tem teto
+ * próprio (50%) dentro da perna.
+ */
+export const TETOS_POR_MEMBRO = {
+  superior: { teto: 70, nome: 'membro superior' },
+  inferior: { teto: 70, nome: 'membro inferior' },
+  pe: { teto: 50, nome: 'pé' },
+};
+
+export const LADOS = [
+  { valor: 'direito', label: 'Direito' },
+  { valor: 'esquerdo', label: 'Esquerdo' },
+];
 
 /** Lesões que a lei classifica como invalidez total: não se graduam. */
 export const eLesaoTotal = (id) => lesaoPorId(id)?.grupo === 'total';
