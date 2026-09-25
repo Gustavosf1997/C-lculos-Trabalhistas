@@ -3718,6 +3718,62 @@ function naturezaSugerida(qualificador) {
     return { TETO_DPVAT, GRUPOS_DPVAT, LESOES_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, QUALIFICADORES_CIF, qualificadorPorCodigo, classificarCIF, descreverCIF, NATUREZAS_OFENSA, naturezaPorValor, naturezaSugerida };
   })();
 
+  /* src/pedidos/tabua-ibge.js */
+  __modulos['src/pedidos/tabua-ibge.js'] = (function () {
+/**
+ * Tábua Completa de Mortalidade do IBGE — Brasil, ambos os sexos, 2024.
+ *
+ * Fonte: IBGE, Diretoria de Pesquisas (DPE), Coordenação de População e
+ * Indicadores Sociais (COPIS), divulgada em novembro de 2025. Coluna E(X):
+ * expectativa de vida à idade exata X, em anos. A posição no vetor é a idade;
+ * a última (90) é o grupo aberto "90 ou mais".
+ *
+ * É a tábua que a jurisprudência usa para fixar o termo final da pensão paga
+ * de uma vez (art. 950, parágrafo único, do CC): a vítima receberia até
+ * completar a sua expectativa de sobrevida. Consulta-se pela idade em anos
+ * completos, como a própria tábua é publicada.
+ *
+ * Ao trocar de tábua (o IBGE publica uma por ano, sempre em novembro), troque
+ * o vetor inteiro e o `ano` — os testes conferem valores de referência.
+ */
+
+const TABUA_IBGE = {
+  ano: 2024,
+  populacao: 'ambos os sexos',
+  fonte: 'IBGE, Tábua Completa de Mortalidade para o Brasil — 2024',
+  expectativa: [
+    76.6079, 76.5568, 75.6135, 74.6580, 73.6932, 72.7212, 71.7438, 70.7625, 69.7785, 68.7927, // 0–9
+    67.8060, 66.8192, 65.8333, 64.8494, 63.8689, 62.8938, 61.9263, 60.9687, 60.0220, 59.0858, // 10–19
+    58.1578, 57.2351, 56.3148, 55.3954, 54.4762, 53.5571, 52.6383, 51.7198, 50.8012, 49.8822, // 20–29
+    48.9624, 48.0417, 47.1202, 46.1982, 45.2762, 44.3548, 43.4346, 42.5163, 41.6005, 40.6875, // 30–39
+    39.7777, 38.8713, 37.9686, 37.0695, 36.1740, 35.2821, 34.3941, 33.5101, 32.6305, 31.7560, // 40–49
+    30.8872, 30.0246, 29.1689, 28.3204, 27.4794, 26.6460, 25.8203, 25.0021, 24.1912, 23.3876, // 50–59
+    22.5916, 21.8038, 21.0255, 20.2582, 19.5036, 18.7629, 18.0363, 17.3228, 16.6200, 15.9251, // 60–69
+    15.2356, 14.5506, 13.8714, 13.2009, 12.5433, 11.9028, 11.2826, 10.6843, 10.1070, 9.5490, // 70–79
+    9.0083, 8.4847, 7.9807, 7.5014, 7.0530, 6.6417, 6.2698, 5.9346, 5.6282, 5.3384, // 80–89
+    5.0538, // 90 ou mais
+  ],
+};
+
+/** Idade do grupo aberto da tábua ("90 ou mais"). */
+const IDADE_ABERTA = TABUA_IBGE.expectativa.length - 1;
+
+/** Expectativa de vida ao nascer: E(0). */
+const EXPECTATIVA_AO_NASCER = TABUA_IBGE.expectativa[0];
+
+/**
+ * Expectativa de sobrevida numa idade em anos completos.
+ * @returns {{idade: number, anos: number, grupoAberto: boolean}}
+ */
+function sobrevidaNaIdade(idade) {
+  const inteira = Math.max(0, Math.floor(idade));
+  const linha = Math.min(inteira, IDADE_ABERTA);
+  return { idade: inteira, anos: TABUA_IBGE.expectativa[linha], grupoAberto: inteira >= IDADE_ABERTA };
+}
+
+    return { TABUA_IBGE, IDADE_ABERTA, EXPECTATIVA_AO_NASCER, sobrevidaNaIdade };
+  })();
+
   /* src/pedidos/acidente.js */
   __modulos['src/pedidos/acidente.js'] = (function () {
 /**
@@ -3757,6 +3813,7 @@ function naturezaSugerida(qualificador) {
   const { arredondar, num, contarPeriodo, resultadoComErros, resultadoImpedido } = __modulos['src/pedidos/comum.js'];
   const { apurarBienal, dataDaPrescricao } = __modulos['src/prescricao.js'];
   const { TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor, qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { TABUA_IBGE, EXPECTATIVA_AO_NASCER, sobrevidaNaIdade } = __modulos['src/pedidos/tabua-ibge.js'];
 
 /** Ciência a partir desta data: prescrição trabalhista (EC 45/2004, de 31/12/2004). */
 const MARCO_EC_45 = '2005-01-01';
@@ -3767,8 +3824,8 @@ const TAXA_VALOR_PRESENTE = 0.5;
 /** Deságio fixo: o meio da faixa de 20% a 30% que o TST admite. */
 const DESAGIO_PADRAO = 25;
 
-/** Expectativa de vida ao nascer, ambos os sexos (IBGE, tábua de 2024). */
-const IDADE_FINAL_PADRAO = 76.6;
+/** Idade final padrão: a expectativa de vida ao nascer da tábua do IBGE. */
+const IDADE_FINAL_PADRAO = Math.round(EXPECTATIVA_AO_NASCER * 100) / 100;
 
 const UM_DIA = 86400000;
 const menosUmDia = (data) => new Date(data.getTime() - UM_DIA);
@@ -3970,30 +4027,55 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   if (!inicio) erros.push('Informe a data da ciência da incapacidade: é dela que a pensão é devida.');
 
   const unica = (dados.formaPensao ?? 'unica') === 'unica';
-  const nascimento = parseData(dados.dataNascimento);
-  const porIdade = dados.termoFinal === 'idade';
-  const sobrevida = num(dados.sobrevida);
+  const porIdade = unica && dados.termoFinal === 'idade';
+  const porSobrevida = unica && !porIdade;
   const idadeFinal = num(dados.idadeFinal) || IDADE_FINAL_PADRAO;
 
-  let termo = null;
-  if (unica) {
-    if (porIdade) {
-      if (!nascimento) erros.push('Informe a data de nascimento para contar a idade final da pensão.');
-      else termo = somarAnosFracionados(nascimento, idadeFinal);
-    } else if (sobrevida <= 0) {
-      erros.push('Informe a expectativa de sobrevida da vítima na data da ciência (tábua do IBGE).');
-    } else if (inicio) {
-      termo = somarAnosFracionados(inicio, sobrevida);
-    }
-    if (inicio && termo && termo <= inicio) {
-      erros.push(`A idade final (${curto(idadeFinal)} anos) já tinha sido alcançada na data da `
-        + 'ciência. Use a expectativa de sobrevida da tábua do IBGE para a idade da vítima.');
-    }
-  }
+  const nascimento = parseData(dados.dataNascimento);
   if (nascimento && inicio && nascimento >= inicio) {
     erros.push('A data de nascimento deve ser anterior à da ciência da incapacidade.');
   }
+  const idadeNaCiencia = nascimento && inicio && nascimento < inicio ? anosCompletos(nascimento, inicio) : null;
+
+  // A sobrevida sai da tábua do IBGE, na idade da vítima quando a pensão
+  // começa. O número digitado prevalece — outra tábua, por sexo ou de outro
+  // ano —, mas só enquanto o campo está à vista: escondido, é resto de uma
+  // escolha anterior.
+  const tabua = idadeNaCiencia === null ? null : sobrevidaNaIdade(idadeNaCiencia);
+  const informada = porSobrevida ? num(dados.sobrevida) : 0;
+  const sobrevida = informada > 0 ? informada : tabua?.anos ?? 0;
+
+  let termo = null;
+  if (porIdade) {
+    if (!nascimento) erros.push('Informe a data de nascimento para contar a idade final da pensão.');
+    else termo = somarAnosFracionados(nascimento, idadeFinal);
+  } else if (porSobrevida && sobrevida <= 0) {
+    if (!nascimento) {
+      erros.push('Informe a data de nascimento: a expectativa de sobrevida sai da tábua do IBGE, na idade '
+        + 'da vítima na data da ciência. Ou digite a sobrevida de outra tábua.');
+    }
+  } else if (porSobrevida && inicio) {
+    termo = somarAnosFracionados(inicio, sobrevida);
+  }
+  if (inicio && termo && termo <= inicio) {
+    erros.push(`A idade final (${curto(idadeFinal)} anos) já tinha sido alcançada na data da `
+      + 'ciência. Use a expectativa de sobrevida da tábua do IBGE para a idade da vítima.');
+  }
   if (erros.length) return null;
+
+  if (tabua?.grupoAberto && ((porSobrevida && !(informada > 0)) || !unica)) {
+    alertas.push(`Aos ${tabua.idade} anos, a tábua do IBGE só traz o grupo aberto "90 ou mais", com `
+      + `sobrevida de ${curto(tabua.anos)} anos.`);
+  }
+  // Idade final abaixo do que a tábua projeta para a vítima: a expectativa ao
+  // nascer subestima a de quem já passou da infância, e o erro é comum.
+  const idadeProjetada = tabua ? idadeNaCiencia + tabua.anos : null;
+  if (porIdade && idadeProjetada && idadeFinal < idadeProjetada - 0.5) {
+    alertas.push(`Pela tábua do IBGE de ${TABUA_IBGE.ano}, aos ${idadeNaCiencia} anos a sobrevida é de `
+      + `${curto(tabua.anos)} anos: a vítima viveria até os ${curto(idadeProjetada)}, mais que a idade final `
+      + `escolhida (${curto(idadeFinal)}). A expectativa ao nascer subestima a de quem já passou da `
+      + 'infância; o termo pela sobrevida é o que a tábua indica para a idade da vítima.');
+  }
 
   const integral = Boolean(dados.incapacidadeTotalOficio);
   const percentualPensao = integral ? 100 : percentual;
@@ -4014,10 +4096,15 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
 
   const contexto = {
     remuneracao, percentualPensao, integral, mensal, acrescimos, inicio, corte, unica, termo,
-    mesesVencidos, vencidas, nascimento,
-    idadeNaCiencia: nascimento ? anosCompletos(nascimento, inicio) : null,
+    mesesVencidos, vencidas, nascimento, idadeNaCiencia,
     idadeFinal: porIdade ? idadeFinal : null,
-    sobrevida: unica && !porIdade ? sobrevida : null,
+    sobrevida: porSobrevida ? sobrevida : null,
+    sobrevidaInformada: porSobrevida && informada > 0,
+    tabua: tabua ? { ...tabua, ano: TABUA_IBGE.ano } : null,
+    idadeNoTermo: porIdade ? idadeFinal : porSobrevida && idadeNaCiencia !== null ? idadeNaCiencia + sobrevida : null,
+    // Na pensão mensal não há termo, porque ela é vitalícia; a tábua dá só a
+    // duração provável, para informação.
+    duracaoProvavel: !unica && tabua ? somarAnosFracionados(inicio, tabua.anos) : null,
   };
 
   if (!unica) {
@@ -4217,6 +4304,7 @@ function calcularAcidente(dados) {
   const { calcularMultas } = __modulos['src/pedidos/multas.js'];
   const { calcularAcidente, TAXA_VALOR_PRESENTE, DESAGIO_PADRAO, IDADE_FINAL_PADRAO } = __modulos['src/pedidos/acidente.js'];
   const { LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal } = __modulos['src/pedidos/tabelas-acidente.js'];
+  const { TABUA_IBGE } = __modulos['src/pedidos/tabua-ibge.js'];
   const { DIVISOR_PADRAO } = __modulos['src/pedidos/comum.js'];
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
   const { formatarData } = __modulos['src/calculo.js'];
@@ -4367,8 +4455,14 @@ const resumoAcidente = (c) => {
         p.acrescimos.length ? ` + ${p.acrescimos.join(' + ')}` : ''}`],
       ['Início da pensão', formatarData(p.inicio)],
       ...(p.idadeNaCiencia !== null ? [['Idade na ciência', `${p.idadeNaCiencia} anos`]] : []),
-      ...(p.unica ? [['Termo final', `${formatarData(p.termo)} (${p.idadeFinal
-        ? `${curto(p.idadeFinal)} anos de idade` : `${curto(p.sobrevida)} anos de sobrevida`})`]] : []),
+      ...(p.sobrevida !== null ? [['Expectativa de sobrevida', p.sobrevidaInformada
+        ? `${curto(p.sobrevida)} anos, informada${p.tabua
+          ? ` (a tábua do IBGE de ${p.tabua.ano} daria ${curto(p.tabua.anos)})` : ''}`
+        : `${curto(p.sobrevida)} anos — tábua do IBGE de ${p.tabua.ano}, aos ${p.tabua.idade} anos`]] : []),
+      ...(p.unica ? [['Termo final', `${formatarData(p.termo)}${p.idadeNoTermo !== null
+        ? ` (aos ${curto(p.idadeNoTermo)} anos)` : ''}`]] : []),
+      ...(p.duracaoProvavel ? [['Duração provável', `até ${formatarData(p.duracaoProvavel)} — sobrevida de `
+        + `${curto(p.tabua.anos)} anos aos ${p.tabua.idade} (tábua do IBGE de ${p.tabua.ano})`]] : []),
       ...(p.corte ? [['Data do cálculo', formatarData(p.corte)]] : []),
       ['Parcelas', `${curto(p.mesesVencidos)} vencidas · ${curto(p.mesesVincendos)} vincendas${p.unica ? '' : ' (no valor do pedido)'}`],
       ...(p.unica && p.mesesVincendos > 0 ? [['Desconto da antecipação', `${curto(arredondarPct(p.desagioEfetivo))}% sobre ${
@@ -4492,18 +4586,20 @@ const pedidoAcidente = {
         { id: 'termoFinal', rotulo: 'Termo final da parcela única', tipo: 'radios', valor: 'sobrevida', largo: true,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica',
           opcoes: [
-            { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima' },
+            { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima (tábua do IBGE)' },
             { valor: 'idade', label: 'Até uma idade' },
           ] },
         { id: 'dataNascimento', rotulo: 'Data de nascimento', tipo: 'data', aparece: (d) => d.pedirPensao,
-          dica: 'Para a idade na ciência — é nela que se consulta a tábua.' },
-        { id: 'sobrevida', rotulo: 'Expectativa de sobrevida (anos)', tipo: 'decimal', min: 0, max: 100,
+          dica: `Com ela, a sobrevida sai da tábua do IBGE de ${TABUA_IBGE.ano}, pela idade na data da ciência.` },
+        { id: 'sobrevida', rotulo: 'Sobrevida de outra tábua (anos)', tipo: 'decimal', min: 0, max: 100,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal !== 'idade',
-          dica: 'Tábua Completa de Mortalidade do IBGE, na idade da vítima na data da ciência.' },
+          dica: `Em branco: a tábua do IBGE de ${TABUA_IBGE.ano} (ambos os sexos). Preencha só para usar `
+            + 'outra — por sexo ou de outro ano.' },
         { id: 'idadeFinal', rotulo: 'Idade final (anos)', tipo: 'decimal',
           valor: String(IDADE_FINAL_PADRAO).replace('.', ','), min: 1, max: 120,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal === 'idade',
-          dica: `${String(IDADE_FINAL_PADRAO).replace('.', ',')} anos: expectativa de vida ao nascer (IBGE, 2024).` },
+          dica: `${String(IDADE_FINAL_PADRAO).replace('.', ',')} anos: expectativa de vida ao nascer (tábua do IBGE `
+            + `de ${TABUA_IBGE.ano}).` },
       ],
     },
     {

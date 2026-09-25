@@ -402,6 +402,25 @@ checar('danos morais pela faixa leve', acidente.includes('R$ 7.500,00'), null);
 checar('nota da isenção de imposto de renda', acidente.includes('7.713/88'), null);
 checar('sem cartão de FGTS', (await page.locator('#resultado .fgts-card').count()) === 0, null);
 
+// tábua do IBGE embutida: com o nascimento, a sobrevida vem sozinha
+await page.fill('#sobrevida', '');
+await page.fill('#dataNascimento', '01/03/1990');
+await page.waitForTimeout(350);
+const pelaTabua = await texto();
+checar('sobrevida da tábua do IBGE aos 34 anos', pelaTabua.includes('45,28 anos — tábua do IBGE de 2024, aos 34 anos'),
+  pelaTabua.slice(0, 900));
+checar('termo final pela tábua', pelaTabua.includes('10/06/2069 (aos 79,28 anos)'), null);
+await page.fill('#sobrevida', '40');
+await page.waitForTimeout(300);
+checar('sobrevida digitada prevalece e a da tábua fica à vista', (await texto()).includes('daria 45,28'), null);
+await page.check('input[name="termoFinal"][value="idade"]');
+await page.fill('#dataNascimento', '01/03/1964');
+await page.waitForTimeout(300);
+checar('idade final abaixo da tábua gera aviso', (await texto()).includes('82,59'), null);
+await page.check('input[name="termoFinal"][value="sobrevida"]');
+await page.fill('#dataNascimento', '');
+await page.waitForTimeout(300);
+
 await page.selectOption('#lesao1', 'cegueira');
 await page.waitForTimeout(300);
 checar('dano total não se gradua', await page.locator('#campo-grau1').isHidden(), null);

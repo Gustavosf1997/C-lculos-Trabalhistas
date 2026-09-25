@@ -21,6 +21,7 @@ import {
 import {
   LESOES_DPVAT, GRUPOS_DPVAT, REPERCUSSOES, QUALIFICADORES_CIF, NATUREZAS_OFENSA, TETO_DPVAT, eLesaoTotal,
 } from './tabelas-acidente.js';
+import { TABUA_IBGE } from './tabua-ibge.js';
 import { DIVISOR_PADRAO } from './comum.js';
 import { moeda, formatarQuantidade } from '../formato.js';
 import { formatarData } from '../calculo.js';
@@ -171,8 +172,14 @@ const resumoAcidente = (c) => {
         p.acrescimos.length ? ` + ${p.acrescimos.join(' + ')}` : ''}`],
       ['Início da pensão', formatarData(p.inicio)],
       ...(p.idadeNaCiencia !== null ? [['Idade na ciência', `${p.idadeNaCiencia} anos`]] : []),
-      ...(p.unica ? [['Termo final', `${formatarData(p.termo)} (${p.idadeFinal
-        ? `${curto(p.idadeFinal)} anos de idade` : `${curto(p.sobrevida)} anos de sobrevida`})`]] : []),
+      ...(p.sobrevida !== null ? [['Expectativa de sobrevida', p.sobrevidaInformada
+        ? `${curto(p.sobrevida)} anos, informada${p.tabua
+          ? ` (a tábua do IBGE de ${p.tabua.ano} daria ${curto(p.tabua.anos)})` : ''}`
+        : `${curto(p.sobrevida)} anos — tábua do IBGE de ${p.tabua.ano}, aos ${p.tabua.idade} anos`]] : []),
+      ...(p.unica ? [['Termo final', `${formatarData(p.termo)}${p.idadeNoTermo !== null
+        ? ` (aos ${curto(p.idadeNoTermo)} anos)` : ''}`]] : []),
+      ...(p.duracaoProvavel ? [['Duração provável', `até ${formatarData(p.duracaoProvavel)} — sobrevida de `
+        + `${curto(p.tabua.anos)} anos aos ${p.tabua.idade} (tábua do IBGE de ${p.tabua.ano})`]] : []),
       ...(p.corte ? [['Data do cálculo', formatarData(p.corte)]] : []),
       ['Parcelas', `${curto(p.mesesVencidos)} vencidas · ${curto(p.mesesVincendos)} vincendas${p.unica ? '' : ' (no valor do pedido)'}`],
       ...(p.unica && p.mesesVincendos > 0 ? [['Desconto da antecipação', `${curto(arredondarPct(p.desagioEfetivo))}% sobre ${
@@ -296,18 +303,20 @@ const pedidoAcidente = {
         { id: 'termoFinal', rotulo: 'Termo final da parcela única', tipo: 'radios', valor: 'sobrevida', largo: true,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica',
           opcoes: [
-            { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima' },
+            { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima (tábua do IBGE)' },
             { valor: 'idade', label: 'Até uma idade' },
           ] },
         { id: 'dataNascimento', rotulo: 'Data de nascimento', tipo: 'data', aparece: (d) => d.pedirPensao,
-          dica: 'Para a idade na ciência — é nela que se consulta a tábua.' },
-        { id: 'sobrevida', rotulo: 'Expectativa de sobrevida (anos)', tipo: 'decimal', min: 0, max: 100,
+          dica: `Com ela, a sobrevida sai da tábua do IBGE de ${TABUA_IBGE.ano}, pela idade na data da ciência.` },
+        { id: 'sobrevida', rotulo: 'Sobrevida de outra tábua (anos)', tipo: 'decimal', min: 0, max: 100,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal !== 'idade',
-          dica: 'Tábua Completa de Mortalidade do IBGE, na idade da vítima na data da ciência.' },
+          dica: `Em branco: a tábua do IBGE de ${TABUA_IBGE.ano} (ambos os sexos). Preencha só para usar `
+            + 'outra — por sexo ou de outro ano.' },
         { id: 'idadeFinal', rotulo: 'Idade final (anos)', tipo: 'decimal',
           valor: String(IDADE_FINAL_PADRAO).replace('.', ','), min: 1, max: 120,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal === 'idade',
-          dica: `${String(IDADE_FINAL_PADRAO).replace('.', ',')} anos: expectativa de vida ao nascer (IBGE, 2024).` },
+          dica: `${String(IDADE_FINAL_PADRAO).replace('.', ',')} anos: expectativa de vida ao nascer (tábua do IBGE `
+            + `de ${TABUA_IBGE.ano}).` },
       ],
     },
     {
