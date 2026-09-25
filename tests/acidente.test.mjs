@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { calcularAcidente, valorPresente } from '../src/pedidos/acidente.js';
 import { classificarCIF, LESOES_DPVAT, eLesaoTotal } from '../src/pedidos/tabelas-acidente.js';
 import { pedidoPorId } from '../src/pedidos/catalogo.js';
-import { TABUA_IBGE, sobrevidaNaIdade, EXPECTATIVA_AO_NASCER } from '../src/pedidos/tabua-ibge.js';
+import { TABUA_IBGE, sobrevidaNaIdade, expectativaAoNascer } from '../src/pedidos/tabua-ibge.js';
 
 const item = (r, chave) => r.periodo.find((i) => i.chave === chave)?.valor ?? 0;
 
@@ -149,86 +149,143 @@ test('parcela única: vincendas a valor presente, a 0,5% ao mês', () => {
 
 /* ------------------------------------------------ tábua do IBGE (2024) --- */
 
-test('a tábua embutida é a do IBGE de 2024, ambos os sexos', () => {
-  // Valores de referência conferidos na planilha oficial (coluna E(X)).
+// Valores de referência conferidos nas planilhas oficiais (coluna E(X)).
+const REFERENCIA = {
+  homem: { 0: 73.3081, 34: 42.658, 60: 20.8037, 89: 4.8566, 90: 4.5746 },
+  mulher: { 0: 79.8691, 34: 47.7474, 60: 24.1542, 89: 5.6065, 90: 5.3184 },
+  ambos: { 0: 76.6079, 34: 45.2762, 60: 22.5916, 89: 5.3384, 90: 5.0538 },
+};
+const semSobrevida = (({ sobrevida, ...resto }) => resto)(joelho);
+const nascido1990 = { ...semSobrevida, dataNascimento: '1990-03-01' }; // 34 anos na ciência
+
+test('as tábuas embutidas são as do IBGE de 2024, por sexo e a geral', () => {
   assert.equal(TABUA_IBGE.ano, 2024);
-  assert.equal(TABUA_IBGE.expectativa.length, 91); // 0 a 89 e "90 ou mais"
-  assert.equal(EXPECTATIVA_AO_NASCER, 76.6079); // os 76,6 anos divulgados
-  assert.equal(sobrevidaNaIdade(34).anos, 45.2762);
-  assert.equal(sobrevidaNaIdade(60).anos, 22.5916);
-  assert.equal(sobrevidaNaIdade(89).anos, 5.3384);
-  // Acima de 90, o grupo aberto
-  assert.deepEqual(sobrevidaNaIdade(97), { idade: 97, anos: 5.0538, grupoAberto: true });
-  // A sobrevida só diminui com a idade, a partir de 1 ano
-  for (let x = 2; x < TABUA_IBGE.expectativa.length; x += 1) {
-    assert.ok(TABUA_IBGE.expectativa[x] < TABUA_IBGE.expectativa[x - 1], `E(${x})`);
+  for (const [sexo, valores] of Object.entries(REFERENCIA)) {
+    assert.equal(TABUA_IBGE.tabuas[sexo].length, 91, sexo); // 0 a 89 e "90 ou mais"
+    for (const [idade, anos] of Object.entries(valores)) {
+      assert.equal(sobrevidaNaIdade(Number(idade), sexo).anos, anos, `${sexo} ${idade}`);
+    }
+    // A sobrevida só diminui com a idade, a partir de 1 ano
+    const t = TABUA_IBGE.tabuas[sexo];
+    for (let x = 2; x < t.length; x += 1) assert.ok(t[x] < t[x - 1], `${sexo} E(${x})`);
+  }
+  // Os números divulgados: 73,3 (homens), 79,9 (mulheres) e 76,6 anos ao nascer
+  assert.equal(Math.round(expectativaAoNascer('homem') * 10) / 10, 73.3);
+  assert.equal(Math.round(expectativaAoNascer('mulher') * 10) / 10, 79.9);
+  assert.equal(Math.round(expectativaAoNascer('ambos') * 10) / 10, 76.6);
+  // Em toda idade, a tábua geral fica entre a dos homens e a das mulheres
+  for (let x = 0; x <= 90; x += 1) {
+    const [h, a, m] = ['homem', 'ambos', 'mulher'].map((sexo) => sobrevidaNaIdade(x, sexo).anos);
+    assert.ok(h <= a && a <= m, `idade ${x}`);
+  }
+  assert.equal(sobrevidaNaIdade(34, 'outro'), null);
+});
+
+test('a sobrevida sai da tábua do sexo escolhido', () => {
+  const casos = [
+    // 01/03/2024 + 42 anos + 0,658 ano (240 dias)
+    ['homem', 42.658, '2066-10-27', 76.66],
+    // 01/03/2024 + 47 anos + 0,7474 ano (273 dias)
+    ['mulher', 47.7474, '2071-11-29', 81.75],
+    // 01/03/2024 + 45 anos + 0,2762 ano (101 dias)
+    ['ambos', 45.2762, '2069-06-10', 79.28],
+  ];
+  for (const [sexo, anos, termo, idadeNoTermo] of casos) {
+    const r = calcularAcidente({ ...nascido1990, sexo });
+    assert.deepEqual(r.erros, [], sexo);
+    const p = r.contexto.pensao;
+    assert.equal(p.idadeNaCiencia, 34);
+    assert.equal(p.sobrevida, anos, sexo);
+    assert.equal(p.sobrevidaInformada, false);
+    assert.equal(p.termo.toISOString().slice(0, 10), termo, sexo);
+    assert.equal(Math.round(p.idadeNoTermo * 100) / 100, idadeNoTermo, sexo);
   }
 });
 
-test('sem sobrevida digitada, ela sai da tábua pela idade na ciência', () => {
-  const { sobrevida, ...semSobrevida } = joelho;
-  const r = calcularAcidente({ ...semSobrevida, dataNascimento: '1990-03-01' });
-  assert.deepEqual(r.erros, []);
-  const p = r.contexto.pensao;
-  assert.equal(p.idadeNaCiencia, 34);
-  assert.equal(p.sobrevida, 45.2762);
-  assert.equal(p.sobrevidaInformada, false);
-  // 01/03/2024 + 45 anos = 01/03/2069; 0,2762 ano = 101 dias -> 10/06/2069
-  assert.equal(p.termo.toISOString().slice(0, 10), '2069-06-10');
-  assert.equal(Math.round(p.idadeNoTermo * 100) / 100, 79.28);
+test('o sexo muda a parcela única: a mulher vive mais e recebe por mais tempo', () => {
+  const homem = calcularAcidente({ ...nascido1990, sexo: 'homem' });
+  const mulher = calcularAcidente({ ...nascido1990, sexo: 'mulher' });
+  assert.ok(item(mulher, 'pensao_vincenda') > item(homem, 'pensao_vincenda'));
+  assert.equal(item(mulher, 'pensao_vencida'), item(homem, 'pensao_vencida'), 'as vencidas não dependem da tábua');
+  const linha = pedidoPorId('acidente').resumo(homem.contexto).find(([rotulo]) => rotulo === 'Expectativa de sobrevida');
+  assert.ok(linha[1].includes('tábua do IBGE de 2024 (homens), aos 34 anos'), linha[1]);
+});
+
+test('sem o sexo, a tábua não é consultada e o cálculo o pede', () => {
+  const r = calcularAcidente(nascido1990);
+  assert.ok(r.erros.some((e) => e.includes('Escolha o sexo')), r.erros.join(' | '));
+  const idade = calcularAcidente({ ...nascido1990, termoFinal: 'idade' });
+  assert.ok(idade.erros.some((e) => e.includes('Escolha o sexo')), 'idade final em branco também precisa dele');
+  // Com a sobrevida ou a idade final digitadas, o sexo é dispensável
+  assert.deepEqual(calcularAcidente(joelho).erros, []);
+  assert.deepEqual(calcularAcidente({ ...nascido1990, termoFinal: 'idade', idadeFinal: 75 }).erros, []);
 });
 
 test('a idade na ciência conta anos completos', () => {
-  const { sobrevida, ...semSobrevida } = joelho;
-  const vespera = calcularAcidente({ ...semSobrevida, dataNascimento: '1990-03-02' });
+  const vespera = calcularAcidente({ ...semSobrevida, sexo: 'ambos', dataNascimento: '1990-03-02' });
   assert.equal(vespera.contexto.pensao.idadeNaCiencia, 33);
   assert.equal(vespera.contexto.pensao.sobrevida, 46.1982);
 });
 
 test('sobrevida digitada prevalece, e a da tábua fica à vista', () => {
-  const r = calcularAcidente({ ...joelho, dataNascimento: '1990-03-01', sobrevida: 40 });
+  const r = calcularAcidente({ ...joelho, sexo: 'mulher', dataNascimento: '1990-03-01', sobrevida: 40 });
   const p = r.contexto.pensao;
   assert.equal(p.sobrevida, 40);
   assert.equal(p.sobrevidaInformada, true);
-  assert.equal(p.tabua.anos, 45.2762);
+  assert.equal(p.tabua.anos, 47.7474);
   const linha = pedidoPorId('acidente').resumo(r.contexto).find(([rotulo]) => rotulo === 'Expectativa de sobrevida');
-  assert.ok(linha[1].includes('daria 45,28'), linha[1]);
+  assert.ok(linha[1].includes('mulheres, daria 47,75'), linha[1]);
 });
 
 test('sem nascimento nem sobrevida, a parcela única pede o nascimento', () => {
-  const { sobrevida, ...semSobrevida } = joelho;
-  const r = calcularAcidente(semSobrevida);
+  const r = calcularAcidente({ ...semSobrevida, sexo: 'homem' });
   assert.ok(r.erros.some((e) => e.includes('data de nascimento')));
+});
+
+test('idade final em branco é a expectativa ao nascer do sexo', () => {
+  const r = calcularAcidente({ ...nascido1990, sexo: 'homem', termoFinal: 'idade' });
+  assert.deepEqual(r.erros, []);
+  assert.equal(r.contexto.pensao.idadeFinal, 73.31);
+  // 01/03/1990 + 73 anos + 0,31 ano (113 dias)
+  assert.equal(r.contexto.pensao.termo.toISOString().slice(0, 10), '2063-06-22');
+  const linha = pedidoPorId('acidente').resumo(r.contexto).find(([rotulo]) => rotulo === 'Termo final');
+  assert.ok(linha[1].includes('expectativa ao nascer, homens'), linha[1]);
 });
 
 test('sobrevida escondida não conta: pensão mensal e termo por idade a ignoram', () => {
   const mensal = calcularAcidente({ ...joelho, formaPensao: 'mensal', sobrevida: 3 });
   assert.equal(mensal.contexto.pensao.sobrevida, null);
-  const idade = calcularAcidente({ ...joelho, termoFinal: 'idade', dataNascimento: '1990-03-01', sobrevida: 3 });
+  const idade = calcularAcidente({ ...nascido1990, sexo: 'ambos', termoFinal: 'idade', sobrevida: 3 });
   assert.equal(idade.contexto.pensao.termo.toISOString().slice(0, 10), '2066-10-10'); // 76 anos + 0,61 ano (223 dias)
+  // e a idade final escondida não conta no termo pela sobrevida
+  const sobrevida = calcularAcidente({ ...nascido1990, sexo: 'ambos', idadeFinal: 40 });
+  assert.equal(sobrevida.contexto.pensao.termo.toISOString().slice(0, 10), '2069-06-10');
 });
 
 test('idade final abaixo do que a tábua projeta gera aviso', () => {
-  const r = calcularAcidente({ ...joelho, termoFinal: 'idade', dataNascimento: '1964-03-01' });
-  // Aos 60 anos, a tábua dá 22,59 anos de sobrevida: até os 82,59, e não 76,61
+  const r = calcularAcidente({ ...semSobrevida, sexo: 'homem', termoFinal: 'idade', dataNascimento: '1964-03-01' });
+  // Aos 60 anos, a tábua dos homens dá 20,80 anos de sobrevida: até os 80,8, e não 73,31
   assert.deepEqual(r.erros, []);
-  assert.ok(r.alertas.some((a) => a.includes('82,59')), r.alertas.join(' | '));
-  const jovem = calcularAcidente({ ...joelho, termoFinal: 'idade', dataNascimento: '2000-03-01', idadeFinal: 80 });
+  assert.ok(r.alertas.some((a) => a.includes('80,8') && a.includes('homens')), r.alertas.join(' | '));
+  const jovem = calcularAcidente({ ...nascido1990, sexo: 'homem', termoFinal: 'idade', idadeFinal: 80 });
   assert.ok(!jovem.alertas.some((a) => a.includes('tábua do IBGE')));
 });
 
 test('acima de 90 anos vale o grupo aberto da tábua', () => {
-  const { sobrevida, ...semSobrevida } = joelho;
-  const r = calcularAcidente({ ...semSobrevida, dataNascimento: '1930-01-01' });
-  assert.equal(r.contexto.pensao.sobrevida, 5.0538);
+  const r = calcularAcidente({ ...semSobrevida, sexo: 'homem', dataNascimento: '1930-01-01' });
+  assert.equal(r.contexto.pensao.sobrevida, 4.5746);
   assert.ok(r.alertas.some((a) => a.includes('90 ou mais')));
 });
 
 test('pensão mensal mostra a duração provável pela tábua', () => {
-  const r = calcularAcidente({ ...joelho, formaPensao: 'mensal', dataNascimento: '1990-03-01' });
-  assert.equal(r.contexto.pensao.duracaoProvavel.toISOString().slice(0, 10), '2069-06-10');
+  const r = calcularAcidente({ ...nascido1990, sexo: 'mulher', formaPensao: 'mensal' });
+  assert.equal(r.contexto.pensao.duracaoProvavel.toISOString().slice(0, 10), '2071-11-29');
   const linha = pedidoPorId('acidente').resumo(r.contexto).find(([rotulo]) => rotulo === 'Duração provável');
-  assert.ok(linha[1].includes('10/06/2069'), linha[1]);
+  assert.ok(linha[1].includes('29/11/2071') && linha[1].includes('mulheres'), linha[1]);
+  // Sem o sexo, a pensão mensal segue calculada, só sem a duração provável
+  const semSexo = calcularAcidente({ ...nascido1990, formaPensao: 'mensal' });
+  assert.deepEqual(semSexo.erros, []);
+  assert.equal(semSexo.contexto.pensao.duracaoProvavel, null);
 });
 
 test('parcela única com deságio fixo', () => {
@@ -367,7 +424,9 @@ test('o resumo do catálogo não quebra em nenhuma das formas', () => {
     joelho,
     { ...joelho, formaPensao: 'mensal' },
     { ...joelho, criterio: 'cif', qualificadorCif: '3' },
-    { ...joelho, termoFinal: 'idade', dataNascimento: '1990-03-01' },
+    { ...joelho, termoFinal: 'idade', dataNascimento: '1990-03-01', sexo: 'mulher' },
+    { ...joelho, sobrevida: 0, dataNascimento: '1990-03-01', sexo: 'homem' },
+    { ...joelho, formaPensao: 'mensal', dataNascimento: '1990-03-01', sexo: 'ambos' },
     { ...joelho, lesao2: 'baco', grau2: 'completa', lesao3: 'surdez', grau3: 'leve' },
     { salarioBase: 2500, pedirPensao: false, pedirMorais: false, pedirEsteticos: true, multiplicadorEsteticos: 1 },
   ];

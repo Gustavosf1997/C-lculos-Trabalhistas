@@ -38,7 +38,7 @@ import {
   TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor,
   qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida,
 } from './tabelas-acidente.js';
-import { TABUA_IBGE, EXPECTATIVA_AO_NASCER, sobrevidaNaIdade } from './tabua-ibge.js';
+import { TABUA_IBGE, expectativaAoNascer, sobrevidaNaIdade, sexoPorValor } from './tabua-ibge.js';
 
 /** Ciência a partir desta data: prescrição trabalhista (EC 45/2004, de 31/12/2004). */
 export const MARCO_EC_45 = '2005-01-01';
@@ -49,8 +49,6 @@ export const TAXA_VALOR_PRESENTE = 0.5;
 /** Deságio fixo: o meio da faixa de 20% a 30% que o TST admite. */
 export const DESAGIO_PADRAO = 25;
 
-/** Idade final padrão: a expectativa de vida ao nascer da tábua do IBGE. */
-export const IDADE_FINAL_PADRAO = Math.round(EXPECTATIVA_AO_NASCER * 100) / 100;
 
 const UM_DIA = 86400000;
 const menosUmDia = (data) => new Date(data.getTime() - UM_DIA);
@@ -254,7 +252,12 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   const unica = (dados.formaPensao ?? 'unica') === 'unica';
   const porIdade = unica && dados.termoFinal === 'idade';
   const porSobrevida = unica && !porIdade;
-  const idadeFinal = num(dados.idadeFinal) || IDADE_FINAL_PADRAO;
+
+  // O sexo escolhe a tábua do IBGE: homens e mulheres têm expectativas bem
+  // diferentes (aos 34 anos, 42,66 e 47,75), e a de ambos os sexos fica entre
+  // elas. Sem ele, nada se consulta na tábua.
+  const sexo = sexoPorValor(dados.sexo) ? dados.sexo : null;
+  const nomeDaTabua = sexo ? sexoPorValor(sexo).tabua : null;
 
   const nascimento = parseData(dados.dataNascimento);
   if (nascimento && inicio && nascimento >= inicio) {
@@ -263,24 +266,31 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   const idadeNaCiencia = nascimento && inicio && nascimento < inicio ? anosCompletos(nascimento, inicio) : null;
 
   // A sobrevida sai da tábua do IBGE, na idade da vítima quando a pensão
-  // começa. O número digitado prevalece — outra tábua, por sexo ou de outro
-  // ano —, mas só enquanto o campo está à vista: escondido, é resto de uma
-  // escolha anterior.
-  const tabua = idadeNaCiencia === null ? null : sobrevidaNaIdade(idadeNaCiencia);
+  // começa. O número digitado prevalece — outra tábua, de outro ano —, mas só
+  // enquanto o campo está à vista: escondido, é resto de uma escolha anterior.
+  // O mesmo vale para a idade final, que em branco é a expectativa ao nascer.
+  const tabua = idadeNaCiencia !== null && sexo ? sobrevidaNaIdade(idadeNaCiencia, sexo) : null;
   const informada = porSobrevida ? num(dados.sobrevida) : 0;
   const sobrevida = informada > 0 ? informada : tabua?.anos ?? 0;
+  const idadeFinalInformada = porIdade ? num(dados.idadeFinal) : 0;
+  const idadeFinal = idadeFinalInformada > 0 ? idadeFinalInformada : sexo ? arredondar(expectativaAoNascer(sexo)) : 0;
 
+  const pedeSexo = 'Escolha o sexo da vítima: a tábua do IBGE traz uma expectativa para homens, outra para '
+    + 'mulheres e a geral, de ambos os sexos.';
   let termo = null;
   if (porIdade) {
     if (!nascimento) erros.push('Informe a data de nascimento para contar a idade final da pensão.');
-    else termo = somarAnosFracionados(nascimento, idadeFinal);
-  } else if (porSobrevida && sobrevida <= 0) {
+    if (!idadeFinal) erros.push(`${pedeSexo} Ou informe a idade final.`);
+    if (nascimento && idadeFinal) termo = somarAnosFracionados(nascimento, idadeFinal);
+  } else if (porSobrevida && !(informada > 0)) {
     if (!nascimento) {
       erros.push('Informe a data de nascimento: a expectativa de sobrevida sai da tábua do IBGE, na idade '
         + 'da vítima na data da ciência. Ou digite a sobrevida de outra tábua.');
     }
+    if (!sexo) erros.push(`${pedeSexo} Ou digite a sobrevida de outra tábua.`);
+    if (tabua && inicio) termo = somarAnosFracionados(inicio, tabua.anos);
   } else if (porSobrevida && inicio) {
-    termo = somarAnosFracionados(inicio, sobrevida);
+    termo = somarAnosFracionados(inicio, informada);
   }
   if (inicio && termo && termo <= inicio) {
     erros.push(`A idade final (${curto(idadeFinal)} anos) já tinha sido alcançada na data da `
@@ -289,16 +299,16 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
   if (erros.length) return null;
 
   if (tabua?.grupoAberto && ((porSobrevida && !(informada > 0)) || !unica)) {
-    alertas.push(`Aos ${tabua.idade} anos, a tábua do IBGE só traz o grupo aberto "90 ou mais", com `
-      + `sobrevida de ${curto(tabua.anos)} anos.`);
+    alertas.push(`Aos ${tabua.idade} anos, a tábua do IBGE (${nomeDaTabua}) só traz o grupo aberto `
+      + `"90 ou mais", com sobrevida de ${curto(tabua.anos)} anos.`);
   }
   // Idade final abaixo do que a tábua projeta para a vítima: a expectativa ao
   // nascer subestima a de quem já passou da infância, e o erro é comum.
   const idadeProjetada = tabua ? idadeNaCiencia + tabua.anos : null;
   if (porIdade && idadeProjetada && idadeFinal < idadeProjetada - 0.5) {
-    alertas.push(`Pela tábua do IBGE de ${TABUA_IBGE.ano}, aos ${idadeNaCiencia} anos a sobrevida é de `
-      + `${curto(tabua.anos)} anos: a vítima viveria até os ${curto(idadeProjetada)}, mais que a idade final `
-      + `escolhida (${curto(idadeFinal)}). A expectativa ao nascer subestima a de quem já passou da `
+    alertas.push(`Pela tábua do IBGE de ${TABUA_IBGE.ano} (${nomeDaTabua}), aos ${idadeNaCiencia} anos a `
+      + `sobrevida é de ${curto(tabua.anos)} anos: a vítima viveria até os ${curto(idadeProjetada)}, mais que `
+      + `a idade final (${curto(idadeFinal)}). A expectativa ao nascer subestima a de quem já passou da `
       + 'infância; o termo pela sobrevida é o que a tábua indica para a idade da vítima.');
   }
 
@@ -323,8 +333,11 @@ function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, al
     remuneracao, percentualPensao, integral, mensal, acrescimos, inicio, corte, unica, termo,
     mesesVencidos, vencidas, nascimento, idadeNaCiencia,
     idadeFinal: porIdade ? idadeFinal : null,
+    idadeFinalDaTabua: porIdade && !(idadeFinalInformada > 0),
     sobrevida: porSobrevida ? sobrevida : null,
     sobrevidaInformada: porSobrevida && informada > 0,
+    sexo,
+    nomeDaTabua,
     tabua: tabua ? { ...tabua, ano: TABUA_IBGE.ano } : null,
     idadeNoTermo: porIdade ? idadeFinal : porSobrevida && idadeNaCiencia !== null ? idadeNaCiencia + sobrevida : null,
     // Na pensão mensal não há termo, porque ela é vitalícia; a tábua dá só a

@@ -16,6 +16,7 @@ import { TIPOS, ORDEM_TIPOS } from '../src/tipos.js';
 import { PEDIDOS } from '../src/pedidos/catalogo.js';
 import { FGTS } from '../src/tabelas.js';
 import { LESOES_DPVAT } from '../src/pedidos/tabelas-acidente.js';
+import { sobrevidaNaIdade } from '../src/pedidos/tabua-ibge.js';
 import { contarPeriodo } from '../src/pedidos/comum.js';
 
 function gerador(semente) {
@@ -179,7 +180,8 @@ test('acidente: 3.000 combinações respeitam as invariantes', () => {
       incapacidadeTotalOficio: aleatorio() < 0.2, incluir13: aleatorio() < 0.8, incluirTerco: aleatorio() < 0.8,
       formaPensao: escolher(['unica', 'mensal']), metodoDesconto: escolher(['valor_presente', 'desagio']),
       taxaJuros: escolher([0, 0.5, 1]), desagio: escolher([0, 20, 30]),
-      termoFinal: escolher(['sobrevida', 'idade']), sobrevida: escolher([0, 5.5, 40]),
+      termoFinal: escolher(['sobrevida', 'idade']), sobrevida: escolher([0, 0, 5.5, 40]),
+      sexo: escolher(['', 'homem', 'mulher', 'ambos']),
       idadeFinal: escolher([0, 76.6, 90]),
       naturezaOfensa: escolher(['auto', 'leve', 'media', 'grave', 'gravissima']),
       multiplicadorMorais: escolher([0, 2, 60]), multiplicadorEsteticos: escolher([0, 1.5]),
@@ -202,6 +204,10 @@ test('acidente: 3.000 combinações respeitam as invariantes', () => {
       // Nunca mais que a remuneração inteira com 13º e terço.
       assert.ok(p.mensal <= r2(p.remuneracao * (1 + 1 / 12 + 1 / 36)) + 0.01, `pensão acima da remuneração: ${caso}`);
       assert.ok(p.mesesVencidos >= 0 && p.mesesVincendos >= 0, caso);
+      // Sobrevida tirada da tábua: sempre a do sexo e da idade na ciência.
+      if (p.sobrevida !== null && !p.sobrevidaInformada) {
+        assert.equal(p.sobrevida, sobrevidaNaIdade(p.idadeNaCiencia, dados.sexo).anos, caso);
+      }
       if (p.unica) {
         // O desconto da antecipação nunca aumenta o valor.
         assert.ok(p.vincendas <= p.nominalVincendas + 0.01, `vincendas acima do nominal: ${caso}`);

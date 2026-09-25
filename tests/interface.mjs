@@ -402,23 +402,40 @@ checar('danos morais pela faixa leve', acidente.includes('R$ 7.500,00'), null);
 checar('nota da isenção de imposto de renda', acidente.includes('7.713/88'), null);
 checar('sem cartão de FGTS', (await page.locator('#resultado .fgts-card').count()) === 0, null);
 
-// tábua do IBGE embutida: com o nascimento, a sobrevida vem sozinha
+// tábuas do IBGE embutidas: com o nascimento e o sexo, a sobrevida vem sozinha
 await page.fill('#sobrevida', '');
 await page.fill('#dataNascimento', '01/03/1990');
 await page.waitForTimeout(350);
-const pelaTabua = await texto();
-checar('sobrevida da tábua do IBGE aos 34 anos', pelaTabua.includes('45,28 anos — tábua do IBGE de 2024, aos 34 anos'),
-  pelaTabua.slice(0, 900));
-checar('termo final pela tábua', pelaTabua.includes('10/06/2069 (aos 79,28 anos)'), null);
+checar('sem o sexo, a tela pede o sexo', (await texto()).includes('Escolha o sexo da vítima'), null);
+checar('o sexo começa sem escolha', (await page.inputValue('#sexo')) === '', await page.inputValue('#sexo'));
+await page.selectOption('#sexo', 'homem');
+await page.waitForTimeout(350);
+const homem = await texto();
+checar('sobrevida da tábua dos homens aos 34 anos',
+  homem.includes('42,66 anos — tábua do IBGE de 2024 (homens), aos 34 anos'), homem.slice(0, 900));
+checar('termo final pela tábua dos homens', homem.includes('27/10/2066 (aos 76,66 anos)'), null);
+await page.selectOption('#sexo', 'mulher');
+await page.waitForTimeout(350);
+const mulher = await texto();
+checar('sobrevida da tábua das mulheres aos 34 anos',
+  mulher.includes('47,75 anos — tábua do IBGE de 2024 (mulheres), aos 34 anos'), null);
+checar('termo final pela tábua das mulheres', mulher.includes('29/11/2071 (aos 81,75 anos)'), null);
+await page.selectOption('#sexo', 'ambos');
+await page.waitForTimeout(350);
+checar('tábua de ambos os sexos', (await texto()).includes('45,28 anos — tábua do IBGE de 2024 (ambos os sexos)'), null);
 await page.fill('#sobrevida', '40');
 await page.waitForTimeout(300);
 checar('sobrevida digitada prevalece e a da tábua fica à vista', (await texto()).includes('daria 45,28'), null);
 await page.check('input[name="termoFinal"][value="idade"]');
+await page.selectOption('#sexo', 'homem');
 await page.fill('#dataNascimento', '01/03/1964');
 await page.waitForTimeout(300);
-checar('idade final abaixo da tábua gera aviso', (await texto()).includes('82,59'), null);
+const idadeFinal = await texto();
+checar('idade final em branco é a expectativa ao nascer dos homens', idadeFinal.includes('expectativa ao nascer, homens'), null);
+checar('idade final abaixo da tábua gera aviso', idadeFinal.includes('80,8'), null);
 await page.check('input[name="termoFinal"][value="sobrevida"]');
 await page.fill('#dataNascimento', '');
+await page.selectOption('#sexo', '');
 await page.waitForTimeout(300);
 
 await page.selectOption('#lesao1', 'cegueira');

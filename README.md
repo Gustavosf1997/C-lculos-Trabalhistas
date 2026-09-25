@@ -113,7 +113,7 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `src/pedidos/multas.js` | Multas dos arts. 467 e 477, §8º, da CLT |
 | `src/pedidos/acidente.js` | Indenização acidentária: pensão do art. 950 do CC, danos do art. 223-G e prescrição da ciência |
 | `src/pedidos/tabelas-acidente.js` | Tabela DPVAT (anexo da Lei 6.194/74), qualificadores da CIF e faixas do art. 223-G |
-| `src/pedidos/tabua-ibge.js` | Tábua Completa de Mortalidade do IBGE de 2024 (ambos os sexos): expectativa de sobrevida por idade |
+| `src/pedidos/tabua-ibge.js` | Tábuas Completas de Mortalidade do IBGE de 2024 (homens, mulheres e ambos os sexos): expectativa de sobrevida por idade |
 | `src/prescricao.js` | Prescrição bienal e quinquenal, comum às duas telas (módulo puro, sem dependências) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
@@ -400,19 +400,25 @@ três passos:
    soma (Súmula 387 do STJ), e as **despesas com tratamento** (art. 949 do CC)
    entram pelo valor informado.
 
-A **tábua do IBGE vem embutida** (`src/pedidos/tabua-ibge.js`): a Tábua
-Completa de Mortalidade de 2024, ambos os sexos, coluna E(X), de 0 a 89 anos e
-o grupo aberto de 90 ou mais. Com a data de nascimento, a sobrevida sai dela
-pela idade em anos completos na data da ciência — é assim que a tábua é
-publicada e citada nas decisões. O campo de sobrevida fica para outra tábua
-(por sexo ou de outro ano) e, preenchido, prevalece, com o valor da tábua ao
-lado no resumo. A tábua também:
+As **tábuas do IBGE vêm embutidas** (`src/pedidos/tabua-ibge.js`): as Tábuas
+Completas de Mortalidade de 2024 — **homens, mulheres e ambos os sexos** —,
+coluna E(X), de 0 a 89 anos e o grupo aberto de 90 ou mais. O campo **sexo da
+vítima** escolhe a tábua; a de ambos os sexos fica como opção para quem não
+quiser distinguir. A diferença pesa: aos 34 anos, a sobrevida de um homem é de
+42,66 anos e a de uma mulher, 47,75. Com o sexo e a data de nascimento, a
+sobrevida sai da tábua pela idade em anos completos na data da ciência — é
+assim que a tábua é publicada e citada nas decisões. Sem o sexo, a tábua não é
+consultada e a tela o pede. O campo de sobrevida fica para a tábua de outro ano
+e, preenchido, prevalece, com o valor da tábua ao lado no resumo. As tábuas
+também:
 
-- dá a **idade final padrão**, que é a expectativa ao nascer, E(0);
-- **avisa** quando a idade final escolhida fica abaixo do que ela projeta para
-  a vítima — aos 60 anos, por exemplo, a sobrevida é de 22,59 anos, e a vítima
-  viveria até os 82,59, não até os 76,61;
-- mostra, na **pensão mensal vitalícia**, a duração provável da pensão, só
+- dão a **idade final padrão** (termo "até uma idade" com o campo em branco),
+  que é a expectativa ao nascer do sexo: 73,31 anos para homens, 79,87 para
+  mulheres e 76,61 para ambos;
+- **avisam** quando a idade final fica abaixo do que a tábua projeta para a
+  vítima — um homem de 60 anos tem 20,80 anos de sobrevida e viveria até os
+  80,8, não até os 73,31;
+- mostram, na **pensão mensal vitalícia**, a duração provável da pensão, só
   como informação.
 
 A **prescrição** é a trabalhista, contada da ciência inequívoca da
@@ -534,7 +540,7 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Danos morais em múltiplos do último salário contratual | art. 223-G, §1º, da CLT; ADIs 6050, 6069 e 6082 | `NATUREZAS_OFENSA` |
 | Dano estético cumulável com o moral | Súmula 387 do STJ | `acidente.js` |
 | Prescrição acidentária contada da ciência inequívoca da incapacidade | Súmula 278 do STJ e art. 7º, XXIX, da CF | `apurarPrescricaoAcidentaria` |
-| Termo final da parcela única pela expectativa de sobrevida da tábua do IBGE | jurisprudência do TST; Tábua Completa de Mortalidade do IBGE (2024) | `tabua-ibge.js` |
+| Termo final da parcela única pela expectativa de sobrevida da tábua do IBGE, do sexo da vítima | jurisprudência do TST; Tábuas Completas de Mortalidade do IBGE (2024) | `tabua-ibge.js` |
 | Indenização por acidente do trabalho isenta de IR | art. 6º, IV, da Lei 7.713/88 | nota do resultado |
 | INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
 | Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
@@ -543,10 +549,11 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 ## Limitações conhecidas
 
 - **Indenização acidentária**: é estimativa. O percentual que vale é o fixado
-  na perícia; a tabela DPVAT e a CIF são referências. A tábua do IBGE
-  embutida é a de 2024, ambos os sexos; a tábua por sexo ou de outro ano
-  entra pelo campo de sobrevida, e a de 2025 (que o IBGE publica em novembro
-  de 2026) exige trocar o vetor de `tabua-ibge.js`. Não há cálculo de pensão
+  na perícia; a tabela DPVAT e a CIF são referências. As tábuas do IBGE
+  embutidas são as de 2024; a de outro ano entra pelo campo de sobrevida, e as
+  de 2025 (que o IBGE publica em novembro de 2026) exigem trocar os vetores de
+  `tabua-ibge.js`. A idade é a de anos completos, sem interpolação entre as
+  linhas da tábua. Não há cálculo de pensão
   aos dependentes em caso de morte
   (art. 948 do CC), de lucros cessantes durante o afastamento, nem de
   reajustes futuros da pensão. A natureza da ofensa sugerida pela CIF é uma

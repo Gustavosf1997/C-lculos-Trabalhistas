@@ -132,8 +132,14 @@ checar('acidente: total igual ao da versão web',
   await page.locator('#resultado .liquido b').innerText());
 await page.fill('#sobrevida', '');
 await page.fill('#dataNascimento', '01/03/1990');
+await page.selectOption('#sexo', 'mulher');
 await page.waitForTimeout(300);
-checar('acidente: sobrevida da tábua do IBGE embutida', (await texto()).includes('tábua do IBGE de 2024, aos 34 anos'), null);
+checar('acidente: sobrevida da tábua das mulheres embutida',
+  (await texto()).includes('47,75 anos — tábua do IBGE de 2024 (mulheres), aos 34 anos'), null);
+await page.selectOption('#sexo', 'homem');
+await page.waitForTimeout(300);
+checar('acidente: sobrevida da tábua dos homens embutida',
+  (await texto()).includes('42,66 anos — tábua do IBGE de 2024 (homens), aos 34 anos'), null);
 await page.fill('#dataAjuizamento', '01/04/2029');
 await page.waitForTimeout(300);
 checar('acidente: quinquênio da ciência bloqueia', await page.locator('#salarioBase').isDisabled(), null);

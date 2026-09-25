@@ -258,7 +258,9 @@ for (const [i, lesao] of lesoes.entries()) {
   checar(`acidente/${lesao}: calcula`, (await page.locator('#resultado .liquido').count()) === 1, tela.slice(0, 160));
   await vistoriar(`acidente/${lesao}`);
 }
-for (const criterio of ['cif', 'laudo', 'dpvat']) {
+const sexos = ['mulher', 'homem', 'ambos'];
+for (const [c, criterio] of ['cif', 'laudo', 'dpvat'].entries()) {
+  await page.selectOption('#sexo', sexos[c]);
   await page.check(`input[name="criterio"][value="${criterio}"]`);
   if (criterio === 'laudo') await page.fill('#percentualLaudo', '42,5');
   for (const forma of ['mensal', 'unica']) {
@@ -267,6 +269,8 @@ for (const criterio of ['cif', 'laudo', 'dpvat']) {
       if (forma === 'unica') await page.check(`input[name="termoFinal"][value="${termo}"]`);
       if (termo === 'idade') await page.fill('#dataNascimento', '10/05/1985').catch(() => {});
       await page.waitForTimeout(80);
+      checar(`acidente: ${criterio}/${forma}/${termo}/${sexos[c]} calcula`,
+        (await page.locator('#resultado .liquido').count()) === 1, (await page.locator('#resultado').innerText()).slice(0, 200));
       await vistoriar(`acidente: ${criterio}/${forma}/${termo}`);
       await conferirSoma(`acidente: ${criterio}/${forma}/${termo}`, '#resultado table.linhas');
     }
