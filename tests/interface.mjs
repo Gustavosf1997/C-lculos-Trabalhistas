@@ -382,6 +382,10 @@ await page.click('[data-pedido="acidente"]');
 await page.waitForTimeout(250);
 checar('acidente dispensa o período', (await page.locator('#dataInicio').count()) === 0, null);
 checar('lesões agrupadas como no anexo da lei', (await page.locator('#lesao1 optgroup').count()) === 3, null);
+const noTopo = await page.locator('#grupo-0 input, #grupo-0 select').evaluateAll((els) => els.map((e) => e.id));
+checar('nascimento e sexo no topo, com as demais datas',
+  JSON.stringify(noTopo) === JSON.stringify(['dataNascimento', 'sexo', 'dataCiencia', 'dataExtincao', 'dataAjuizamento']),
+  noTopo);
 checar('sem lesão escolhida, pede a lesão', (await texto()).includes('Escolha a lesão'), null);
 checar('a repercussão só aparece com a lesão', await page.locator('#campo-grau1').isHidden(), null);
 await page.selectOption('#lesao1', 'joelho');
