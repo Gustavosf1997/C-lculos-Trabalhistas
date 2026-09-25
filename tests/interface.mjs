@@ -289,7 +289,7 @@ const dadosBase = async () => {
   await page.fill('#salarioBase', '2.200,00'); // divisor 220 -> hora de R$ 10,00
 };
 
-checar('catálogo traz os cinco pedidos', await page.locator('#pedidos .tipo').count() === 5,
+checar('catálogo traz os seis pedidos', await page.locator('#pedidos .tipo').count() === 6,
   await page.locator('#pedidos .tipo').count());
 
 // adicional noturno: hora ficta de 52min30s (art. 73, §1º)
@@ -377,6 +377,56 @@ await page.fill('#valorIncontroverso', '5.000,00');
 await page.waitForTimeout(350);
 checar('as duas multas somam R$ 5.000,00', (await texto()).includes('R$ 5.000,00'), null);
 
+// indenização acidentária: tabela DPVAT, CIF, pensão e art. 223-G
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(250);
+checar('acidente dispensa o período', (await page.locator('#dataInicio').count()) === 0, null);
+checar('lesões agrupadas como no anexo da lei', (await page.locator('#lesao1 optgroup').count()) === 3, null);
+checar('sem lesão escolhida, pede a lesão', (await texto()).includes('Escolha a lesão'), null);
+checar('a repercussão só aparece com a lesão', await page.locator('#campo-grau1').isHidden(), null);
+await page.selectOption('#lesao1', 'joelho');
+await page.selectOption('#grau1', 'media');
+await page.fill('#salarioBase', '2.500,00');
+await page.fill('#outrasParcelas', '500,00');
+await page.fill('#dataCiencia', '01/03/2024');
+await page.fill('#dataAjuizamento', '01/03/2025');
+await page.fill('#sobrevida', '40');
+await page.waitForTimeout(350);
+const acidente = await texto();
+checar('joelho com repercussão média: 12,5%', acidente.includes('25% x 50% (repercussão média) = 12,5%'), acidente.slice(0, 300));
+checar('enquadramento na CIF', acidente.includes('1 — deficiência ligeira'), null);
+checar('referência no teto do DPVAT', acidente.includes('R$ 1.687,50'), null);
+checar('pensão mensal com 13º e terço', acidente.includes('R$ 416,67'), null);
+checar('vincendas a valor presente', acidente.includes('R$ 75.259,69'), null);
+checar('danos morais pela faixa leve', acidente.includes('R$ 7.500,00'), null);
+checar('nota da isenção de imposto de renda', acidente.includes('7.713/88'), null);
+checar('sem cartão de FGTS', (await page.locator('#resultado .fgts-card').count()) === 0, null);
+
+await page.selectOption('#lesao1', 'cegueira');
+await page.waitForTimeout(300);
+checar('dano total não se gradua', await page.locator('#campo-grau1').isHidden(), null);
+checar('cegueira bilateral vale 100%', /Percentual da perda\n100%/i.test(await texto()), null);
+await page.selectOption('#lesao1', 'joelho');
+checar('terceira lesão escondida sem a segunda', await page.locator('#campo-lesao3').isHidden(), null);
+await page.selectOption('#lesao2', 'baco');
+await page.waitForTimeout(300);
+checar('escolhida a segunda, a terceira aparece', await page.locator('#campo-lesao3').isVisible(), null);
+checar('as lesões somam', /Percentual da perda\n22,5%/i.test(await texto()), null);
+await page.selectOption('#lesao2', 'nenhuma');
+
+await page.check('input[name="criterio"][value="cif"]');
+await page.waitForTimeout(300);
+checar('pela CIF, a tabela DPVAT some', await page.locator('#campo-lesao1').isHidden(), null);
+checar('pela CIF, o qualificador aparece', await page.locator('#qualificadorCif').isVisible(), null);
+checar('qualificador moderado sem número: meio da faixa', /Percentual da perda\n37%/i.test(await texto()), null);
+await page.check('input[name="criterio"][value="dpvat"]');
+
+await page.check('input[name="formaPensao"][value="mensal"]');
+await page.waitForTimeout(300);
+checar('pensão mensal esconde o termo final', await page.locator('#campo-sobrevida').isHidden(), null);
+checar('pensão mensal: 12 vincendas', (await texto()).includes('12 parcelas vincendas'), null);
+await page.check('input[name="formaPensao"][value="unica"]');
+
 // voltar ao primeiro pedido devolve os campos próprios dele
 await page.click('[data-pedido="horas_extras"]');
 checar('volta às horas extras com os campos certos', (await page.locator('#quantidadeHoras').count()) === 1, null);
@@ -440,6 +490,17 @@ await digitar('dataRescisao', '01/01/2000');
 await digitar('dataAjuizamento', '01/01/2020');
 await page.waitForTimeout(300);
 checar('só datas: multas acusam o biênio', (await vermelho()).includes('bienal'), await vermelho());
+
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(250);
+await digitar('dataCiencia', '01/01/2010');
+await digitar('dataAjuizamento', '01/01/2020');
+await page.waitForTimeout(300);
+checar('só datas: acidente acusa o quinquênio da ciência', (await vermelho()).includes('quinquenal'), await vermelho());
+checar('só datas: acidente trava o salário', await page.locator('#salarioBase').isDisabled(), null);
+checar('só datas: a ciência segue editável', !(await page.locator('#dataCiencia').isDisabled()), null);
+checar('só datas: a saída do bloqueio cita a ciência',
+  (await page.locator('#resultado .impedimento__saida').innerText()).includes('ciência'), null);
 
 await page.click('[data-pedido="horas_extras"]');
 await page.waitForTimeout(250);

@@ -222,7 +222,7 @@ checar('31/02 é recusado', (await page.locator('.campo:has(#dataAdmissao) .camp
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 
 const pedidos = await page.locator('#pedidos .tipo').evaluateAll((bs) => bs.map((b) => b.dataset.pedido));
-checar('cinco pedidos no catálogo', pedidos.length === 5, pedidos.length);
+checar('seis pedidos no catálogo', pedidos.length === 6, pedidos.length);
 
 for (const [i, pedido] of pedidos.entries()) {
   await page.click(`[data-pedido="${pedido}"]`);
@@ -238,6 +238,39 @@ for (const [i, pedido] of pedidos.entries()) {
   const temErro = await page.locator('#resultado .aviso-erro, #resultado .impedimento').count();
   const pdfDesabilitado = await page.locator('#gerar-pdf').isDisabled();
   checar(`pedido/${pedido}: PDF coerente com o resultado`, Boolean(temErro) === pdfDesabilitado, { temErro, pdfDesabilitado });
+}
+
+// indenização acidentária: toda lesão da tabela, pelos três critérios, e
+// as combinações de pensão que mudam os campos visíveis
+await page.click('[data-pedido="acidente"]');
+await page.waitForTimeout(150);
+await page.fill('#salarioBase', '3.000,00');
+await page.fill('#dataCiencia', '01/03/2024');
+await page.fill('#sobrevida', '35,5');
+const lesoes = await page.locator('#lesao1 option').evaluateAll((os) => os.map((o) => o.value).filter(Boolean));
+checar('acidente: 23 lesões na tabela', lesoes.length === 23, lesoes.length);
+for (const [i, lesao] of lesoes.entries()) {
+  await page.selectOption('#lesao1', lesao);
+  if (await page.locator('#grau1').isVisible()) await page.selectOption('#grau1', ['completa', 'intensa', 'media', 'leve', 'residual'][i % 5]);
+  await page.selectOption('#lesao2', lesoes[(i + 7) % lesoes.length]);
+  await page.waitForTimeout(80);
+  const tela = await page.locator('#resultado').innerText();
+  checar(`acidente/${lesao}: calcula`, (await page.locator('#resultado .liquido').count()) === 1, tela.slice(0, 160));
+  await vistoriar(`acidente/${lesao}`);
+}
+for (const criterio of ['cif', 'laudo', 'dpvat']) {
+  await page.check(`input[name="criterio"][value="${criterio}"]`);
+  if (criterio === 'laudo') await page.fill('#percentualLaudo', '42,5');
+  for (const forma of ['mensal', 'unica']) {
+    await page.check(`input[name="formaPensao"][value="${forma}"]`);
+    for (const termo of ['idade', 'sobrevida']) {
+      if (forma === 'unica') await page.check(`input[name="termoFinal"][value="${termo}"]`);
+      if (termo === 'idade') await page.fill('#dataNascimento', '10/05/1985').catch(() => {});
+      await page.waitForTimeout(80);
+      await vistoriar(`acidente: ${criterio}/${forma}/${termo}`);
+      await conferirSoma(`acidente: ${criterio}/${forma}/${termo}`, '#resultado table.linhas');
+    }
+  }
 }
 
 // troca rápida de pedido no meio do preenchimento

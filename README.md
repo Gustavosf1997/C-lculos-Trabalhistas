@@ -111,6 +111,8 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `src/pedidos/intervalo.js` | Intervalo intrajornada nos dois regimes do art. 71, §4º |
 | `src/pedidos/insalubridade.js` | Insalubridade e periculosidade como pedido autônomo |
 | `src/pedidos/multas.js` | Multas dos arts. 467 e 477, §8º, da CLT |
+| `src/pedidos/acidente.js` | Indenização acidentária: pensão do art. 950 do CC, danos do art. 223-G e prescrição da ciência |
+| `src/pedidos/tabelas-acidente.js` | Tabela DPVAT (anexo da Lei 6.194/74), qualificadores da CIF e faixas do art. 223-G |
 | `src/prescricao.js` | Prescrição bienal e quinquenal, comum às duas telas (módulo puro, sem dependências) |
 | `src/tabelas.js` | Tabelas de INSS, IRRF, salário mínimo e parâmetros do FGTS |
 | `src/formato.js` | Leitura e escrita de números e datas no padrão brasileiro |
@@ -121,7 +123,8 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
 | `tests/prescricao.test.mjs` | Prescrição nas três telas: rescisão, pedidos com período e multas |
-| `tests/varredura.test.mjs` | 7 mil combinações de entrada conferidas por invariantes: líquido nunca negativo, teto do §5º, totais que fecham |
+| `tests/acidente.test.mjs` | Indenização acidentária: tabela DPVAT, CIF, valor presente, art. 223-G e prescrição da ciência |
+| `tests/varredura.test.mjs` | 10 mil combinações de entrada conferidas por invariantes: líquido nunca negativo, teto do §5º, totais que fecham, desconto da parcela única que nunca aumenta o valor |
 | `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
 | `tests/robustez.mjs` | Uso adverso das duas telas no navegador (Playwright) |
 | `tests/portatil.mjs` | Abre o arquivo portátil por `file://` e confere que a conta dá o mesmo |
@@ -247,7 +250,7 @@ e `src/campos.js` cuida do resto.
 
 ## Módulo de pedidos
 
-Cinco pedidos, escolhidos no cartão do topo. Cada um monta o seu próprio
+Seis pedidos, escolhidos no cartão do topo. Cada um monta o seu próprio
 formulário a partir de `src/pedidos/catalogo.js` e mostra, ao ser escolhido, o
 que entra e o que não entra na conta.
 
@@ -351,6 +354,61 @@ Pedido sem período e sem FGTS:
 - **art. 467** — 50% sobre a parte **incontroversa** das verbas rescisórias
   não paga no comparecimento à Justiça do Trabalho.
 
+### Indenização acidentária (tabela DPVAT e CIF)
+
+Acidente do trabalho ou doença ocupacional. Pedido sem período e sem FGTS, em
+três passos:
+
+1. **Percentual da perda**, por um de três critérios:
+   - **tabela DPVAT** — o anexo da Lei 6.194/74 (redação da Lei 11.945/2009),
+     com as 23 lesões da lei (as linhas que ela agrupa, como "ombros,
+     cotovelos, punhos ou polegar", vêm desdobradas). Se a perda do segmento
+     não é completa, o percentual da tabela é reduzido pela **repercussão**:
+     75% (intensa), 50% (média), 25% (leve) ou 10% (residual), conforme o
+     art. 3º, §1º, II. Os **danos totais** valem 100% e não se graduam. Até
+     três lesões do mesmo acidente, somadas até 100%;
+   - **qualificador da CIF** fixado pelo perito — 1 ligeira (5% a 24%),
+     2 moderada (25% a 49%), 3 grave (50% a 95%), 4 completa (96% a 100%).
+     Sem número no laudo, vale o meio da faixa;
+   - **percentual do laudo**, digitado.
+
+   Qualquer que seja o critério, o resultado mostra o enquadramento na CIF e
+   quanto a perda valeria no teto do DPVAT (R$ 13.500,00), como referência.
+2. **Pensão (art. 950 do CC)** — a última remuneração (salário mais parcelas
+   habituais) vezes o percentual da perda, com 1/12 de 13º e 1/12 do terço de
+   férias por mês, sem FGTS (jurisprudência do TST). Marcada a **incapacidade
+   total para o ofício**, a pensão é integral, ainda que a vítima possa
+   exercer outra atividade. As parcelas vão da **ciência inequívoca** da
+   incapacidade; as **vencidas** vão até a data do cálculo (em branco, o
+   ajuizamento ou, sem ele, hoje). As **vincendas**:
+   - em **parcela única** (parágrafo único do art. 950), até o termo final —
+     a expectativa de sobrevida da tábua do IBGE na idade da vítima, ou uma
+     idade (76,6 anos, a expectativa ao nascer de 2024, por padrão) —,
+     descontadas pela antecipação: pela **fórmula do valor presente**
+     VP = P × [1 − (1 + i)^−n] / i, a 0,5% ao mês, como faz a 1ª Turma do
+     TST, ou por **deságio fixo** (o TST admite de 20% a 30%);
+   - em **pensão mensal vitalícia**, doze prestações entram no valor do
+     pedido (art. 292, §2º, do CPC).
+3. **Danos extrapatrimoniais (art. 223-G da CLT)** — múltiplos do último
+   salário contratual: até 3 (leve), 5 (média), 20 (grave) ou 50
+   (gravíssima). A natureza é **sugerida pelo qualificador da CIF** (ligeira →
+   leve, moderada → média, grave → grave, completa → gravíssima) — correlação
+   de estimativa, não regra legal — e pode ser escolhida. Sem multiplicador, a
+   estimativa usa o teto da faixa; acima dele, a tela lembra que o STF tomou as
+   faixas como orientativas (ADIs 6050, 6069 e 6082). O **dano estético** se
+   soma (Súmula 387 do STJ), e as **despesas com tratamento** (art. 949 do CC)
+   entram pelo valor informado.
+
+A **prescrição** é a trabalhista, contada da ciência inequívoca da
+incapacidade (Súmula 278 do STJ): cinco anos dela, até dois anos do fim do
+contrato — ou da própria ciência, quando ela só vem depois da dispensa. A
+pretensão nasce inteira com a ciência, então prescreve inteira: não há recorte
+de parcelas. Para ciência anterior à EC 45/2004, o TST aplica o Código Civil,
+e a tela só avisa.
+
+As indenizações por acidente do trabalho são **isentas de imposto de renda**
+(art. 6º, IV, da Lei 7.713/88) e não sofrem contribuição previdenciária.
+
 ### Prescrição
 
 A prescrição é apurada nas **três telas** — verbas rescisórias, pedidos com
@@ -452,11 +510,28 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Quinquênio contado do ajuizamento, não da extinção | Súmula 308, I, do TST | `marcoQuinquenal` |
 | Férias prescrevem em cinco anos do fim do período concessivo | art. 149 da CLT | `fimDoConcessivo` |
 | Prazo em anos vence no dia de igual número, ou no imediato | art. 132, §3º, do Código Civil | `limiteBienal` |
+| Percentuais de perda por lesão, com redução por repercussão de 75/50/25/10% | Lei 6.194/74, art. 3º, §1º, e anexo (Lei 11.945/2009) | `tabelas-acidente.js` |
+| Qualificadores da CIF: 5–24%, 25–49%, 50–95%, 96–100% | Classificação Internacional de Funcionalidade (OMS, 2001) | `classificarCIF` |
+| Pensão pela depreciação da capacidade; integral se inabilitado para o ofício | art. 950 do CC | `acidente.js` |
+| Pensão com 13º e terço de férias, sem FGTS | jurisprudência do TST (restituição integral, art. 944 do CC) | `apurarPensao` |
+| Parcela única: valor presente a 0,5% ao mês ou deságio de 20% a 30% | art. 950, parágrafo único, do CC; 1ª Turma e demais Turmas do TST | `valorPresente` |
+| Danos morais em múltiplos do último salário contratual | art. 223-G, §1º, da CLT; ADIs 6050, 6069 e 6082 | `NATUREZAS_OFENSA` |
+| Dano estético cumulável com o moral | Súmula 387 do STJ | `acidente.js` |
+| Prescrição acidentária contada da ciência inequívoca da incapacidade | Súmula 278 do STJ e art. 7º, XXIX, da CF | `apurarPrescricaoAcidentaria` |
+| Indenização por acidente do trabalho isenta de IR | art. 6º, IV, da Lei 7.713/88 | nota do resultado |
 | INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
 | Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
 | Redutor mensal de R$ 978,62 − 0,133145 × rendimento | Lei 15.270/2025 | `calcularRedutorIRRF` |
 
 ## Limitações conhecidas
+
+- **Indenização acidentária**: é estimativa. O percentual que vale é o fixado
+  na perícia; a tabela DPVAT e a CIF são referências. A tábua de mortalidade
+  do IBGE não vem embutida — a expectativa de sobrevida na idade da vítima é
+  digitada. Não há cálculo de pensão aos dependentes em caso de morte
+  (art. 948 do CC), de lucros cessantes durante o afastamento, nem de
+  reajustes futuros da pensão. A natureza da ofensa sugerida pela CIF é uma
+  correlação de estimativa, não regra legal.
 
 - **As tabelas em `src/tabelas.js` são as de 2026** — INSS pela Portaria
   Interministerial MPS/MF nº 13, de 09/01/2026 (salário mínimo de R$ 1.621,00,

@@ -1,0 +1,475 @@
+/**
+ * Indenização por acidente do trabalho ou doença ocupacional.
+ *
+ * Três passos, cada um com a sua fonte:
+ *
+ * 1. **Quanto da capacidade se perdeu.** Pela tabela DPVAT (anexo da Lei
+ *    6.194/74), escolhendo a lesão e a repercussão; pelo qualificador da CIF
+ *    que o perito fixou; ou pelo percentual do laudo. Lesões distintas somam
+ *    os seus percentuais, até 100%.
+ *
+ * 2. **Danos materiais — pensão (art. 950 do CC).** Corresponde à
+ *    depreciação sofrida: a última remuneração vezes o percentual da perda —
+ *    ou a remuneração inteira, se a vítima ficou inabilitada para o ofício que
+ *    exercia, ainda que possa fazer outro. O TST inclui 13º e terço de férias
+ *    (restituição integral, art. 944 do CC) e exclui o FGTS. Paga de uma vez
+ *    (parágrafo único do art. 950), as parcelas futuras sofrem desconto pela
+ *    antecipação: a 1ª Turma do TST usa a fórmula do valor presente a 0,5% ao
+ *    mês; outras aplicam deságio fixo de 20% a 30%. O termo final é a
+ *    expectativa de vida da tábua do IBGE.
+ *
+ * 3. **Danos extrapatrimoniais (art. 223-G da CLT).** Múltiplos do último
+ *    salário contratual, conforme a natureza da ofensa. O STF tomou as faixas
+ *    como orientativas (ADIs 6050, 6069 e 6082), não como teto. O dano
+ *    estético se cumula com o moral (Súmula 387 do STJ).
+ *
+ * A prescrição é a trabalhista (art. 7º, XXIX, da CF), contada da ciência
+ * inequívoca da incapacidade (Súmula 278 do STJ) — a pretensão nasce inteira
+ * nesse dia, então prescreve inteira: não há parcelas a recortar. Para
+ * ciência anterior à EC 45/2004, o TST aplica o Código Civil, e o cálculo só
+ * avisa.
+ */
+
+import { parseData, formatarData, anosCompletos } from '../calculo.js';
+import { moeda } from '../formato.js';
+import { arredondar, num, contarPeriodo, resultadoComErros, resultadoImpedido } from './comum.js';
+import { apurarBienal, dataDaPrescricao } from '../prescricao.js';
+import {
+  TETO_DPVAT, lesaoPorId, eLesaoTotal, REPERCUSSOES, repercussaoPorValor,
+  qualificadorPorCodigo, classificarCIF, descreverCIF, naturezaPorValor, naturezaSugerida,
+} from './tabelas-acidente.js';
+
+/** Ciência a partir desta data: prescrição trabalhista (EC 45/2004, de 31/12/2004). */
+export const MARCO_EC_45 = '2005-01-01';
+
+/** Juros mensais da fórmula do valor presente (1ª Turma do TST). */
+export const TAXA_VALOR_PRESENTE = 0.5;
+
+/** Deságio fixo: o meio da faixa de 20% a 30% que o TST admite. */
+export const DESAGIO_PADRAO = 25;
+
+/** Expectativa de vida ao nascer, ambos os sexos (IBGE, tábua de 2024). */
+export const IDADE_FINAL_PADRAO = 76.6;
+
+const UM_DIA = 86400000;
+const menosUmDia = (data) => new Date(data.getTime() - UM_DIA);
+const maior = (a, b) => (a > b ? a : b);
+const menor = (a, b) => (a < b ? a : b);
+/** Número sem zeros à direita: 12,5 e não 12,50; 468 e não 468,00. */
+const curto = (valor) => Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+const pct = (valor) => `${curto(valor)}%`;
+
+const somarAnos = (data, anos) =>
+  new Date(Date.UTC(data.getUTCFullYear() + anos, data.getUTCMonth(), data.getUTCDate()));
+
+/** Soma anos com fração ("76,6 anos"): os inteiros pelo calendário, a fração em dias. */
+function somarAnosFracionados(data, anos) {
+  const inteiros = Math.floor(anos);
+  const base = somarAnos(data, inteiros);
+  return new Date(base.getTime() + Math.round((anos - inteiros) * 365.25) * UM_DIA);
+}
+
+/* --------------------------------------------------------- prescrição --- */
+
+/**
+ * Biênio e quinquênio da pretensão acidentária.
+ *
+ * O biênio corre do fim do contrato — ou da ciência, se ela só veio depois
+ * (a doença que se revela após a dispensa): antes dela não havia pretensão a
+ * exercer. O quinquênio corre da ciência. Vale o que vencer primeiro.
+ */
+function apurarPrescricaoAcidentaria(dados) {
+  const ciencia = parseData(dados.dataCiencia);
+  const extincao = parseData(dados.dataExtincao);
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const hoje = dataDaPrescricao(dados.dataReferencia);
+  const vazio = { impedimento: null, alertas: [], descricao: null };
+
+  if (ciencia && ciencia < parseData(MARCO_EC_45)) {
+    return {
+      ...vazio,
+      descricao: 'regras do Código Civil (ciência anterior à EC 45/2004)',
+      alertas: [
+        `A ciência da incapacidade (${formatarData(ciencia)}) é anterior à EC 45/2004. Nesse caso o TST `
+          + 'aplica a prescrição do Código Civil, com a regra de transição do art. 2.028, e não a do '
+          + 'art. 7º, XXIX, da CF. Confira o prazo à parte: o cálculo não o apura.',
+      ],
+    };
+  }
+
+  const cienciaDepois = Boolean(ciencia && extincao && ciencia > extincao);
+  const bienal = apurarBienal(cienciaDepois ? ciencia : extincao, ajuizamento, hoje);
+  const limiteQuinquenal = ciencia ? somarAnos(ciencia, 5) : null;
+
+  if (bienal.impedimento) {
+    return {
+      ...vazio,
+      impedimento: cienciaDepois
+        ? {
+          ...bienal.impedimento,
+          mensagem: `A ciência da incapacidade veio em ${formatarData(ciencia)}, depois do fim do contrato, `
+            + `e é dela que corre o biênio (Súmula 278 do STJ), encerrado em ${formatarData(bienal.limite)}. `
+            + `A ação só foi ajuizada em ${formatarData(ajuizamento)}: a pretensão está prescrita `
+            + '(art. 7º, XXIX, da CF).',
+        }
+        : bienal.impedimento,
+    };
+  }
+
+  if (ajuizamento && limiteQuinquenal && ajuizamento > limiteQuinquenal) {
+    return {
+      ...vazio,
+      impedimento: {
+        integral: true,
+        marco: limiteQuinquenal,
+        titulo: 'Pretensão atingida pela prescrição quinquenal',
+        mensagem: `A ciência inequívoca da incapacidade se deu em ${formatarData(ciencia)} (Súmula 278 do `
+          + `STJ) e a ação só foi ajuizada em ${formatarData(ajuizamento)}, depois dos cinco anos que se `
+          + `encerraram em ${formatarData(limiteQuinquenal)} (art. 7º, XXIX, da CF). A pretensão `
+          + 'indenizatória nasce inteira com a ciência, e por isso prescreve inteira.',
+      },
+    };
+  }
+
+  const limites = [bienal.limite, limiteQuinquenal].filter(Boolean);
+  const prazo = limites.length ? limites.reduce(menor) : null;
+  const alertas = [];
+  if (!ajuizamento && prazo && hoje && hoje > prazo) {
+    // O biênio vencido já vem avisado pelo `apurarBienal`; o quinquênio, não.
+    if (bienal.alerta) alertas.push(bienal.alerta);
+    else {
+      alertas.push(`O prazo de cinco anos contado da ciência da incapacidade terminou em `
+        + `${formatarData(limiteQuinquenal)}. Se a ação ainda não foi proposta, a pretensão está prescrita `
+        + '(art. 7º, XXIX, da CF). Informe a data do ajuizamento para apurar.');
+    }
+  }
+  if (cienciaDepois) {
+    alertas.push(`A ciência da incapacidade (${formatarData(ciencia)}) é posterior ao fim do contrato: `
+      + 'o biênio corre dela, e não da extinção (Súmula 278 do STJ).');
+  }
+
+  let descricao = null;
+  if (prazo) {
+    descricao = ajuizamento
+      ? `ação ajuizada em ${formatarData(ajuizamento)}, dentro do prazo que ia até ${formatarData(prazo)}`
+      : `ajuizar até ${formatarData(prazo)} · informe o ajuizamento para apurar`;
+    // Só com o biênio, o quinquênio fica por apurar: ele corre da ciência.
+    if (!ciencia) descricao += ' · informe a ciência da incapacidade para apurar o quinquênio';
+  } else if (ajuizamento) {
+    descricao = 'informe a data da ciência da incapacidade para apurar';
+  }
+
+  return { impedimento: null, alertas, descricao };
+}
+
+/* ------------------------------------------------- percentual da perda --- */
+
+/** Lesões escolhidas na tabela, respeitando o que a tela mostra. */
+function lesoesEscolhidas(dados) {
+  const ids = [dados.lesao1];
+  // A segunda e a terceira só valem enquanto visíveis: uma escolha feita e
+  // depois escondida (voltando a segunda para "nenhuma") não pode contar.
+  if (dados.lesao2 && dados.lesao2 !== 'nenhuma') {
+    ids.push(dados.lesao2);
+    if (dados.lesao3 && dados.lesao3 !== 'nenhuma') ids.push(dados.lesao3);
+  }
+  return ids.map((id, i) => ({ lesao: lesaoPorId(id), grau: dados[`grau${i + 1}`] }))
+    .filter((e) => e.lesao);
+}
+
+function apurarPercentual(dados, erros, alertas) {
+  const criterio = dados.criterio ?? 'dpvat';
+
+  if (criterio === 'laudo') {
+    const percentual = num(dados.percentualLaudo);
+    if (percentual <= 0) erros.push('Informe o percentual de perda fixado no laudo.');
+    return { criterio, percentual: Math.min(100, percentual), lesoes: [], origem: 'Percentual fixado no laudo' };
+  }
+
+  if (criterio === 'cif') {
+    const q = qualificadorPorCodigo(dados.qualificadorCif);
+    if (!q || q.codigo === 0) {
+      erros.push('Escolha o qualificador da CIF fixado na perícia.');
+      return { criterio, percentual: 0, lesoes: [], origem: 'Qualificador da CIF' };
+    }
+    const informado = num(dados.percentualCif);
+    if (informado > 0 && (informado < q.de || informado > q.ate)) {
+      erros.push(`O percentual deve ficar dentro da faixa do qualificador ${q.codigo}: de ${q.de}% a ${q.ate}%.`);
+    }
+    const percentual = informado > 0 ? informado : (q.de + q.ate) / 2;
+    if (!(informado > 0)) {
+      alertas.push(`Sem percentual no laudo, a estimativa usa o meio da faixa do qualificador ${q.codigo} `
+        + `da CIF (${q.de}% a ${q.ate}%): ${pct(percentual)}. Se o perito fixou um número, informe-o.`);
+    }
+    return { criterio, percentual, lesoes: [], origem: `Qualificador ${q.codigo} da CIF (${q.nome})` };
+  }
+
+  const escolhidas = lesoesEscolhidas(dados);
+  if (!escolhidas.length) {
+    erros.push('Escolha a lesão na tabela DPVAT.');
+    return { criterio: 'dpvat', percentual: 0, lesoes: [], origem: 'Tabela DPVAT' };
+  }
+
+  const lesoes = escolhidas.map(({ lesao, grau }) => {
+    const total = eLesaoTotal(lesao.id);
+    // A invalidez total não se gradua: a lei só subdivide a parcial.
+    const repercussao = total ? REPERCUSSOES[0] : repercussaoPorValor(grau) ?? REPERCUSSOES[0];
+    const percentual = (lesao.percentual * repercussao.fator) / 100;
+    const conta = repercussao.fator === 100
+      ? `${lesao.percentual}%`
+      : `${lesao.percentual}% x ${repercussao.fator}% (repercussão ${repercussao.nome}) = ${pct(percentual)}`;
+    return { ...lesao, repercussao, percentual, conta };
+  });
+
+  const soma = lesoes.reduce((s, l) => s + l.percentual, 0);
+  if (soma > 100) {
+    alertas.push(`As lesões somam ${pct(soma)}; a perda fica limitada a 100%.`);
+  }
+  return {
+    criterio: 'dpvat',
+    percentual: Math.min(100, arredondar(soma)),
+    lesoes,
+    origem: 'Tabela DPVAT (anexo da Lei 6.194/74)',
+  };
+}
+
+/* --------------------------------------------------------------- pensão --- */
+
+/**
+ * Valor presente de `n` prestações mensais iguais, descontadas a `taxa` ao
+ * mês — a fórmula da quitação antecipada de um financiamento, que a 1ª Turma
+ * do TST adotou para a pensão paga de uma vez: VP = P x [1 - (1 + i)^-n] / i.
+ */
+export function valorPresente(prestacao, meses, taxaMensal) {
+  if (meses <= 0) return 0;
+  if (taxaMensal <= 0) return prestacao * meses;
+  return (prestacao * (1 - (1 + taxaMensal) ** -meses)) / taxaMensal;
+}
+
+function apurarPensao(dados, { remuneracao, percentual, ajuizamento }, erros, alertas) {
+  const inicio = parseData(dados.dataCiencia);
+  if (!inicio) erros.push('Informe a data da ciência da incapacidade: é dela que a pensão é devida.');
+
+  const unica = (dados.formaPensao ?? 'unica') === 'unica';
+  const nascimento = parseData(dados.dataNascimento);
+  const porIdade = dados.termoFinal === 'idade';
+  const sobrevida = num(dados.sobrevida);
+  const idadeFinal = num(dados.idadeFinal) || IDADE_FINAL_PADRAO;
+
+  let termo = null;
+  if (unica) {
+    if (porIdade) {
+      if (!nascimento) erros.push('Informe a data de nascimento para contar a idade final da pensão.');
+      else termo = somarAnosFracionados(nascimento, idadeFinal);
+    } else if (sobrevida <= 0) {
+      erros.push('Informe a expectativa de sobrevida da vítima na data da ciência (tábua do IBGE).');
+    } else if (inicio) {
+      termo = somarAnosFracionados(inicio, sobrevida);
+    }
+    if (inicio && termo && termo <= inicio) {
+      erros.push(`A idade final (${curto(idadeFinal)} anos) já tinha sido alcançada na data da `
+        + 'ciência. Use a expectativa de sobrevida da tábua do IBGE para a idade da vítima.');
+    }
+  }
+  if (nascimento && inicio && nascimento >= inicio) {
+    erros.push('A data de nascimento deve ser anterior à da ciência da incapacidade.');
+  }
+  if (erros.length) return null;
+
+  const integral = Boolean(dados.incapacidadeTotalOficio);
+  const percentualPensao = integral ? 100 : percentual;
+  const com13 = dados.incluir13 !== false;
+  const comTerco = dados.incluirTerco !== false;
+  const base = (remuneracao * percentualPensao) / 100;
+  const acrescimos = [com13 && '1/12 de 13º', comTerco && '1/12 do terço de férias'].filter(Boolean);
+  const mensal = arredondar(base * (1 + (com13 ? 1 / 12 : 0) + (comTerco ? 1 / 36 : 0)));
+
+  // Vencidas: da ciência até a véspera do cálculo — na inicial, o
+  // ajuizamento; depois dele, a data escolhida; sem nada, hoje.
+  const corte = parseData(dados.dataCalculo) ?? ajuizamento ?? parseData(dados.dataReferencia);
+  const limiteVencidas = termo && corte ? menor(corte, termo) : corte;
+  const mesesVencidos = limiteVencidas && limiteVencidas > inicio
+    ? contarPeriodo(inicio, menosUmDia(limiteVencidas)).meses
+    : 0;
+  const vencidas = arredondar(mensal * mesesVencidos);
+
+  const contexto = {
+    remuneracao, percentualPensao, integral, mensal, acrescimos, inicio, corte, unica, termo,
+    mesesVencidos, vencidas, nascimento,
+    idadeNaCiencia: nascimento ? anosCompletos(nascimento, inicio) : null,
+    idadeFinal: porIdade ? idadeFinal : null,
+    sobrevida: unica && !porIdade ? sobrevida : null,
+  };
+
+  if (!unica) {
+    // Pensão mensal vitalícia: no valor do pedido entram as vencidas e doze
+    // vincendas, por ser obrigação de prazo indeterminado (art. 292, §§1º e
+    // 2º, do CPC, c/c art. 840, §1º, da CLT).
+    return { ...contexto, mesesVincendos: 12, nominalVincendas: arredondar(mensal * 12), vincendas: arredondar(mensal * 12) };
+  }
+
+  const inicioVincendas = corte ? maior(corte, inicio) : inicio;
+  const mesesVincendos = termo > inicioVincendas
+    ? contarPeriodo(inicioVincendas, menosUmDia(termo)).meses
+    : 0;
+  if (corte && termo <= corte) {
+    alertas.push(`O termo final estimado (${formatarData(termo)}) já passou na data do cálculo: todas as `
+      + 'parcelas estão vencidas. Como a pensão da vítima é vitalícia, as seguintes continuam devidas mês a mês.');
+  }
+  if (corte && inicio > corte) {
+    alertas.push('A ciência da incapacidade é posterior à data do cálculo: todas as parcelas são vincendas.');
+  }
+
+  const nominalVincendas = arredondar(mensal * mesesVincendos);
+  const porDesagio = dados.metodoDesconto === 'desagio';
+  const taxa = dados.taxaJuros === undefined || dados.taxaJuros === '' ? TAXA_VALOR_PRESENTE : num(dados.taxaJuros);
+  const desagio = dados.desagio === undefined || dados.desagio === '' ? DESAGIO_PADRAO : num(dados.desagio);
+  const vincendas = porDesagio
+    ? arredondar(nominalVincendas * (1 - desagio / 100))
+    : arredondar(valorPresente(mensal, mesesVincendos, taxa / 100));
+  const desagioEfetivo = nominalVincendas > 0 ? (1 - vincendas / nominalVincendas) * 100 : 0;
+
+  return {
+    ...contexto, mesesVincendos, nominalVincendas, vincendas, porDesagio, taxa, desagio, desagioEfetivo,
+  };
+}
+
+/* ------------------------------------------------------------- cálculo --- */
+
+export function calcularAcidente(dados) {
+  const erros = [];
+  const alertas = [];
+
+  // Prescrição primeiro: as datas bastam, e de uma pretensão prescrita
+  // nenhum valor serve.
+  const prescricao = apurarPrescricaoAcidentaria(dados);
+  if (prescricao.impedimento) return resultadoImpedido(prescricao.impedimento);
+  const comPrescricao = (lista) => ({ ...resultadoComErros(lista), alertas: prescricao.alertas });
+
+  const pedePensao = dados.pedirPensao !== false;
+  const pedeMorais = dados.pedirMorais !== false;
+  const pedeEsteticos = Boolean(dados.pedirEsteticos);
+  const emergentes = num(dados.danosEmergentes);
+  if (!pedePensao && !pedeMorais && !pedeEsteticos && emergentes <= 0) {
+    return comPrescricao(['Escolha ao menos uma indenização: pensão, danos morais, estéticos ou despesas.']);
+  }
+
+  const salario = num(dados.salarioBase);
+  const remuneracao = arredondar(salario + num(dados.outrasParcelas));
+  if ((pedePensao || pedeMorais || pedeEsteticos) && salario <= 0) {
+    erros.push('Informe o último salário contratual da vítima.');
+  }
+
+  // O percentual da perda mede a pensão e orienta o dano moral; o estético e
+  // as despesas não dependem dele.
+  const perda = pedePensao || pedeMorais ? apurarPercentual(dados, erros, alertas) : null;
+  const qualificador = perda ? classificarCIF(perda.percentual) : null;
+
+  const multiplicadorEsteticos = num(dados.multiplicadorEsteticos);
+  if (pedeEsteticos && multiplicadorEsteticos <= 0) {
+    erros.push('Informe em quantos salários estimar o dano estético.');
+  }
+
+  const ajuizamento = parseData(dados.dataAjuizamento);
+  const pensao = pedePensao && !erros.length
+    ? apurarPensao(dados, { remuneracao, percentual: perda.percentual, ajuizamento }, erros, alertas)
+    : null;
+  if (pedePensao && !pensao && !erros.length) erros.push('Não foi possível apurar a pensão.');
+  if (erros.length) return comPrescricao(erros);
+
+  const itens = [];
+  if (pensao) {
+    if (pensao.integral) {
+      alertas.push('Marcada a incapacidade total para o ofício: a pensão corresponde à remuneração inteira '
+        + '(art. 950 do CC — "importância do trabalho para que se inabilitou"), ainda que a vítima possa '
+        + 'exercer outra atividade. O percentual da tabela segue orientando o dano moral.');
+    }
+    const periodoVencido = pensao.mesesVencidos > 0
+      ? `${curto(pensao.mesesVencidos)} meses de ${moeda.format(pensao.mensal)}, `
+        + `de ${formatarData(pensao.inicio)} até a véspera de ${formatarData(pensao.unica && pensao.termo < pensao.corte
+          ? pensao.termo : pensao.corte)}`
+      : null;
+    if (periodoVencido) {
+      itens.push({ chave: 'pensao_vencida', label: 'Pensão vencida (art. 950 do CC)', detalhe: periodoVencido,
+        valor: pensao.vencidas });
+    }
+    if (pensao.unica && pensao.mesesVincendos > 0) {
+      itens.push({
+        chave: 'pensao_vincenda',
+        label: 'Pensão vincenda em parcela única (art. 950, parágrafo único, do CC)',
+        detalhe: `${curto(pensao.mesesVincendos)} meses de ${moeda.format(pensao.mensal)} = `
+          + `${moeda.format(pensao.nominalVincendas)}, ${pensao.porDesagio
+            ? `com deságio de ${pct(pensao.desagio)}`
+            : `trazidos a valor presente a ${curto(pensao.taxa)}% ao mês`}`,
+        valor: pensao.vincendas,
+      });
+    } else if (!pensao.unica) {
+      itens.push({
+        chave: 'pensao_vincenda',
+        label: 'Pensão mensal vitalícia — 12 parcelas vincendas',
+        detalhe: `${moeda.format(pensao.mensal)} por mês; no valor do pedido entram 12 prestações `
+          + '(art. 292, §2º, do CPC)',
+        valor: pensao.vincendas,
+      });
+    }
+  }
+
+  if (emergentes > 0) {
+    itens.push({ chave: 'danos_emergentes', label: 'Despesas com tratamento (danos emergentes)',
+      detalhe: 'Art. 949 do CC — valor informado', valor: arredondar(emergentes) });
+  }
+
+  let morais = null;
+  if (pedeMorais) {
+    const escolhida = dados.naturezaOfensa && dados.naturezaOfensa !== 'auto'
+      ? naturezaPorValor(dados.naturezaOfensa) : null;
+    const natureza = escolhida ?? naturezaSugerida(qualificador);
+    const informado = num(dados.multiplicadorMorais);
+    const multiplicador = informado > 0 ? informado : natureza.teto;
+    if (multiplicador > natureza.teto) {
+      alertas.push(`${curto(multiplicador)} salários superam o teto da ofensa de natureza `
+        + `${natureza.nome} (${natureza.teto}). O STF admite ir além, fundamentadamente (ADIs 6050, 6069 e 6082).`);
+    }
+    morais = { natureza, multiplicador, sugerida: !escolhida, peloTeto: !(informado > 0) };
+    itens.push({
+      chave: 'danos_morais',
+      label: 'Danos morais (art. 223-G da CLT)',
+      detalhe: `${curto(multiplicador)} x ${moeda.format(salario)} (último salário contratual) — `
+        + `ofensa de natureza ${natureza.nome}, art. 223-G, §1º, ${natureza.inciso}`,
+      valor: arredondar(salario * multiplicador),
+    });
+  }
+
+  if (pedeEsteticos) {
+    itens.push({
+      chave: 'danos_esteticos',
+      label: 'Danos estéticos (Súmula 387 do STJ)',
+      detalhe: `${curto(multiplicadorEsteticos)} x ${moeda.format(salario)} (último salário contratual)`,
+      valor: arredondar(salario * multiplicadorEsteticos),
+    });
+  }
+
+  const total = arredondar(itens.reduce((soma, i) => soma + i.valor, 0));
+
+  return {
+    erros: [],
+    alertas: [...prescricao.alertas, ...alertas],
+    impedimento: null,
+    recorte: null,
+    contexto: {
+      semPeriodo: true,
+      perda,
+      qualificador,
+      cif: qualificador ? descreverCIF(qualificador) : null,
+      referenciaDpvat: perda ? arredondar((TETO_DPVAT * perda.percentual) / 100) : null,
+      salario: arredondar(salario),
+      pensao,
+      morais,
+      prescricao: prescricao.descricao,
+    },
+    mensais: [],
+    periodo: itens,
+    fgts: null,
+    totais: { mensal: 0, periodo: total, fgts: 0, geral: total },
+  };
+}

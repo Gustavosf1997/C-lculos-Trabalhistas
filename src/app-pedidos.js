@@ -46,6 +46,22 @@ function montarPedidos() {
 
 /* --------------------------------------------------- montagem dos campos */
 
+/** Opções de um select; as que declaram `grupo` vêm reunidas em optgroup. */
+function opcoesHtml(campo) {
+  let html = '';
+  let grupoAberto = null;
+  for (const o of campo.opcoes) {
+    const grupo = o.grupo ?? null;
+    if (grupo !== grupoAberto) {
+      if (grupoAberto) html += '</optgroup>';
+      if (grupo) html += `<optgroup label="${grupo}">`;
+      grupoAberto = grupo;
+    }
+    html += `<option value="${o.valor}" ${o.valor === campo.valor ? 'selected' : ''}>${o.label}</option>`;
+  }
+  return grupoAberto ? `${html}</optgroup>` : html;
+}
+
 function campoHtml(campo) {
   const rotulo = `<span class="campo__rotulo">${campo.rotulo}${campo.obrigatorio ? ' <b>*</b>' : ''}</span>`;
   const dica = campo.dica ? `<span class="campo__dica">${campo.dica}</span>` : '';
@@ -73,9 +89,7 @@ function campoHtml(campo) {
 
   if (campo.tipo === 'select') {
     return `<label class="${classe}" id="campo-${campo.id}">${rotulo}
-      <select id="${campo.id}">${campo.opcoes
-        .map((o) => `<option value="${o.valor}" ${o.valor === campo.valor ? 'selected' : ''}>${o.label}</option>`)
-        .join('')}</select>
+      <select id="${campo.id}">${opcoesHtml(campo)}</select>
       ${dica}
     </label>`;
   }
@@ -191,9 +205,10 @@ function renderResultado(r) {
     alvo.innerHTML = `<div class="impedimento" role="alert">
       <b>${r.impedimento.titulo}</b>
       <p>${r.impedimento.mensagem}</p>
-      <p class="impedimento__saida">Os demais campos ficam bloqueados. ${r.impedimento.bienal
-        ? 'Corrija a data de fim do contrato ou a do ajuizamento'
-        : 'Corrija o período pedido ou a data do ajuizamento'} para liberar o cálculo.</p>
+      <p class="impedimento__saida">Os demais campos ficam bloqueados. ${pedido.saidaDoImpedimento
+        ?? (r.impedimento.bienal
+          ? 'Corrija a data de fim do contrato ou a do ajuizamento'
+          : 'Corrija o período pedido ou a data do ajuizamento')} para liberar o cálculo.</p>
     </div>`;
     return;
   }
@@ -239,8 +254,8 @@ function renderResultado(r) {
     </div>` : ''}
 
     <div class="liquido"><span>Total do pedido</span><b>${moeda.format(r.totais.geral)}</b></div>
-    <p class="observacao">Valores brutos: sem juros, sem correção monetária e sem os
-      descontos de INSS e IRRF, que são apurados na execução.</p>`;
+    <p class="observacao">${pedido.observacao ?? `Valores brutos: sem juros, sem correção monetária e sem os
+      descontos de INSS e IRRF, que são apurados na execução.`}</p>`;
 }
 
 function selecionarPedido(id) {
@@ -267,7 +282,7 @@ function selecionarPedido(id) {
 
 /** Campos que permanecem editáveis: são eles que afastam o impedimento. */
 const CAMPOS_DO_PERIODO = [
-  'dataInicio', 'dataFim', 'dataAjuizamento', 'dataExtincao', 'dataRescisao', 'dataFimAviso',
+  'dataInicio', 'dataFim', 'dataAjuizamento', 'dataExtincao', 'dataRescisao', 'dataFimAviso', 'dataCiencia',
 ];
 
 function bloquearEntrada(bloqueado) {
