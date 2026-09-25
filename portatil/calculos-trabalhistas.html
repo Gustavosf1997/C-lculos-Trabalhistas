@@ -4603,8 +4603,15 @@ const pedidoAcidente = {
     + 'imposto de renda (art. 6º, IV, da Lei 7.713/88) e não sofrem contribuição previdenciária.',
   grupos: [
     {
-      titulo: 'Acidente e prescrição',
+      titulo: 'Vítima, acidente e prescrição',
       campos: [
+        // Nascimento e sexo moram com as demais datas, no topo, para serem
+        // preenchidos junto com elas; só a pensão os usa (tábua do IBGE).
+        { id: 'dataNascimento', rotulo: 'Data de nascimento', tipo: 'data',
+          dica: 'Com ela e o sexo, a sobrevida da pensão sai da tábua do IBGE, pela idade na data da ciência.' },
+        { id: 'sexo', rotulo: 'Sexo da vítima', tipo: 'select', valor: '',
+          opcoes: [{ valor: '', label: 'Escolha…' }, ...SEXOS.map((x) => ({ valor: x.valor, label: x.label }))],
+          dica: `Escolhe a tábua do IBGE de ${TABUA_IBGE.ano}: homens e mulheres têm expectativas diferentes.` },
         { id: 'dataCiencia', rotulo: 'Ciência inequívoca da incapacidade', tipo: 'data',
           dica: 'Em regra, a consolidação das lesões ou o laudo que a atesta. É o início da pensão e o marco da '
             + 'prescrição (Súmula 278 do STJ).' },
@@ -4691,11 +4698,6 @@ const pedidoAcidente = {
             { valor: 'sobrevida', label: 'Expectativa de sobrevida na idade da vítima (tábua do IBGE)' },
             { valor: 'idade', label: 'Até uma idade' },
           ] },
-        { id: 'sexo', rotulo: 'Sexo da vítima', tipo: 'select', valor: '', aparece: (d) => d.pedirPensao,
-          opcoes: [{ valor: '', label: 'Escolha…' }, ...SEXOS.map((x) => ({ valor: x.valor, label: x.label }))],
-          dica: `Escolhe a tábua do IBGE de ${TABUA_IBGE.ano}: homens e mulheres têm expectativas diferentes.` },
-        { id: 'dataNascimento', rotulo: 'Data de nascimento', tipo: 'data', aparece: (d) => d.pedirPensao,
-          dica: 'Com ela e o sexo, a sobrevida sai da tábua, pela idade na data da ciência.' },
         { id: 'sobrevida', rotulo: 'Sobrevida de outra tábua (anos)', tipo: 'decimal', min: 0, max: 100,
           aparece: (d) => d.pedirPensao && d.formaPensao === 'unica' && d.termoFinal !== 'idade',
           dica: `Em branco: a tábua do IBGE de ${TABUA_IBGE.ano} do sexo escolhido. Preencha só para usar a `
