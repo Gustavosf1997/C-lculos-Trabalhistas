@@ -37,7 +37,13 @@ export const DESCONTOS = [
     campo: 'pensaoPercentual',
     tipo: 'percentual',
     rotulo: 'Pensão alimentícia',
-    dica: 'Percentual incidente sobre as verbas rescisórias.',
+    dica: 'Em regra, só sobre as verbas salariais — saldo, horas extras e 13º —, pelo valor bruto: as '
+      + 'indenizatórias ficam fora da base (STJ), salvo decisão ou acordo em contrário.',
+    complemento: {
+      id: 'pensaoSobreIndenizatorias',
+      rotulo: 'Incluir as verbas indenizatórias (aviso prévio indenizado, férias + 1/3, art. 479) — só se a '
+        + 'decisão ou o acordo mandar',
+    },
   },
   {
     id: 'outros',

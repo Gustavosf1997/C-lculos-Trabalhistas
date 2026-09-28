@@ -187,6 +187,7 @@ test('os elementos que a tela procura existem no HTML', () => {
   const injetados = new Set([
     ...DESCONTOS.map((d) => `campo-${d.id}`),
     ...DESCONTOS.map((d) => d.campo),
+    ...DESCONTOS.filter((d) => d.complemento).flatMap((d) => [d.complemento.id, `campo-${d.complemento.id}`]),
   ]);
   const faltando = [...new Set(procurados)]
     .filter((id) => !injetados.has(id))

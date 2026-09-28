@@ -44,8 +44,8 @@ test('insalubridade usa o salário mínimo como base, salvo escolha diferente', 
 
 test('insalubridade e periculosidade não se somam', () => {
   const r = calcularHorasExtras({ ...base, risco: 'insalubridade', grauInsalubridade: 20 });
-  assert.equal(r.contexto.risco.valor, 324.2);
-  assert.equal(r.contexto.baseCalculo, 2324.2); // só um dos adicionais
+  assert.equal(r.contexto.risco.valor, 282.4); // 20% do mínimo de 2024 (R$ 1.412,00)
+  assert.equal(r.contexto.baseCalculo, 2282.4); // só um dos adicionais
 });
 
 test('o divisor muda o valor da hora', () => {

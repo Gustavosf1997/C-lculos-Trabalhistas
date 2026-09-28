@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Cálculos Trabalhistas</title>
 <!--
-  Versão portátil — esboço v0.1 · atualizada em 25/09/2026
+  Versão portátil — esboço v0.1 · atualizada em 28/09/2026
 
   Arquivo único: abra com dois cliques, em qualquer navegador. Não instala
   nada, não precisa de internet e não envia dado nenhum para servidor — todo
@@ -456,12 +456,16 @@ body {
               <fieldset class="campo campo--largo opcoes">
                 <legend class="campo__rotulo">Adicionais recebidos</legend>
                 <div class="opcoes__lista" id="opcoes-adicionais" data-dinamico></div>
-                <span class="campo__dica">Insalubridade e periculosidade não se acumulam (art. 193, §2º). A insalubridade incide sobre o salário mínimo (art. 192 da CLT).</span>
+                <span class="campo__dica">Insalubridade e periculosidade não se acumulam (art. 193, §2º). A insalubridade incide sobre o salário mínimo do mês da saída (art. 192 da CLT).</span>
               </fieldset>
               <label class="campo" id="campo-horas-noturnas" hidden>
                 <span class="campo__rotulo">Horas noturnas por mês</span>
                 <input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="300" id="horasNoturnas" placeholder="0" />
-                <span class="campo__dica">20% sobre a hora normal, já integrada pelos demais adicionais (Súmula 60, I, do TST). Não considera a hora noturna reduzida (art. 73, §1º).</span>
+                <span class="campo__dica">20% sobre a hora normal, já integrada pelos demais adicionais (Súmula 60, I, do TST).</span>
+              </label>
+              <label class="campo campo--largo checkbox" id="campo-hora-reduzida" hidden>
+                <input type="checkbox" id="horaNoturnaReduzida" checked />
+                <span>Horas de relógio: aplicar a hora noturna reduzida de 52min30s (art. 73, §1º) — desmarque se já forem horas fictas ou se o trabalho for rural</span>
               </label>
             </div>
             <p class="nota-remuneracao" id="nota-remuneracao">Remuneração para cálculo: <b>R$ 0,00</b></p>
@@ -808,7 +812,7 @@ const TIPOS = {
       { label: 'Férias proporcionais + 1/3', devida: true },
       { label: 'Multa de 40% do FGTS e saque', devida: true },
       { label: 'Aviso prévio', devida: false, nota: 'salvo cláusula assecuratória' },
-      { label: 'Seguro-desemprego', devida: false, nota: 'regra geral' },
+      { label: 'Seguro-desemprego', devida: true, nota: 'se preenchidos os requisitos — é dispensa sem justa causa' },
     ],
     // Com a cláusula do art. 481 o contrato passa a seguir as regras do prazo
     // indeterminado: entra o aviso prévio e sai a indenização do art. 479.
@@ -842,8 +846,10 @@ const TIPOS = {
       multa: 0.4,
       rotuloMulta: 'Multa rescisória de 40%',
       saque: 'Saque integral do saldo',
-      seguroDesemprego: 'Não, em regra',
-      seguroDesempregoComClausula: 'Sim, se preenchidos os requisitos legais',
+      // A rescisão antecipada pelo empregador é dispensa sem justa causa
+      // (Lei 7.998/90, art. 3º): o que falta, muitas vezes, é o tempo mínimo
+      // de emprego para habilitar o benefício — não o direito em tese.
+      seguroDesemprego: 'Sim, se preenchidos os requisitos legais (tempo mínimo de emprego)',
     },
   },
 
@@ -936,6 +942,96 @@ const VIGENCIA_DETALHE =
 const SALARIO_MINIMO = 1621.0;
 
 /**
+ * Salário mínimo nacional desde maio de 2005, com a data em que cada valor
+ * passou a valer. A insalubridade incide sobre o mínimo **de cada mês**
+ * (art. 192 da CLT): um pedido que atravessa anos não pode usar o de hoje.
+ * Anos com duas mudanças: 2011 (R$ 540 e, em março, R$ 545), 2020 (R$ 1.039
+ * e, em fevereiro, R$ 1.045 — MP 919/2020) e 2023 (R$ 1.302 e, em maio,
+ * R$ 1.320 — MP 1.172/2023).
+ */
+const SALARIOS_MINIMOS = [
+  { desde: '2005-05-01', valor: 300.0 },
+  { desde: '2006-04-01', valor: 350.0 },
+  { desde: '2007-04-01', valor: 380.0 },
+  { desde: '2008-03-01', valor: 415.0 },
+  { desde: '2009-02-01', valor: 465.0 },
+  { desde: '2010-01-01', valor: 510.0 },
+  { desde: '2011-01-01', valor: 540.0 },
+  { desde: '2011-03-01', valor: 545.0 },
+  { desde: '2012-01-01', valor: 622.0 },
+  { desde: '2013-01-01', valor: 678.0 },
+  { desde: '2014-01-01', valor: 724.0 },
+  { desde: '2015-01-01', valor: 788.0 },
+  { desde: '2016-01-01', valor: 880.0 },
+  { desde: '2017-01-01', valor: 937.0 },
+  { desde: '2018-01-01', valor: 954.0 },
+  { desde: '2019-01-01', valor: 998.0 },
+  { desde: '2020-01-01', valor: 1039.0 },
+  { desde: '2020-02-01', valor: 1045.0 },
+  { desde: '2021-01-01', valor: 1100.0 },
+  { desde: '2022-01-01', valor: 1212.0 },
+  { desde: '2023-01-01', valor: 1302.0 },
+  { desde: '2023-05-01', valor: 1320.0 },
+  { desde: '2024-01-01', valor: 1412.0 },
+  { desde: '2025-01-01', valor: 1518.0 },
+  { desde: '2026-01-01', valor: SALARIO_MINIMO },
+];
+
+const isoDe = (data) => (data instanceof Date ? data.toISOString().slice(0, 10) : String(data));
+
+/**
+ * Salário mínimo vigente numa data. Antes de maio de 2005 devolve o primeiro
+ * da série — quem chama avisa, porque aí o valor não é o da época.
+ */
+function salarioMinimoEm(data) {
+  if (!data) return SALARIO_MINIMO;
+  const dia = isoDe(data);
+  let valor = SALARIOS_MINIMOS[0].valor;
+  for (const faixa of SALARIOS_MINIMOS) {
+    if (faixa.desde <= dia) valor = faixa.valor;
+    else break;
+  }
+  return valor;
+}
+
+/** A série não alcança a data (anterior a maio de 2005). */
+const antesDaSerieDoMinimo = (data) => Boolean(data) && isoDe(data) < SALARIOS_MINIMOS[0].desde;
+
+/**
+ * Média do salário mínimo num período, ponderada como os meses do cálculo:
+ * mês inteiro pesa 1, mês partido pesa a fração dos seus dias. Um adicional
+ * mensal proporcional ao mínimo, somado mês a mês, dá exatamente o mesmo que
+ * essa média vezes os meses — então a média basta, e o total sai certo.
+ *
+ * @returns {{media: number, valores: number[]}} média e valores distintos que o período atravessou
+ */
+function salarioMinimoMedio(inicio, fim) {
+  if (!inicio || !fim || fim < inicio) {
+    const valor = salarioMinimoEm(fim ?? inicio);
+    return { media: valor, valores: [valor] };
+  }
+  const DIA = 86400000;
+  let peso = 0;
+  let soma = 0;
+  const valores = new Set();
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const ultimo = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > cursor ? inicio : cursor;
+    const ate = fim < ultimo ? fim : ultimo;
+    // O mínimo sempre mudou no dia 1º: dentro do mês, vale um só.
+    const valor = salarioMinimoEm(cursor);
+    const fracao = (Math.round((ate - de) / DIA) + 1) / ultimo.getUTCDate();
+    soma += valor * fracao;
+    peso += fracao;
+    valores.add(valor);
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+  if (valores.size === 1) return { media: [...valores][0], valores: [...valores] };
+  return { media: Math.round((soma / peso) * 10000) / 10000, valores: [...valores] };
+}
+
+/**
  * Faixas progressivas do INSS do segurado empregado, vigentes desde a
  * competência de janeiro de 2026 (Portaria Interministerial MPS/MF nº 13,
  * de 09/01/2026). Teto do salário de contribuição: R$ 8.475,55.
@@ -980,7 +1076,7 @@ const FGTS = {
   multaComumAcordo: 0.2,
 };
 
-    return { VIGENCIA, VIGENCIA_DETALHE, SALARIO_MINIMO, INSS, IRRF, FGTS };
+    return { VIGENCIA, VIGENCIA_DETALHE, SALARIO_MINIMO, SALARIOS_MINIMOS, salarioMinimoEm, antesDaSerieDoMinimo, salarioMinimoMedio, INSS, IRRF, FGTS };
   })();
 
   /* src/formato.js */
@@ -1042,6 +1138,11 @@ function formatarNumeroBR(valor, casas = 2) {
     minimumFractionDigits: casas,
     maximumFractionDigits: casas,
   });
+}
+
+/** Até duas casas, sem zero à direita: 16,5 e não 16,50; 33 e não 33,00. */
+function formatarNumeroCurto(valor) {
+  return Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 }
 
 /** Formata sem casas decimais quando o número é inteiro. */
@@ -1107,7 +1208,7 @@ function hojeISO(agora = new Date()) {
   return `${agora.getFullYear()}-${dois(agora.getMonth() + 1)}-${dois(agora.getDate())}`;
 }
 
-    return { moeda, parseNumeroBR, formatarNumeroBR, formatarQuantidade, parseDataBR, formatarDataBR, mascararData, mascararInteiro, mascararDecimal, hojeISO };
+    return { moeda, parseNumeroBR, formatarNumeroBR, formatarNumeroCurto, formatarQuantidade, parseDataBR, formatarDataBR, mascararData, mascararInteiro, mascararDecimal, hojeISO };
   })();
 
   /* src/adicionais.js */
@@ -1124,6 +1225,9 @@ function hojeISO(agora = new Date()) {
 
 /** Divisor mensal padrão (44h semanais). Cada tela pode informar o seu. */
 const DIVISOR_PADRAO = 220;
+
+/** Hora noturna reduzida: 52min30s (art. 73, §1º, da CLT). */
+const FATOR_HORA_NOTURNA = 60 / 52.5;
 
 const SEM_ADICIONAIS = 'nenhum';
 
@@ -1196,8 +1300,13 @@ function calcularAdicionais({
   selecionados = [],
   salarioBase = 0,
   horasNoturnas = 0,
+  horaReduzida = true,
   divisor = DIVISOR_PADRAO,
+  salarioMinimo = SALARIO_MINIMO,
 } = {}) {
+  // Horas de relógio viram horas fictas de 52min30s (art. 73, §1º): sete de
+  // relógio valem oito. Desligado, as horas informadas já são as fictas.
+  const horasFictas = horaReduzida ? horasNoturnas * FATOR_HORA_NOTURNA : horasNoturnas;
   const itens = [];
 
   // O adicional noturno incide sobre a hora normal, que já vem integrada pelos
@@ -1212,10 +1321,10 @@ function calcularAdicionais({
     if (!adicional) continue;
 
     let valor = 0;
-    if (adicional.base === 'salario_minimo') valor = SALARIO_MINIMO * adicional.percentual;
+    if (adicional.base === 'salario_minimo') valor = salarioMinimo * adicional.percentual;
     else if (adicional.base === 'salario_base') valor = salarioBase * adicional.percentual;
     else if (adicional.base === 'horas_noturnas') {
-      valor = (baseHora / divisor) * horasNoturnas * adicional.percentual;
+      valor = (baseHora / divisor) * horasFictas * adicional.percentual;
     }
     if (adicional.base !== 'horas_noturnas') baseHora += valor;
 
@@ -1223,8 +1332,14 @@ function calcularAdicionais({
       id,
       label: adicional.label,
       detalhe: adicional.base === 'horas_noturnas'
-        ? `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`
-        : adicional.detalhe,
+        ? (horaReduzida
+          ? `${formatarQuantidade(horasNoturnas)} h de relógio = ${formatarQuantidade(arredondar(horasFictas))} h `
+            + 'fictas por mês (52min30s)'
+          : `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`)
+        : adicional.base === 'salario_minimo'
+          ? `${adicional.detalhe.replace('sobre o salário mínimo', '')}sobre o salário mínimo de `
+            + `${salarioMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+          : adicional.detalhe,
       valor: arredondar(valor),
     });
   }
@@ -1297,7 +1412,13 @@ const DESCONTOS = [
     campo: 'pensaoPercentual',
     tipo: 'percentual',
     rotulo: 'Pensão alimentícia',
-    dica: 'Percentual incidente sobre as verbas rescisórias.',
+    dica: 'Em regra, só sobre as verbas salariais — saldo, horas extras e 13º —, pelo valor bruto: as '
+      + 'indenizatórias ficam fora da base (STJ), salvo decisão ou acordo em contrário.',
+    complemento: {
+      id: 'pensaoSobreIndenizatorias',
+      rotulo: 'Incluir as verbas indenizatórias (aviso prévio indenizado, férias + 1/3, art. 479) — só se a '
+        + 'decisão ou o acordo mandar',
+    },
   },
   {
     id: 'outros',
@@ -1445,11 +1566,11 @@ function descreverPrescricao({ ajuizamento, limite, marco }) {
  * acordo individual e jurisprudência local podem alterar o resultado.
  */
 
-  const { INSS, IRRF, FGTS } = __modulos['src/tabelas.js'];
+  const { INSS, IRRF, FGTS, salarioMinimoEm } = __modulos['src/tabelas.js'];
   const { TIPOS } = __modulos['src/tipos.js'];
   const { calcularAdicionais, DIVISOR_PADRAO } = __modulos['src/adicionais.js'];
   const { salarioHora } = __modulos['src/descontos.js'];
-  const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
+  const { moeda, formatarQuantidade, formatarNumeroCurto } = __modulos['src/formato.js'];
   const { apurarBienal, marcoQuinquenal, fimDoConcessivo, descreverPrescricao, formatarDataPrescricao } = __modulos['src/prescricao.js'];
 
 /* ------------------------------------------------------------------ datas */
@@ -1754,22 +1875,6 @@ function calcularRescisao(dados) {
   }
   const alertas = [];
 
-  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
-
-  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual.
-  const adicionais = calcularAdicionais({
-    selecionados: dados.adicionais ?? [],
-    salarioBase,
-    horasNoturnas: num(dados.horasNoturnas),
-    divisor,
-  });
-  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
-  // que o saldo de salário é rateado. As médias de variáveis servem para
-  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
-  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
-  const medias = num(dados.mediaComissoes);
-  const remuneracao = arredondar(remuneracaoFixa + medias);
-
   /* --- aviso prévio --- */
   const anos = anosCompletos(admissao, dataAviso);
 
@@ -1787,8 +1892,11 @@ function calcularRescisao(dados) {
     ? (tipo.aviso.diasFixos ?? Math.min(30 + 3 * anos, 90))
     : 0;
 
+  // No distrato (art. 484-A, I, "a"), o aviso indenizado é devido pela
+  // metade — metade exata: 33 dias rendem 16,5 dias de salário, e não 17. A
+  // data projetada, que precisa de dia inteiro, arredonda a metade para cima.
   let diasAvisoDevidos = diasAvisoLegais;
-  if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = Math.round(diasAvisoLegais / 2);
+  if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = diasAvisoLegais / 2;
   if (tipoAviso === 'nenhum' || tipoAviso === 'dispensado') diasAvisoDevidos = 0;
 
   const avisoIndenizado = tipoAviso === 'indenizado' || tipoAviso === 'indenizado_metade';
@@ -1809,7 +1917,7 @@ function calcularRescisao(dados) {
   // tempo de serviço — OJ 82 da SDI-1 e Súmula 305 do TST).
   const ultimoDiaTrabalhado = avisoTrabalhado ? addDias(dataAviso, diasAvisoTrabalhados) : dataAviso;
   const dataProjetada = diasAvisoPagos > 0
-    ? addDias(ultimoDiaTrabalhado, diasAvisoPagos)
+    ? addDias(ultimoDiaTrabalhado, Math.ceil(diasAvisoPagos))
     : ultimoDiaTrabalhado;
 
   /* --- prescrição bienal (art. 7º, XXIX, da CF) --- */
@@ -1842,6 +1950,26 @@ function calcularRescisao(dados) {
       proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
     };
   }
+
+  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
+
+  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual. A
+  // insalubridade usa o salário mínimo do último mês trabalhado (art. 192),
+  // e não o de hoje: uma rescisão de 2024 tem o mínimo de 2024.
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais ?? [],
+    salarioBase,
+    horasNoturnas: num(dados.horasNoturnas),
+    horaReduzida: dados.horaNoturnaReduzida !== false,
+    divisor,
+    salarioMinimo: salarioMinimoEm(ultimoDiaTrabalhado),
+  });
+  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
+  // que o saldo de salário é rateado. As médias de variáveis servem para
+  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
+  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
+  const medias = num(dados.mediaComissoes);
+  const remuneracao = arredondar(remuneracaoFixa + medias);
 
   if (excedenteTrabalhado > 0) {
     alertas.push(
@@ -1897,7 +2025,7 @@ function calcularRescisao(dados) {
       : (tipoAviso === 'indenizado_metade' ? 'Aviso prévio indenizado (50%)' : 'Aviso prévio indenizado');
     const detalheAviso = excedenteTrabalhado > 0
       ? `${diasAvisoPagos} dias além dos ${diasAvisoTrabalhados} cumpridos (de ${diasAvisoLegais} proporcionais)`
-      : `${diasAvisoPagos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
+      : `${formatarNumeroCurto(diasAvisoPagos)} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
     proventos.push({
       chave: 'aviso_previo',
       label: rotuloAviso,
@@ -2170,12 +2298,23 @@ function calcularRescisao(dados) {
 
   const totalProventosBrutos = proventos.reduce((s, p) => s + p.valor, 0);
   if (pensaoPercentual > 0) {
+    // O STJ tira da base da pensão as verbas rescisórias indenizatórias —
+    // aviso prévio indenizado, férias indenizadas e o seu terço, a indenização
+    // do art. 479 —, salvo decisão ou acordo expresso em contrário. Em regra,
+    // ela incide só sobre as salariais: saldo, horas extras e 13º.
+    const sobreTudo = Boolean(dados.pensaoSobreIndenizatorias);
+    const SALARIAIS = ['saldo_salario', 'horas_extras', 'decimo_terceiro', 'decimo_terceiro_ano_seguinte'];
+    const basePensao = sobreTudo
+      ? totalProventosBrutos
+      : proventos.filter((p) => SALARIAIS.includes(p.chave)).reduce((s, p) => s + p.valor, 0);
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
       natureza: 'pensao',
-      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
-      valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
+      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre ${moeda.format(arredondar(basePensao))} — ${sobreTudo
+        ? 'todas as verbas rescisórias, como mandou a decisão ou o acordo'
+        : 'verbas salariais (saldo, horas extras e 13º); as indenizatórias ficam fora (STJ)'}`,
+      valor: arredondar(basePensao * (pensaoPercentual / 100)),
     });
   }
 
@@ -2320,7 +2459,7 @@ function calcularRescisao(dados) {
  */
 
 const VERSAO = '0.1';
-const ATUALIZADO_EM = '25/09/2026';
+const ATUALIZADO_EM = '28/09/2026';
 const CARIMBO = `esboço v${VERSAO} · atualizada em ${ATUALIZADO_EM}`;
 
     return { VERSAO, ATUALIZADO_EM, CARIMBO };
@@ -2632,9 +2771,9 @@ function imprimir(nomeArquivo) {
  * somar o aviso prévio e totalizar.
  */
 
-  const { FGTS, SALARIO_MINIMO } = __modulos['src/tabelas.js'];
+  const { FGTS, salarioMinimoMedio, antesDaSerieDoMinimo } = __modulos['src/tabelas.js'];
   const { parseData, formatarData, diasEntre } = __modulos['src/calculo.js'];
-  const { formatarNumeroBR } = __modulos['src/formato.js'];
+  const { formatarNumeroBR, moeda } = __modulos['src/formato.js'];
   const { apurarBienal, marcoQuinquenal, descreverPrescricao } = __modulos['src/prescricao.js'];
 
 /** Divisor mensal padrão (44h semanais). */
@@ -2665,18 +2804,33 @@ const valorHoraNormal = (baseMensal, divisor) =>
 /**
  * Adicional de risco que integra a base de cálculo. Insalubridade e
  * periculosidade não se acumulam (art. 193, §2º, da CLT).
+ *
+ * A insalubridade sobre o salário mínimo usa o mínimo **de cada mês** do
+ * período (art. 192): um pedido de 2021 a 2024 atravessa quatro valores, e o
+ * de hoje não serve a nenhum deles. Como o adicional é proporcional ao
+ * mínimo, a média ponderada dos meses, vezes os meses, dá o mesmo total que a
+ * soma mês a mês.
+ *
+ * @param {object} dados campos da tela
+ * @param {{inicio: Date, fim: Date}} [periodo] período calculado (sem ele, o mínimo de hoje)
  */
-function calcularAdicionalRisco(dados) {
+function calcularAdicionalRisco(dados, periodo = {}) {
   const salarioBase = num(dados.salarioBase);
 
   if (dados.risco === 'insalubridade') {
     const grau = num(dados.grauInsalubridade) / 100;
+    const minimo = salarioMinimoMedio(periodo.inicio, periodo.fim);
     const base =
       dados.baseInsalubridade === 'salario_base'
         ? salarioBase
         : dados.baseInsalubridade === 'valor_informado'
           ? num(dados.baseInsalubridadeValor)
-          : SALARIO_MINIMO;
+          : minimo.media;
+    const sobreMinimo = dados.baseInsalubridade !== 'salario_base' && dados.baseInsalubridade !== 'valor_informado';
+    const descricaoMinimo = minimo.valores.length > 1
+      ? `o salário mínimo de cada mês (${minimo.valores.map((v) => moeda.format(v)).join(', ')}; `
+        + `média de ${moeda.format(minimo.media)} no período)`
+      : `o salário mínimo de ${moeda.format(minimo.media)}`;
     return {
       nome: `Adicional de insalubridade (${num(dados.grauInsalubridade)}%)`,
       detalhe: `${(grau * 100).toFixed(0)}% sobre ${
@@ -2684,9 +2838,11 @@ function calcularAdicionalRisco(dados) {
           ? 'o salário base'
           : dados.baseInsalubridade === 'valor_informado'
             ? 'a base informada'
-            : 'o salário mínimo'
+            : descricaoMinimo
       }`,
       valor: arredondar(base * grau),
+      minimo: sobreMinimo ? minimo : null,
+      minimoAntesDaSerie: sobreMinimo && antesDaSerieDoMinimo(periodo.inicio),
     };
   }
 
@@ -2700,6 +2856,10 @@ function calcularAdicionalRisco(dados) {
 
   return { nome: null, detalhe: null, valor: 0 };
 }
+
+/** Aviso para quando o período começa antes da série de salários mínimos. */
+const AVISO_MINIMO_ANTIGO = 'O período começa antes de maio de 2005, fora da série de salários mínimos '
+  + 'cadastrada: os meses anteriores foram calculados com o mínimo de R$ 300,00. Confira esse trecho à parte.';
 
 /**
  * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
@@ -2883,7 +3043,7 @@ function reflexosMensais(base, dados) {
  */
 function fecharResultado({
   mensais, meses, mesesFracionados, diasPeriodo, contexto, dados, alertas = [],
-  prescricao = null, baseAviso = 0, chavesFgts = [],
+  prescricao = null, baseAviso = 0, chavesFgts = [], proporcao = meses,
 }) {
   const recorte = prescricao?.recorte ?? null;
   if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
@@ -2891,7 +3051,9 @@ function fecharResultado({
   // Uma verba pode trazer o seu total do período já apurado (`valorPeriodo`),
   // quando o período tem trechos com regras diferentes — o DSR majorado antes
   // e depois de 20/03/2023, por exemplo. As demais são o mensal vezes os meses.
-  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * meses) }));
+  // Multiplica pela fração exata dos meses (`proporcao`); o `meses` de duas
+  // casas é só para mostrar.
+  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * proporcao) }));
 
   const diasAviso = dados.reflexoAviso && baseAviso > 0 ? num(dados.diasAviso) || 30 : 0;
   const valorAviso = diasAviso ? arredondar((baseAviso / 30) * diasAviso) : 0;
@@ -2926,7 +3088,7 @@ function fecharResultado({
   const ajustada = (m) => m.fgtsPeriodo !== undefined || m.valorPeriodo !== undefined;
   const mensalSemAjuste = arredondar(parcelasFgts.filter((m) => !ajustada(m)).reduce((soma, m) => soma + m.valor, 0));
   const periodoAjustado = parcelasFgts.filter(ajustada).reduce((soma, m) => soma + (m.fgtsPeriodo ?? m.valorPeriodo), 0);
-  const basePeriodo = arredondar(arredondar(mensalSemAjuste * meses) + periodoAjustado);
+  const basePeriodo = arredondar(arredondar(mensalSemAjuste * proporcao) + periodoAjustado);
   const querFgts = dados.reflexoFGTS !== false && basePeriodo > 0;
   const base = querFgts ? arredondar(basePeriodo + valorAviso) : 0;
   const fgtsDevido = arredondar(base * FGTS.aliquotaDeposito);
@@ -2987,7 +3149,7 @@ function validarPeriodo(dados) {
   return { erros, inicio, fim };
 }
 
-    return { DIVISOR_PADRAO, SEMANAS_POR_MES, MARCO_OJ_394, MARCO_REFORMA, VESPERA_REFORMA, FATOR_HORA_NOTURNA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo };
+    return { DIVISOR_PADRAO, SEMANAS_POR_MES, MARCO_OJ_394, MARCO_REFORMA, VESPERA_REFORMA, FATOR_HORA_NOTURNA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, AVISO_MINIMO_ANTIGO, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo };
   })();
 
   /* src/pedidos/horas-extras.js */
@@ -2999,7 +3161,7 @@ function validarPeriodo(dados) {
 
   const { parseData, formatarData } = __modulos['src/calculo.js'];
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
-  const { MARCO_OJ_394, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+  const { MARCO_OJ_394, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO } = __modulos['src/pedidos/comum.js'];
 
 function calcularHorasExtras(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
@@ -3020,7 +3182,8 @@ function calcularHorasExtras(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalHoraExtra) || 50;
@@ -3028,7 +3191,7 @@ function calcularHorasExtras(dados) {
 
   const horasMes =
     dados.modoQuantidade === 'semana' ? horasInformadas * SEMANAS_POR_MES : horasInformadas;
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
 
   const diasUteis = num(dados.diasUteis) || 25;
   const diasRepouso = num(dados.diasRepouso) || 5;
@@ -3062,12 +3225,13 @@ function calcularHorasExtras(dados) {
   // regra: nada de aplicar a nova a meses que ela não alcança.
   const marcoOJ394 = parseData(MARCO_OJ_394);
   const pediuDsrMajorado = querDSR && dados.dsrNosReflexos !== false;
+  // As frações de mês entram exatas na conta; arredondadas, só no texto.
   const mesesDesdeOMarco = fim >= marcoOJ394
-    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).meses
+    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).proporcao
     : 0;
-  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, meses) : 0;
-  const mesesSemMajoracao = arredondar(meses - mesesMajorados);
-  const partido = mesesMajorados > 0 && mesesSemMajoracao > 0;
+  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, proporcao) : 0;
+  const mesesSemMajoracao = Math.max(0, proporcao - mesesMajorados);
+  const partido = mesesMajorados > 0 && mesesSemMajoracao > 1e-9;
 
   if (pediuDsrMajorado && mesesMajorados === 0) {
     alertas.push(
@@ -3078,15 +3242,15 @@ function calcularHorasExtras(dados) {
   } else if (partido) {
     alertas.push(
       `O período cruza ${formatarData(marcoOJ394)}, e o cálculo o separou. Nos `
-        + `${formatarQuantidade(mesesSemMajoracao)} meses anteriores, o DSR majorado não repercute em férias, `
-        + '13º, aviso nem FGTS (OJ 394, redação original); nos '
-        + `${formatarQuantidade(mesesMajorados)} meses seguintes, repercute (OJ 394, II).`,
+        + `${formatarQuantidade(arredondar(mesesSemMajoracao))} meses anteriores, o DSR majorado não repercute em `
+        + 'férias, 13º, aviso nem FGTS (OJ 394, redação original); nos '
+        + `${formatarQuantidade(arredondar(mesesMajorados))} meses seguintes, repercute (OJ 394, II).`,
     );
   }
 
   // O DSR é pago no período todo; o FGTS sobre ele, só nos meses majorados.
   const dsr = mensais.find((m) => m.chave === 'dsr');
-  if (dsr && mesesMajorados < meses) {
+  if (dsr && mesesMajorados < proporcao - 1e-9) {
     dsr.fgtsPeriodo = arredondar(dsrMes * mesesMajorados);
     if (partido) dsr.nomeCurto = `DSR (desde ${formatarData(marcoOJ394)})`;
   }
@@ -3111,6 +3275,7 @@ function calcularHorasExtras(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,
@@ -3149,7 +3314,7 @@ function calcularHorasExtras(dados) {
  */
 
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
-  const { FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+  const { FATOR_HORA_NOTURNA, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO } = __modulos['src/pedidos/comum.js'];
 
 function calcularAdicionalNoturno(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
@@ -3173,7 +3338,8 @@ function calcularAdicionalNoturno(dados) {
 
   // A hora normal já vem integrada pelas parcelas salariais, entre elas o
   // adicional de risco (Súmulas 60, I, e 264 do TST).
-  const risco = calcularAdicionalRisco(dados);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalNoturno) || 20;
@@ -3183,7 +3349,7 @@ function calcularAdicionalNoturno(dados) {
   const horaReduzida = dados.horaReduzida !== false;
   const horasFictas = horaReduzida ? horasRelogio * FATOR_HORA_NOTURNA : horasRelogio;
 
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
   const diasUteis = num(dados.diasUteis) || 25;
   const diasRepouso = num(dados.diasRepouso) || 5;
 
@@ -3218,6 +3384,7 @@ function calcularAdicionalNoturno(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,
@@ -3259,7 +3426,7 @@ function calcularAdicionalNoturno(dados) {
  */
 
   const { moeda, formatarQuantidade } = __modulos['src/formato.js'];
-  const { MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+  const { MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO } = __modulos['src/pedidos/comum.js'];
   const { parseData, formatarData } = __modulos['src/calculo.js'];
 
 function calcularIntervalo(dados) {
@@ -3281,7 +3448,8 @@ function calcularIntervalo(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalIntervalo) || 50;
@@ -3294,7 +3462,7 @@ function calcularIntervalo(dados) {
   const diasNoMes = num(dados.diasComSupressao) || 22;
   const horasMes = (minutosDevidos / 60) * diasNoMes;
 
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
   const valorMes = arredondar(horasMes * horaNormal * (1 + percentual / 100));
 
   if (!indenizatorio && fim >= parseData(MARCO_REFORMA)) {
@@ -3347,6 +3515,7 @@ function calcularIntervalo(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,
@@ -3386,7 +3555,7 @@ function calcularIntervalo(dados) {
  * FGTS.
  */
 
-  const { arredondar, num, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo } = __modulos['src/pedidos/comum.js'];
+  const { arredondar, num, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO } = __modulos['src/pedidos/comum.js'];
 
 function calcularAdicionalRiscoPedido(dados) {
   const { erros, inicio, fim } = validarPeriodo(dados);
@@ -3406,8 +3575,12 @@ function calcularAdicionalRiscoPedido(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
+  // O aviso é pago na saída, sobre a remuneração de então: o adicional do
+  // último mês, com o mínimo que vigia nele.
+  const riscoNoFim = calcularAdicionalRisco(dados, { inicio: fim, fim });
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
 
   const mensais = [{
     chave: 'adicional_risco',
@@ -3421,12 +3594,13 @@ function calcularAdicionalRiscoPedido(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,
     alertas,
     prescricao,
-    baseAviso: risco.valor,
+    baseAviso: riscoNoFim.valor,
     chavesFgts: ['adicional_risco', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,
@@ -4554,7 +4728,9 @@ const camposRemuneracao = [
     opcoes: JORNADAS.map((j) => ({ valor: j.valor, label: j.label })),
     dica: 'Define o divisor mensal (Súmula 431 do TST).' },
   { id: 'divisor', rotulo: 'Divisor', tipo: 'inteiro', obrigatorio: true, valor: DIVISOR_PADRAO,
-    min: 1, max: 999, dica: 'Editável: categorias como a bancária usam 150 ou 180.' },
+    min: 1, max: 999,
+    dica: 'Editável: o bancário de 6 horas usa 180, e o de 8 horas, 220 (Súmula 124 do TST); a norma coletiva '
+      + 'pode fixar outro.' },
   { id: 'outrasParcelas', rotulo: 'Outras parcelas salariais habituais', tipo: 'moeda',
     dica: 'Comissões, prêmios e adicionais que integram a hora (Súmula 264 do TST).' },
 ];
@@ -4577,7 +4753,7 @@ const camposRisco = [
   { id: 'baseInsalubridade', rotulo: 'Base de cálculo', tipo: 'select', valor: 'salario_minimo',
     aparece: (d) => d.risco === 'insalubridade',
     opcoes: [
-      { valor: 'salario_minimo', label: 'Salário mínimo (art. 192 da CLT)' },
+      { valor: 'salario_minimo', label: 'Salário mínimo de cada mês (art. 192 da CLT)' },
       { valor: 'salario_base', label: 'Salário base' },
       { valor: 'valor_informado', label: 'Valor informado' },
     ],
@@ -4960,9 +5136,10 @@ const PEDIDOS = [
           { id: 'horasNoturnas', rotulo: 'Horas noturnas trabalhadas', tipo: 'decimal', obrigatorio: true,
             min: 0, max: 400, dica: 'Horas de relógio entre 22h e 5h.' },
           { id: 'adicionalNoturno', rotulo: 'Adicional noturno', tipo: 'percentual', valor: 20, min: 0, max: 200,
-            dica: '20% no trabalho urbano (art. 73); 25% no rural (Lei 5.889/73).' },
-          { id: 'horaReduzida', rotulo: 'Aplicar a hora noturna reduzida de 52min30s (art. 73, §1º)',
-            tipo: 'checkbox', valor: true, largo: true },
+            dica: '20% no trabalho urbano (art. 73); 25% no rural, das 21h às 5h na lavoura e das 20h às 4h na '
+              + 'pecuária (Lei 5.889/73, art. 7º).' },
+          { id: 'horaReduzida', rotulo: 'Aplicar a hora noturna reduzida de 52min30s (art. 73, §1º) — '
+            + 'desmarque no trabalho rural, que não a tem', tipo: 'checkbox', valor: true, largo: true },
           ...camposDSR,
         ],
       },
@@ -5135,10 +5312,10 @@ const pedidoPorId = (id) => PEDIDOS.find((p) => p.id === id) ?? null;
  */
 
   const { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } = __modulos['src/tipos.js'];
-  const { calcularRescisao, formatarData, valorHorasExtras } = __modulos['src/calculo.js'];
-  const { VIGENCIA, VIGENCIA_DETALHE } = __modulos['src/tabelas.js'];
+  const { calcularRescisao, formatarData, valorHorasExtras, parseData } = __modulos['src/calculo.js'];
+  const { VIGENCIA, VIGENCIA_DETALHE, salarioMinimoEm } = __modulos['src/tabelas.js'];
   const { CARIMBO } = __modulos['src/versao.js'];
-  const { moeda, hojeISO } = __modulos['src/formato.js'];
+  const { moeda, hojeISO, formatarNumeroCurto } = __modulos['src/formato.js'];
   const { lerCampos, inicializarCampos, marcarErro } = __modulos['src/campos.js'];
   const { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } = __modulos['src/adicionais.js'];
   const { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } = __modulos['src/descontos.js'];
@@ -5164,6 +5341,8 @@ function coletarDados() {
     ...valores,
     tipo: tipoSelecionado,
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
+    horaNoturnaReduzida: $('#horaNoturnaReduzida').checked,
+    pensaoSobreIndenizatorias: Boolean($('#pensaoSobreIndenizatorias')?.checked),
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
     adicionais: adicionaisMarcados(),
     descontos: descontosMarcados(),
@@ -5243,12 +5422,18 @@ function montarDescontos() {
         : d.tipo === 'percentual'
           ? `<span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="${d.campo}" placeholder="0" /><i>%</i></span>`
           : `<input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="${d.campo}" placeholder="0" />`;
+    const complemento = d.complemento
+      ? `<label class="campo campo--largo checkbox" id="campo-${d.complemento.id}" hidden>
+        <input type="checkbox" id="${d.complemento.id}" />
+        <span>${d.complemento.rotulo}</span>
+      </label>`
+      : '';
     return `
       <label class="campo" id="campo-${d.id}" hidden>
         <span class="campo__rotulo">${d.rotulo}</span>
         ${entrada}
         ${d.dica ? `<span class="campo__dica">${d.dica}</span>` : ''}
-      </label>`;
+      </label>${complemento}`;
   }).join('');
 }
 
@@ -5375,7 +5560,8 @@ function descreverAviso(c) {
     return `${c.diasAvisoTrabalhados} trabalhados + ${c.excedenteTrabalhado} indenizados`;
   }
   if (c.tipoAviso === 'trabalhado') return `${c.diasAvisoTrabalhados} dias trabalhados`;
-  return c.diasAvisoPagos ? `${c.diasAvisoPagos} dias indenizados` : 'não indenizado';
+  // No comum acordo a metade pode ter fração: "16,5 dias", com vírgula.
+  return c.diasAvisoPagos ? `${formatarNumeroCurto(c.diasAvisoPagos)} dias indenizados` : 'não indenizado';
 }
 
 function renderResultado(resultado) {
@@ -5483,14 +5669,19 @@ function renderResultado(resultado) {
 
 /* ------------------------------------------------------------- atualização */
 
-function atualizarDicas(dados) {
+function atualizarDicas(dados, contexto = null) {
   // O divisor precisa vir junto: é ele que define a hora sobre a qual incide o
   // adicional noturno. Sem passá-lo, a dica usava 220 e divergia do cálculo.
+  // O mínimo da insalubridade é o do último mês trabalhado; quando o cálculo
+  // já saiu, é dele que vem a data — senão, a do aviso ou a de hoje.
+  const ultimoDia = contexto?.ultimoDiaTrabalhado ?? parseData(dados.dataAviso) ?? parseData(hojeISO());
   const adicionais = calcularAdicionais({
     selecionados: dados.adicionais,
     salarioBase: dados.salarioBase,
     horasNoturnas: dados.horasNoturnas,
+    horaReduzida: dados.horaNoturnaReduzida !== false,
     divisor: dados.divisor || undefined,
+    salarioMinimo: salarioMinimoEm(ultimoDia),
   });
   // Base das indenizações: salário, adicionais e médias de variáveis. As horas
   // extras do mês são verba própria e aparecem à parte.
@@ -5514,11 +5705,14 @@ function atualizarDicas(dados) {
 
 /** Campos que só existem quando a marcação correspondente está ligada. */
 function aplicarVisibilidadeMarcacoes() {
-  $('#campo-horas-noturnas').hidden = !adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+  const pedeHoras = adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+  $('#campo-horas-noturnas').hidden = !pedeHoras;
+  $('#campo-hora-reduzida').hidden = !pedeHoras;
 
   const marcados = descontosMarcados();
   for (const desconto of DESCONTOS) {
     $(`#campo-${desconto.id}`).hidden = !marcados.includes(desconto.id);
+    if (desconto.complemento) $(`#campo-${desconto.complemento.id}`).hidden = !marcados.includes(desconto.id);
   }
 }
 
@@ -5562,6 +5756,8 @@ function atualizar() {
   } else {
     const resultado = calcularRescisao(dados);
     renderResultado(resultado);
+    // Com o cálculo feito, a nota da remuneração segue exatamente as datas dele.
+    if (resultado.contexto?.ultimoDiaTrabalhado) atualizarDicas(dados, resultado.contexto);
     bloquearEntrada(Boolean(resultado.impedimento));
   }
   // Só se gera PDF de um cálculo fechado.

@@ -12,7 +12,7 @@
 
 import {
   arredondar, num, calcularAdicionalRisco, apurarPrescricao, conferirDatas, contarPeriodo,
-  reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo,
+  reflexosMensais, fecharResultado, resultadoComErros, resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO,
 } from './comum.js';
 
 export function calcularAdicionalRiscoPedido(dados) {
@@ -33,8 +33,12 @@ export function calcularAdicionalRiscoPedido(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
+  // O aviso é pago na saída, sobre a remuneração de então: o adicional do
+  // último mês, com o mínimo que vigia nele.
+  const riscoNoFim = calcularAdicionalRisco(dados, { inicio: fim, fim });
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
 
   const mensais = [{
     chave: 'adicional_risco',
@@ -48,12 +52,13 @@ export function calcularAdicionalRiscoPedido(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,
     alertas,
     prescricao,
-    baseAviso: risco.valor,
+    baseAviso: riscoNoFim.valor,
     chavesFgts: ['adicional_risco', 'reflexo_13'],
     contexto: {
       inicio: inicioCalculo,

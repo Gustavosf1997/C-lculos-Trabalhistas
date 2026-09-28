@@ -14,7 +14,7 @@ import { moeda, formatarQuantidade } from '../formato.js';
 import {
   MARCO_REFORMA, VESPERA_REFORMA, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
   apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
-  resultadoImpedido, validarPeriodo,
+  resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO,
 } from './comum.js';
 import { parseData, formatarData } from '../calculo.js';
 
@@ -37,7 +37,8 @@ export function calcularIntervalo(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalIntervalo) || 50;
@@ -50,7 +51,7 @@ export function calcularIntervalo(dados) {
   const diasNoMes = num(dados.diasComSupressao) || 22;
   const horasMes = (minutosDevidos / 60) * diasNoMes;
 
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
   const valorMes = arredondar(horasMes * horaNormal * (1 + percentual / 100));
 
   if (!indenizatorio && fim >= parseData(MARCO_REFORMA)) {
@@ -103,6 +104,7 @@ export function calcularIntervalo(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,

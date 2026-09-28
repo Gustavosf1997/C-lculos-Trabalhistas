@@ -4,10 +4,10 @@
  */
 
 import { TIPOS, GRUPOS, ORDEM_GRUPOS, tiposDoGrupo } from './tipos.js';
-import { calcularRescisao, formatarData, valorHorasExtras } from './calculo.js';
-import { VIGENCIA, VIGENCIA_DETALHE } from './tabelas.js';
+import { calcularRescisao, formatarData, valorHorasExtras, parseData } from './calculo.js';
+import { VIGENCIA, VIGENCIA_DETALHE, salarioMinimoEm } from './tabelas.js';
 import { CARIMBO } from './versao.js';
-import { moeda, hojeISO } from './formato.js';
+import { moeda, hojeISO, formatarNumeroCurto } from './formato.js';
 import { lerCampos, inicializarCampos, marcarErro } from './campos.js';
 import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais, aplicarExclusoes, adicionalPorId } from './adicionais.js';
 import { DESCONTOS, SEM_DESCONTOS, aplicarExclusoesDesconto } from './descontos.js';
@@ -33,6 +33,8 @@ function coletarDados() {
     ...valores,
     tipo: tipoSelecionado,
     clausulaAssecuratoria: $('#clausulaAssecuratoria').checked,
+    horaNoturnaReduzida: $('#horaNoturnaReduzida').checked,
+    pensaoSobreIndenizatorias: Boolean($('#pensaoSobreIndenizatorias')?.checked),
     tipoAviso: document.querySelector('input[name="tipoAviso"]:checked')?.value ?? null,
     adicionais: adicionaisMarcados(),
     descontos: descontosMarcados(),
@@ -112,12 +114,18 @@ function montarDescontos() {
         : d.tipo === 'percentual'
           ? `<span class="campo__moeda campo__moeda--sufixo"><input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="100" id="${d.campo}" placeholder="0" /><i>%</i></span>`
           : `<input type="text" inputmode="decimal" data-campo="decimal" data-min="0" data-max="744" id="${d.campo}" placeholder="0" />`;
+    const complemento = d.complemento
+      ? `<label class="campo campo--largo checkbox" id="campo-${d.complemento.id}" hidden>
+        <input type="checkbox" id="${d.complemento.id}" />
+        <span>${d.complemento.rotulo}</span>
+      </label>`
+      : '';
     return `
       <label class="campo" id="campo-${d.id}" hidden>
         <span class="campo__rotulo">${d.rotulo}</span>
         ${entrada}
         ${d.dica ? `<span class="campo__dica">${d.dica}</span>` : ''}
-      </label>`;
+      </label>${complemento}`;
   }).join('');
 }
 
@@ -244,7 +252,8 @@ function descreverAviso(c) {
     return `${c.diasAvisoTrabalhados} trabalhados + ${c.excedenteTrabalhado} indenizados`;
   }
   if (c.tipoAviso === 'trabalhado') return `${c.diasAvisoTrabalhados} dias trabalhados`;
-  return c.diasAvisoPagos ? `${c.diasAvisoPagos} dias indenizados` : 'não indenizado';
+  // No comum acordo a metade pode ter fração: "16,5 dias", com vírgula.
+  return c.diasAvisoPagos ? `${formatarNumeroCurto(c.diasAvisoPagos)} dias indenizados` : 'não indenizado';
 }
 
 function renderResultado(resultado) {
@@ -352,14 +361,19 @@ function renderResultado(resultado) {
 
 /* ------------------------------------------------------------- atualização */
 
-function atualizarDicas(dados) {
+function atualizarDicas(dados, contexto = null) {
   // O divisor precisa vir junto: é ele que define a hora sobre a qual incide o
   // adicional noturno. Sem passá-lo, a dica usava 220 e divergia do cálculo.
+  // O mínimo da insalubridade é o do último mês trabalhado; quando o cálculo
+  // já saiu, é dele que vem a data — senão, a do aviso ou a de hoje.
+  const ultimoDia = contexto?.ultimoDiaTrabalhado ?? parseData(dados.dataAviso) ?? parseData(hojeISO());
   const adicionais = calcularAdicionais({
     selecionados: dados.adicionais,
     salarioBase: dados.salarioBase,
     horasNoturnas: dados.horasNoturnas,
+    horaReduzida: dados.horaNoturnaReduzida !== false,
     divisor: dados.divisor || undefined,
+    salarioMinimo: salarioMinimoEm(ultimoDia),
   });
   // Base das indenizações: salário, adicionais e médias de variáveis. As horas
   // extras do mês são verba própria e aparecem à parte.
@@ -383,11 +397,14 @@ function atualizarDicas(dados) {
 
 /** Campos que só existem quando a marcação correspondente está ligada. */
 function aplicarVisibilidadeMarcacoes() {
-  $('#campo-horas-noturnas').hidden = !adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+  const pedeHoras = adicionaisMarcados().some((id) => adicionalPorId(id)?.pedeHoras);
+  $('#campo-horas-noturnas').hidden = !pedeHoras;
+  $('#campo-hora-reduzida').hidden = !pedeHoras;
 
   const marcados = descontosMarcados();
   for (const desconto of DESCONTOS) {
     $(`#campo-${desconto.id}`).hidden = !marcados.includes(desconto.id);
+    if (desconto.complemento) $(`#campo-${desconto.complemento.id}`).hidden = !marcados.includes(desconto.id);
   }
 }
 
@@ -431,6 +448,8 @@ function atualizar() {
   } else {
     const resultado = calcularRescisao(dados);
     renderResultado(resultado);
+    // Com o cálculo feito, a nota da remuneração segue exatamente as datas dele.
+    if (resultado.contexto?.ultimoDiaTrabalhado) atualizarDicas(dados, resultado.contexto);
     bloquearEntrada(Boolean(resultado.impedimento));
   }
   // Só se gera PDF de um cálculo fechado.

@@ -19,6 +19,96 @@ export const VIGENCIA_DETALHE =
 export const SALARIO_MINIMO = 1621.0;
 
 /**
+ * Salário mínimo nacional desde maio de 2005, com a data em que cada valor
+ * passou a valer. A insalubridade incide sobre o mínimo **de cada mês**
+ * (art. 192 da CLT): um pedido que atravessa anos não pode usar o de hoje.
+ * Anos com duas mudanças: 2011 (R$ 540 e, em março, R$ 545), 2020 (R$ 1.039
+ * e, em fevereiro, R$ 1.045 — MP 919/2020) e 2023 (R$ 1.302 e, em maio,
+ * R$ 1.320 — MP 1.172/2023).
+ */
+export const SALARIOS_MINIMOS = [
+  { desde: '2005-05-01', valor: 300.0 },
+  { desde: '2006-04-01', valor: 350.0 },
+  { desde: '2007-04-01', valor: 380.0 },
+  { desde: '2008-03-01', valor: 415.0 },
+  { desde: '2009-02-01', valor: 465.0 },
+  { desde: '2010-01-01', valor: 510.0 },
+  { desde: '2011-01-01', valor: 540.0 },
+  { desde: '2011-03-01', valor: 545.0 },
+  { desde: '2012-01-01', valor: 622.0 },
+  { desde: '2013-01-01', valor: 678.0 },
+  { desde: '2014-01-01', valor: 724.0 },
+  { desde: '2015-01-01', valor: 788.0 },
+  { desde: '2016-01-01', valor: 880.0 },
+  { desde: '2017-01-01', valor: 937.0 },
+  { desde: '2018-01-01', valor: 954.0 },
+  { desde: '2019-01-01', valor: 998.0 },
+  { desde: '2020-01-01', valor: 1039.0 },
+  { desde: '2020-02-01', valor: 1045.0 },
+  { desde: '2021-01-01', valor: 1100.0 },
+  { desde: '2022-01-01', valor: 1212.0 },
+  { desde: '2023-01-01', valor: 1302.0 },
+  { desde: '2023-05-01', valor: 1320.0 },
+  { desde: '2024-01-01', valor: 1412.0 },
+  { desde: '2025-01-01', valor: 1518.0 },
+  { desde: '2026-01-01', valor: SALARIO_MINIMO },
+];
+
+const isoDe = (data) => (data instanceof Date ? data.toISOString().slice(0, 10) : String(data));
+
+/**
+ * Salário mínimo vigente numa data. Antes de maio de 2005 devolve o primeiro
+ * da série — quem chama avisa, porque aí o valor não é o da época.
+ */
+export function salarioMinimoEm(data) {
+  if (!data) return SALARIO_MINIMO;
+  const dia = isoDe(data);
+  let valor = SALARIOS_MINIMOS[0].valor;
+  for (const faixa of SALARIOS_MINIMOS) {
+    if (faixa.desde <= dia) valor = faixa.valor;
+    else break;
+  }
+  return valor;
+}
+
+/** A série não alcança a data (anterior a maio de 2005). */
+export const antesDaSerieDoMinimo = (data) => Boolean(data) && isoDe(data) < SALARIOS_MINIMOS[0].desde;
+
+/**
+ * Média do salário mínimo num período, ponderada como os meses do cálculo:
+ * mês inteiro pesa 1, mês partido pesa a fração dos seus dias. Um adicional
+ * mensal proporcional ao mínimo, somado mês a mês, dá exatamente o mesmo que
+ * essa média vezes os meses — então a média basta, e o total sai certo.
+ *
+ * @returns {{media: number, valores: number[]}} média e valores distintos que o período atravessou
+ */
+export function salarioMinimoMedio(inicio, fim) {
+  if (!inicio || !fim || fim < inicio) {
+    const valor = salarioMinimoEm(fim ?? inicio);
+    return { media: valor, valores: [valor] };
+  }
+  const DIA = 86400000;
+  let peso = 0;
+  let soma = 0;
+  const valores = new Set();
+  let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1));
+  while (cursor <= fim) {
+    const ultimo = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const de = inicio > cursor ? inicio : cursor;
+    const ate = fim < ultimo ? fim : ultimo;
+    // O mínimo sempre mudou no dia 1º: dentro do mês, vale um só.
+    const valor = salarioMinimoEm(cursor);
+    const fracao = (Math.round((ate - de) / DIA) + 1) / ultimo.getUTCDate();
+    soma += valor * fracao;
+    peso += fracao;
+    valores.add(valor);
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+  }
+  if (valores.size === 1) return { media: [...valores][0], valores: [...valores] };
+  return { media: Math.round((soma / peso) * 10000) / 10000, valores: [...valores] };
+}
+
+/**
  * Faixas progressivas do INSS do segurado empregado, vigentes desde a
  * competência de janeiro de 2026 (Portaria Interministerial MPS/MF nº 13,
  * de 09/01/2026). Teto do salário de contribuição: R$ 8.475,55.

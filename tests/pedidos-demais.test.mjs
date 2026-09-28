@@ -81,7 +81,8 @@ test('insalubridade pedida como verba incide sobre o salário mínimo', () => {
   const r = calcularAdicionalRiscoPedido({
     ...periodo, salarioBase: 2200, risco: 'insalubridade', grauInsalubridade: 20,
   });
-  assert.equal(verba(r, 'adicional_risco'), Math.round(SALARIO_MINIMO * 0.2 * 100) / 100);
+  // Período de 2024: o mínimo de então (R$ 1.412,00), e não o de hoje
+  assert.equal(verba(r, 'adicional_risco'), 282.4);
   assert.equal(verba(r, 'dsr'), 0); // parcela mensal fixa não gera DSR
   assert.ok(verba(r, 'reflexo_13') > 0);
 });
@@ -188,4 +189,41 @@ test('o intervalo indenizatório segue sem DSR e sem reflexos', () => {
   const r = calcularIntervalo({ ...periodo, ...jornada, minutosSuprimidos: 30 });
   assert.equal(verba(r, 'dsr'), 0);
   assert.equal(r.mensais.length, 1);
+});
+
+/* ------------------------------- salário mínimo de cada competência ------ */
+
+test('insalubridade usa o salário mínimo de cada mês, e não o de hoje', () => {
+  const insal = (inicio, fimP) => calcularAdicionalRiscoPedido({
+    dataInicio: inicio, dataFim: fimP, salarioBase: 2200, risco: 'insalubridade', grauInsalubridade: 20,
+    reflexo13: false, reflexoFerias: false, reflexoFGTS: false,
+  });
+  // 2021: R$ 1.100,00 o ano todo -> 20% = 220,00 x 12
+  assert.equal(insal('2021-01-01', '2021-12-31').totais.periodo, 2640);
+  // 2023: R$ 1.302,00 até abril e R$ 1.320,00 de maio em diante (MP 1.172/2023)
+  // 4 x 260,40 + 8 x 264,00 = 3.153,60
+  assert.equal(insal('2023-01-01', '2023-12-31').totais.periodo, 3153.6);
+  // 2020: R$ 1.039,00 em janeiro e R$ 1.045,00 depois (MP 919/2020)
+  // 207,80 + 11 x 209,00 = 2.506,80
+  assert.equal(insal('2020-01-01', '2020-12-31').totais.periodo, 2506.8);
+  // Atravessando anos: jul/2024 a jun/2025 = 6 x 282,40 + 6 x 303,60 = 3.516,00
+  const cruzando = insal('2024-07-01', '2025-06-30');
+  assert.equal(cruzando.totais.periodo, 3516);
+  assert.ok(cruzando.contexto.risco.detalhe.includes('cada mês'), cruzando.contexto.risco.detalhe);
+});
+
+test('o reflexo da insalubridade no aviso usa o mínimo do último mês', () => {
+  const r = calcularAdicionalRiscoPedido({
+    dataInicio: '2024-07-01', dataFim: '2025-06-30', salarioBase: 2200, risco: 'insalubridade',
+    grauInsalubridade: 20, reflexoAviso: true, diasAviso: 30,
+  });
+  const aviso = r.periodo.find((p) => p.chave === 'reflexo_aviso').valor;
+  assert.equal(aviso, 303.6); // 20% de R$ 1.518,00, o mínimo de 2025
+});
+
+test('mínimo anterior à série cadastrada gera aviso', () => {
+  const r = calcularAdicionalRiscoPedido({
+    dataInicio: '2004-01-01', dataFim: '2006-12-31', salarioBase: 2200, risco: 'insalubridade', grauInsalubridade: 20,
+  });
+  assert.ok(r.alertas.some((a) => a.includes('maio de 2005')));
 });

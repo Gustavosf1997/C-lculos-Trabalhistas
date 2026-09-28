@@ -90,6 +90,14 @@ await page.waitForTimeout(250);
 // 20% do salário mínimo de 2026 (R$ 1.621,00); com a tabela de 2025 daria 303,60
 const notaAdicional = await page.locator('#nota-remuneracao').textContent();
 checar('insalubridade usa o mínimo de 2026', notaAdicional.includes('324,20'), notaAdicional);
+// numa saída de 2024, o mínimo de 2024 (R$ 1.412,00): 20% = 282,40
+const avisoAntes = await page.inputValue('#dataAviso');
+await page.fill('#dataAviso', '10/06/2024');
+await page.waitForTimeout(300);
+const nota2024 = await page.locator('#nota-remuneracao').textContent();
+checar('rescisão de 2024 usa o mínimo de 2024', nota2024.includes('282,40'), nota2024);
+await page.fill('#dataAviso', avisoAntes);
+await page.waitForTimeout(250);
 
 await page.check('input[name="adicionais"][value="periculosidade_30"]');
 await page.waitForTimeout(250);
@@ -109,6 +117,11 @@ checar('campo de horas noturnas escondido', await page.locator('#campo-horas-not
 await page.check('input[name="adicionais"][value="noturno_20"]');
 await page.waitForTimeout(250);
 checar('campo de horas noturnas revelado', await page.locator('#campo-horas-noturnas').isVisible(), null);
+checar('hora noturna reduzida aparece com o noturno', await page.locator('#campo-hora-reduzida').isVisible(), null);
+checar('hora noturna reduzida vem marcada', await page.isChecked('#horaNoturnaReduzida'), null);
+checar('pensão oferece incluir as verbas indenizatórias',
+  await page.locator('#campo-pensaoSobreIndenizatorias').isVisible(), null);
+checar('verbas indenizatórias fora da pensão por padrão', !(await page.isChecked('#pensaoSobreIndenizatorias')), null);
 checar(
   'periculosidade e noturno convivem',
   await page.isChecked('input[name="adicionais"][value="periculosidade_30"]'),
@@ -225,6 +238,17 @@ checar('rescisão: férias prescritas em caixa laranja', recorteFerias.includes(
 checar('rescisão: só as férias exigíveis entram, com a dobra de cada período',
   (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ').includes('R$ 21.000,00'), null);
 
+// comum acordo: metade exata do aviso, com vírgula
+await page.click('[data-tipo="comum_acordo"]');
+await page.fill('#dataAjuizamento', '');
+await page.fill('#dataAdmissao', '01/03/2025'); // 1 ano completo: 33 dias
+await page.fill('#dataAviso', '15/09/2026');
+await page.fill('#salarioBase', '3.000,00');
+await page.waitForTimeout(350);
+const distrato = (await page.locator('#resultado').innerText()).replace(/\u00a0/g, ' ');
+checar('distrato: aviso de 33 dias vira 16,5 indenizados', distrato.includes('16,5 dias indenizados'), distrato.slice(0, 400));
+checar('distrato: 16,5 dias de R$ 100,00', distrato.includes('R$ 1.650,00'), null);
+
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 await page.fill('#divisor', '');
 await page.locator('#divisor').pressSequentially('2a2b0');
@@ -335,13 +359,17 @@ checar('Súmula 437 paga a hora cheia', anterior.includes('R$ 330,00'), null); /
 checar('Súmula 437 gera reflexos', anterior.includes('Reflexo no 13º'), null);
 checar('regime antigo avisa o descompasso de período', (await page.locator('#resultado .alerta').count()) > 0, null);
 
-// insalubridade sobre o salário mínimo de 2026
+// insalubridade sobre o salário mínimo de cada mês (art. 192): o período é 2024
 await page.click('[data-pedido="adicional_risco"]');
 await dadosBase();
 checar('risco exige a escolha entre os adicionais', (await texto()).includes('Escolha entre insalubridade'), null);
 await page.check('input[name="risco"][value="insalubridade"]');
 await page.waitForTimeout(350);
-checar('grau médio sobre o mínimo de 2026', (await texto()).includes('R$ 324,20'), null); // 20% de 1.621,00
+checar('grau médio sobre o mínimo de 2024, e não o de hoje', (await texto()).includes('R$ 282,40'), null); // 20% de 1.412,00
+await page.fill('#dataFim', '30/06/2025');
+await page.waitForTimeout(350);
+checar('período que atravessa anos mostra o mínimo de cada mês', (await texto()).includes('o salário mínimo de cada mês'), null);
+await page.fill('#dataFim', '31/12/2024');
 await page.selectOption('#baseInsalubridade', 'salario_base');
 await page.waitForTimeout(350);
 checar('base do salário contratual muda o adicional', (await texto()).includes('R$ 440,00'), null); // 20% de 2.200
@@ -678,7 +706,7 @@ await page.fill('#salarioBase', '2.200,00');
 await page.fill('#quantidadeHoras', '30');
 await page.waitForTimeout(300);
 checar('período cruzando 20/03/2023 é separado', (await telaR()).includes('o cálculo o separou'), null);
-checar('13º do período pela soma dos dois trechos', (await telaR()).includes('R$ 1.510,43'), null);
+checar('13º do período pela soma dos dois trechos', (await telaR()).includes('R$ 1.510,40'), null);
 
 await browser.close();
 console.log(checagens.join('\n'));

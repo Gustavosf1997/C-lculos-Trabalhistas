@@ -64,8 +64,11 @@ test('pedido de demissão sem cumprir aviso gera desconto de 30 dias', () => {
 
 test('comum acordo paga metade do aviso e multa de 20%', () => {
   const r = calcularRescisao({ ...base, tipo: 'comum_acordo', tipoAviso: 'indenizado_metade' });
-  assert.equal(r.contexto.diasAvisoDevidos, 26); // metade de 51, arredondada
-  assert.equal(verba(r, 'aviso_previo'), 2600);
+  // Metade exata de 51 dias (art. 484-A, I, "a"): 25,5 dias, e não 26
+  assert.equal(r.contexto.diasAvisoDevidos, 25.5);
+  assert.equal(verba(r, 'aviso_previo'), 2550); // 3.000 / 30 x 25,5
+  // a data projetada, que exige dia inteiro, avança 26 dias
+  assert.equal(r.contexto.dataProjetada.getTime() - r.contexto.ultimoDiaTrabalhado.getTime(), 26 * 86400000);
   assert.equal(r.fgts.percentualMulta, 0.2);
 });
 
@@ -166,7 +169,7 @@ test('cláusula assecuratória troca o art. 479 pelo aviso prévio', () => {
   assert.equal(r.contexto.diasAvisoLegais, 30);
   assert.equal(verba(r, 'aviso_previo'), 2000);
   assert.equal(r.contexto.dataProjetada.toISOString().slice(0, 10), '2026-08-14');
-  assert.equal(r.fgts.seguroDesemprego, 'Sim, se preenchidos os requisitos legais');
+  assert.equal(r.fgts.seguroDesemprego, 'Sim, se preenchidos os requisitos legais (tempo mínimo de emprego)');
   assert.equal(r.alertas.length, 1);
 });
 
@@ -288,7 +291,30 @@ test('adicional noturno usa as horas informadas', () => {
     adicionais: ['noturno_20'],
     horasNoturnas: 20,
   });
-  assert.equal(r.contexto.totalAdicionais, 54.55); // (3000/220) x 20 x 20%
+  // 20 h de relógio = 22,86 h fictas (art. 73, §1º): (3000/220) x 22,857 x 20%
+  assert.equal(r.contexto.totalAdicionais, 62.34);
+  const fictas = calcularRescisao({
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', salarioBase: 3000,
+    adicionais: ['noturno_20'], horasNoturnas: 20, horaNoturnaReduzida: false,
+  });
+  assert.equal(fictas.contexto.totalAdicionais, 54.55); // (3000/220) x 20 x 20%
+});
+
+test('insalubridade da rescisão usa o mínimo do último mês trabalhado', () => {
+  const r = (dataAviso) => calcularRescisao({
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', salarioBase: 3000,
+    adicionais: ['insalubridade_20'], dataAviso,
+  });
+  assert.equal(r('2024-06-10').contexto.totalAdicionais, 282.4); // 20% de R$ 1.412,00
+  assert.equal(r('2025-06-10').contexto.totalAdicionais, 303.6); // 20% de R$ 1.518,00
+  assert.equal(r('2026-06-10').contexto.totalAdicionais, 324.2); // 20% de R$ 1.621,00
+  // aviso trabalhado de dezembro que termina em janeiro: vale o mínimo novo
+  const virada = calcularRescisao({
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'trabalhado', salarioBase: 3000,
+    adicionais: ['insalubridade_20'], dataAviso: '2024-12-20',
+  });
+  assert.equal(virada.contexto.ultimoDiaTrabalhado.getUTCFullYear(), 2025);
+  assert.equal(virada.contexto.totalAdicionais, 303.6);
 });
 
 test('sem adicionais marcados a remuneração é só o salário', () => {
@@ -562,4 +588,23 @@ test('o contexto guarda o que foi informado e o que foi usado', () => {
   assert.equal(r.contexto.periodosInformados, 1);
   assert.equal(r.contexto.periodosCompletosCalculados, 0);
   assert.equal(r.contexto.periodosVencidos, 0);
+});
+
+/* ------------------------------------------- base da pensão alimentícia --- */
+
+test('pensão incide só nas verbas salariais, salvo decisão em contrário (STJ)', () => {
+  const dados = {
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', descontos: ['pensao'], pensaoPercentual: 20,
+  };
+  const r = calcularRescisao(dados);
+  const salariais = ['saldo_salario', 'horas_extras', 'decimo_terceiro', 'decimo_terceiro_ano_seguinte']
+    .reduce((s, k) => s + verba(r, k), 0);
+  const pensao = r.descontos.find((d) => d.chave === 'pensao');
+  assert.equal(pensao.valor, Math.round(salariais * 0.2 * 100) / 100);
+  assert.ok(verba(r, 'aviso_previo') > 0, 'o aviso existe, mas fica fora da base');
+
+  const tudo = calcularRescisao({ ...dados, pensaoSobreIndenizatorias: true });
+  const pensaoTudo = tudo.descontos.find((d) => d.chave === 'pensao');
+  assert.equal(pensaoTudo.valor, Math.round(tudo.totais.proventos * 0.2 * 100) / 100);
+  assert.ok(pensaoTudo.valor > pensao.valor);
 });
