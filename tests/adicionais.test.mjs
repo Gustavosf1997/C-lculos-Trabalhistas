@@ -19,7 +19,18 @@ test('adicional noturno depende das horas noturnas', () => {
   const semHoras = calcularAdicionais({ selecionados: ['noturno_20'], salarioBase: 2200 });
   assert.equal(semHoras.total, 0);
   const comHoras = calcularAdicionais({ selecionados: ['noturno_20'], salarioBase: 2200, horasNoturnas: 30 });
-  assert.equal(comHoras.total, 60); // (2200/220) x 30 x 20%
+  // 30 h de relógio = 34,29 h fictas de 52min30s (art. 73, §1º): 10,00 x 34,29 x 20%
+  assert.equal(comHoras.total, 68.57);
+  const jaFictas = calcularAdicionais({
+    selecionados: ['noturno_20'], salarioBase: 2200, horasNoturnas: 30, horaReduzida: false,
+  });
+  assert.equal(jaFictas.total, 60); // (2200/220) x 30 x 20%
+});
+
+test('insalubridade usa o salário mínimo informado — o do mês da saída', () => {
+  const em2024 = calcularAdicionais({ selecionados: ['insalubridade_20'], salarioBase: 2000, salarioMinimo: 1412 });
+  assert.equal(em2024.total, 282.4);
+  assert.ok(em2024.itens[0].detalhe.includes('1.412,00'), em2024.itens[0].detalhe);
 });
 
 test('adicionais compatíveis se somam', () => {
@@ -53,13 +64,16 @@ test('id desconhecido é ignorado', () => {
 });
 
 test('adicional noturno incide sobre a hora já integrada pelos demais adicionais', () => {
-  const soNoturno = calcularAdicionais({ selecionados: ['noturno_20'], salarioBase: 2200, horasNoturnas: 30 });
+  const soNoturno = calcularAdicionais({
+    selecionados: ['noturno_20'], salarioBase: 2200, horasNoturnas: 30, horaReduzida: false,
+  });
   assert.equal(soNoturno.total, 60); // hora de 10,00
 
   const comPericulosidade = calcularAdicionais({
     selecionados: ['periculosidade_30', 'noturno_20'],
     salarioBase: 2200,
     horasNoturnas: 30,
+    horaReduzida: false,
   });
   // hora integrada: (2.200 + 660) / 220 = 13,00 -> 30 h x 13,00 x 20% = 78,00
   assert.equal(comPericulosidade.itens.find((i) => i.id === 'noturno_20').valor, 78);

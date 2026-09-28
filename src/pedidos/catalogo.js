@@ -64,7 +64,9 @@ const camposRemuneracao = [
     opcoes: JORNADAS.map((j) => ({ valor: j.valor, label: j.label })),
     dica: 'Define o divisor mensal (Súmula 431 do TST).' },
   { id: 'divisor', rotulo: 'Divisor', tipo: 'inteiro', obrigatorio: true, valor: DIVISOR_PADRAO,
-    min: 1, max: 999, dica: 'Editável: categorias como a bancária usam 150 ou 180.' },
+    min: 1, max: 999,
+    dica: 'Editável: o bancário de 6 horas usa 180, e o de 8 horas, 220 (Súmula 124 do TST); a norma coletiva '
+      + 'pode fixar outro.' },
   { id: 'outrasParcelas', rotulo: 'Outras parcelas salariais habituais', tipo: 'moeda',
     dica: 'Comissões, prêmios e adicionais que integram a hora (Súmula 264 do TST).' },
 ];
@@ -87,7 +89,7 @@ const camposRisco = [
   { id: 'baseInsalubridade', rotulo: 'Base de cálculo', tipo: 'select', valor: 'salario_minimo',
     aparece: (d) => d.risco === 'insalubridade',
     opcoes: [
-      { valor: 'salario_minimo', label: 'Salário mínimo (art. 192 da CLT)' },
+      { valor: 'salario_minimo', label: 'Salário mínimo de cada mês (art. 192 da CLT)' },
       { valor: 'salario_base', label: 'Salário base' },
       { valor: 'valor_informado', label: 'Valor informado' },
     ],
@@ -470,9 +472,10 @@ export const PEDIDOS = [
           { id: 'horasNoturnas', rotulo: 'Horas noturnas trabalhadas', tipo: 'decimal', obrigatorio: true,
             min: 0, max: 400, dica: 'Horas de relógio entre 22h e 5h.' },
           { id: 'adicionalNoturno', rotulo: 'Adicional noturno', tipo: 'percentual', valor: 20, min: 0, max: 200,
-            dica: '20% no trabalho urbano (art. 73); 25% no rural (Lei 5.889/73).' },
-          { id: 'horaReduzida', rotulo: 'Aplicar a hora noturna reduzida de 52min30s (art. 73, §1º)',
-            tipo: 'checkbox', valor: true, largo: true },
+            dica: '20% no trabalho urbano (art. 73); 25% no rural, das 21h às 5h na lavoura e das 20h às 4h na '
+              + 'pecuária (Lei 5.889/73, art. 7º).' },
+          { id: 'horaReduzida', rotulo: 'Aplicar a hora noturna reduzida de 52min30s (art. 73, §1º) — '
+            + 'desmarque no trabalho rural, que não a tem', tipo: 'checkbox', valor: true, largo: true },
           ...camposDSR,
         ],
       },

@@ -197,7 +197,7 @@ export const TIPOS = {
       { label: 'Férias proporcionais + 1/3', devida: true },
       { label: 'Multa de 40% do FGTS e saque', devida: true },
       { label: 'Aviso prévio', devida: false, nota: 'salvo cláusula assecuratória' },
-      { label: 'Seguro-desemprego', devida: false, nota: 'regra geral' },
+      { label: 'Seguro-desemprego', devida: true, nota: 'se preenchidos os requisitos — é dispensa sem justa causa' },
     ],
     // Com a cláusula do art. 481 o contrato passa a seguir as regras do prazo
     // indeterminado: entra o aviso prévio e sai a indenização do art. 479.
@@ -231,8 +231,10 @@ export const TIPOS = {
       multa: 0.4,
       rotuloMulta: 'Multa rescisória de 40%',
       saque: 'Saque integral do saldo',
-      seguroDesemprego: 'Não, em regra',
-      seguroDesempregoComClausula: 'Sim, se preenchidos os requisitos legais',
+      // A rescisão antecipada pelo empregador é dispensa sem justa causa
+      // (Lei 7.998/90, art. 3º): o que falta, muitas vezes, é o tempo mínimo
+      // de emprego para habilitar o benefício — não o direito em tese.
+      seguroDesemprego: 'Sim, se preenchidos os requisitos legais (tempo mínimo de emprego)',
     },
   },
 

@@ -6,11 +6,11 @@
  * acordo individual e jurisprudência local podem alterar o resultado.
  */
 
-import { INSS, IRRF, FGTS } from './tabelas.js';
+import { INSS, IRRF, FGTS, salarioMinimoEm } from './tabelas.js';
 import { TIPOS } from './tipos.js';
 import { calcularAdicionais, DIVISOR_PADRAO } from './adicionais.js';
 import { salarioHora } from './descontos.js';
-import { moeda, formatarQuantidade } from './formato.js';
+import { moeda, formatarQuantidade, formatarNumeroCurto } from './formato.js';
 import {
   apurarBienal, marcoQuinquenal, fimDoConcessivo, descreverPrescricao, formatarDataPrescricao,
 } from './prescricao.js';
@@ -317,22 +317,6 @@ export function calcularRescisao(dados) {
   }
   const alertas = [];
 
-  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
-
-  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual.
-  const adicionais = calcularAdicionais({
-    selecionados: dados.adicionais ?? [],
-    salarioBase,
-    horasNoturnas: num(dados.horasNoturnas),
-    divisor,
-  });
-  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
-  // que o saldo de salário é rateado. As médias de variáveis servem para
-  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
-  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
-  const medias = num(dados.mediaComissoes);
-  const remuneracao = arredondar(remuneracaoFixa + medias);
-
   /* --- aviso prévio --- */
   const anos = anosCompletos(admissao, dataAviso);
 
@@ -350,8 +334,11 @@ export function calcularRescisao(dados) {
     ? (tipo.aviso.diasFixos ?? Math.min(30 + 3 * anos, 90))
     : 0;
 
+  // No distrato (art. 484-A, I, "a"), o aviso indenizado é devido pela
+  // metade — metade exata: 33 dias rendem 16,5 dias de salário, e não 17. A
+  // data projetada, que precisa de dia inteiro, arredonda a metade para cima.
   let diasAvisoDevidos = diasAvisoLegais;
-  if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = Math.round(diasAvisoLegais / 2);
+  if (tipoAviso === 'indenizado_metade') diasAvisoDevidos = diasAvisoLegais / 2;
   if (tipoAviso === 'nenhum' || tipoAviso === 'dispensado') diasAvisoDevidos = 0;
 
   const avisoIndenizado = tipoAviso === 'indenizado' || tipoAviso === 'indenizado_metade';
@@ -372,7 +359,7 @@ export function calcularRescisao(dados) {
   // tempo de serviço — OJ 82 da SDI-1 e Súmula 305 do TST).
   const ultimoDiaTrabalhado = avisoTrabalhado ? addDias(dataAviso, diasAvisoTrabalhados) : dataAviso;
   const dataProjetada = diasAvisoPagos > 0
-    ? addDias(ultimoDiaTrabalhado, diasAvisoPagos)
+    ? addDias(ultimoDiaTrabalhado, Math.ceil(diasAvisoPagos))
     : ultimoDiaTrabalhado;
 
   /* --- prescrição bienal (art. 7º, XXIX, da CF) --- */
@@ -405,6 +392,26 @@ export function calcularRescisao(dados) {
       proventos: [], descontos: [], totais: null, contexto: null, fgts: null,
     };
   }
+
+  const divisor = num(dados.divisor) || DIVISOR_PADRAO;
+
+  // Os adicionais legais vêm marcados na tela, cada um com o seu percentual. A
+  // insalubridade usa o salário mínimo do último mês trabalhado (art. 192),
+  // e não o de hoje: uma rescisão de 2024 tem o mínimo de 2024.
+  const adicionais = calcularAdicionais({
+    selecionados: dados.adicionais ?? [],
+    salarioBase,
+    horasNoturnas: num(dados.horasNoturnas),
+    horaReduzida: dados.horaNoturnaReduzida !== false,
+    divisor,
+    salarioMinimo: salarioMinimoEm(ultimoDiaTrabalhado),
+  });
+  // Duas bases: a fixa é o que o mês paga (salário e adicionais), e é sobre ela
+  // que o saldo de salário é rateado. As médias de variáveis servem para
+  // integrar as indenizações — aviso, 13º e férias —, não para inflar o mês.
+  const remuneracaoFixa = arredondar(salarioBase + adicionais.total);
+  const medias = num(dados.mediaComissoes);
+  const remuneracao = arredondar(remuneracaoFixa + medias);
 
   if (excedenteTrabalhado > 0) {
     alertas.push(
@@ -460,7 +467,7 @@ export function calcularRescisao(dados) {
       : (tipoAviso === 'indenizado_metade' ? 'Aviso prévio indenizado (50%)' : 'Aviso prévio indenizado');
     const detalheAviso = excedenteTrabalhado > 0
       ? `${diasAvisoPagos} dias além dos ${diasAvisoTrabalhados} cumpridos (de ${diasAvisoLegais} proporcionais)`
-      : `${diasAvisoPagos} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
+      : `${formatarNumeroCurto(diasAvisoPagos)} dias${tipoAviso === 'indenizado_metade' ? ` (metade de ${diasAvisoLegais})` : ''}`;
     proventos.push({
       chave: 'aviso_previo',
       label: rotuloAviso,
@@ -733,12 +740,23 @@ export function calcularRescisao(dados) {
 
   const totalProventosBrutos = proventos.reduce((s, p) => s + p.valor, 0);
   if (pensaoPercentual > 0) {
+    // O STJ tira da base da pensão as verbas rescisórias indenizatórias —
+    // aviso prévio indenizado, férias indenizadas e o seu terço, a indenização
+    // do art. 479 —, salvo decisão ou acordo expresso em contrário. Em regra,
+    // ela incide só sobre as salariais: saldo, horas extras e 13º.
+    const sobreTudo = Boolean(dados.pensaoSobreIndenizatorias);
+    const SALARIAIS = ['saldo_salario', 'horas_extras', 'decimo_terceiro', 'decimo_terceiro_ano_seguinte'];
+    const basePensao = sobreTudo
+      ? totalProventosBrutos
+      : proventos.filter((p) => SALARIAIS.includes(p.chave)).reduce((s, p) => s + p.valor, 0);
     descontos.push({
       chave: 'pensao',
       label: 'Pensão alimentícia',
       natureza: 'pensao',
-      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre as verbas rescisórias`,
-      valor: arredondar(totalProventosBrutos * (pensaoPercentual / 100)),
+      detalhe: `${formatarQuantidade(pensaoPercentual)}% sobre ${moeda.format(arredondar(basePensao))} — ${sobreTudo
+        ? 'todas as verbas rescisórias, como mandou a decisão ou o acordo'
+        : 'verbas salariais (saldo, horas extras e 13º); as indenizatórias ficam fora (STJ)'}`,
+      valor: arredondar(basePensao * (pensaoPercentual / 100)),
     });
   }
 

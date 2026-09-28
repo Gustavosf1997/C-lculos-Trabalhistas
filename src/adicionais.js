@@ -11,6 +11,9 @@ import { formatarQuantidade } from './formato.js';
 /** Divisor mensal padrão (44h semanais). Cada tela pode informar o seu. */
 export const DIVISOR_PADRAO = 220;
 
+/** Hora noturna reduzida: 52min30s (art. 73, §1º, da CLT). */
+const FATOR_HORA_NOTURNA = 60 / 52.5;
+
 export const SEM_ADICIONAIS = 'nenhum';
 
 export const ADICIONAIS = [
@@ -82,8 +85,13 @@ export function calcularAdicionais({
   selecionados = [],
   salarioBase = 0,
   horasNoturnas = 0,
+  horaReduzida = true,
   divisor = DIVISOR_PADRAO,
+  salarioMinimo = SALARIO_MINIMO,
 } = {}) {
+  // Horas de relógio viram horas fictas de 52min30s (art. 73, §1º): sete de
+  // relógio valem oito. Desligado, as horas informadas já são as fictas.
+  const horasFictas = horaReduzida ? horasNoturnas * FATOR_HORA_NOTURNA : horasNoturnas;
   const itens = [];
 
   // O adicional noturno incide sobre a hora normal, que já vem integrada pelos
@@ -98,10 +106,10 @@ export function calcularAdicionais({
     if (!adicional) continue;
 
     let valor = 0;
-    if (adicional.base === 'salario_minimo') valor = SALARIO_MINIMO * adicional.percentual;
+    if (adicional.base === 'salario_minimo') valor = salarioMinimo * adicional.percentual;
     else if (adicional.base === 'salario_base') valor = salarioBase * adicional.percentual;
     else if (adicional.base === 'horas_noturnas') {
-      valor = (baseHora / divisor) * horasNoturnas * adicional.percentual;
+      valor = (baseHora / divisor) * horasFictas * adicional.percentual;
     }
     if (adicional.base !== 'horas_noturnas') baseHora += valor;
 
@@ -109,8 +117,14 @@ export function calcularAdicionais({
       id,
       label: adicional.label,
       detalhe: adicional.base === 'horas_noturnas'
-        ? `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`
-        : adicional.detalhe,
+        ? (horaReduzida
+          ? `${formatarQuantidade(horasNoturnas)} h de relógio = ${formatarQuantidade(arredondar(horasFictas))} h `
+            + 'fictas por mês (52min30s)'
+          : `${formatarQuantidade(horasNoturnas)} hora(s) noturna(s) por mês`)
+        : adicional.base === 'salario_minimo'
+          ? `${adicional.detalhe.replace('sobre o salário mínimo', '')}sobre o salário mínimo de `
+            + `${salarioMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+          : adicional.detalhe,
       valor: arredondar(valor),
     });
   }

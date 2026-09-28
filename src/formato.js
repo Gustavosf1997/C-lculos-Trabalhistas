@@ -57,6 +57,11 @@ export function formatarNumeroBR(valor, casas = 2) {
   });
 }
 
+/** Até duas casas, sem zero à direita: 16,5 e não 16,50; 33 e não 33,00. */
+export function formatarNumeroCurto(valor) {
+  return Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
 /** Formata sem casas decimais quando o número é inteiro. */
 export function formatarQuantidade(valor) {
   return Number.isInteger(valor) ? formatarNumeroBR(valor, 0) : formatarNumeroBR(valor, 2);

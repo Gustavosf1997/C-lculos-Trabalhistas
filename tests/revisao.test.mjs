@@ -69,7 +69,8 @@ test('a insalubridade também integra a base do noturno', () => {
   const r = calcularAdicionalNoturno({
     ...noturnoBase, risco: 'insalubridade', grauInsalubridade: 20,
   });
-  assert.equal(r.contexto.baseCalculo, 2524.2); // 2.200 + 20% de 1.621,00
+  // 2.200 + 20% de R$ 1.412,00, o mínimo de 2024 — o período pedido
+  assert.equal(r.contexto.baseCalculo, 2482.4);
 });
 
 /* ------------------------------------- OJ 394, II, da SDI-1 -------------- */
@@ -90,13 +91,17 @@ test('a partir do marco o DSR majorado entra na base dos reflexos', () => {
 });
 
 test('período que cruza o marco é separado em dois trechos', () => {
-  // 36 meses: 14,61 antes de 20/03/2023 e 21,39 depois. O reflexo no 13º é
-  // R$ 37,50 por mês antes (só horas extras) e R$ 45,00 depois (com o DSR).
+  // 36 meses: 14 + 19/31 antes de 20/03/2023 e 21 + 12/31 depois — as
+  // frações entram exatas, e não arredondadas a 14,61 e 21,39. O reflexo no
+  // 13º é R$ 37,50 por mês antes (só horas extras) e R$ 45,00 depois (com o DSR).
   const r = calcularHorasExtras({ ...heBase, dataInicio: '2022-01-01', dataFim: '2024-12-31' });
   const periodo = (k) => r.periodo.find((p) => p.chave === k)?.valor ?? 0;
+  const antes = 14 + 19 / 31;
+  const depois = 21 + 12 / 31;
   assert.equal(mensal(r, 'reflexo_13'), 45); // o mensal exibido é o do trecho recente
-  assert.equal(periodo('reflexo_13'), 1510.43); // 37,50 x 14,61 + 45,00 x 21,39
-  assert.equal(periodo('reflexo_ferias'), 2013.9); // 50,00 x 14,61 + 60,00 x 21,39
+  assert.equal(periodo('reflexo_13'), 1510.4); // 37,50 x 14,6129 + 45,00 x 21,3871
+  assert.equal(periodo('reflexo_13'), Math.round((37.5 * antes + 45 * depois) * 100) / 100);
+  assert.equal(periodo('reflexo_ferias'), 2013.87); // 50,00 x 14,6129 + 60,00 x 21,3871
   assert.ok(r.alertas.some((a) => a.includes('separou')));
 });
 
@@ -116,8 +121,9 @@ test('no trecho após o marco, o DSR entra no FGTS só pelos meses majorados', (
   const r = calcularHorasExtras({
     ...heBase, dataInicio: '2022-01-01', dataFim: '2024-12-31', reflexoAviso: true, diasAviso: 30,
   });
-  // 16.200 + DSR de 21,39 meses (1.925,10) + 13º + férias + aviso de 540
-  assert.equal(r.fgts.base, 22189.43);
+  // 16.200 + DSR de 21 + 12/31 meses (1.924,84) + 13º (1.510,40) + férias
+  // (2.013,87) + aviso de 540
+  assert.equal(r.fgts.base, 22189.11);
   assert.ok(r.fgts.detalhe.includes('DSR (desde 20/03/2023)'));
 });
 

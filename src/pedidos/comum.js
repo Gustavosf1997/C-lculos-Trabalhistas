@@ -7,9 +7,9 @@
  * somar o aviso prévio e totalizar.
  */
 
-import { FGTS, SALARIO_MINIMO } from '../tabelas.js';
+import { FGTS, salarioMinimoMedio, antesDaSerieDoMinimo } from '../tabelas.js';
 import { parseData, formatarData, diasEntre } from '../calculo.js';
-import { formatarNumeroBR } from '../formato.js';
+import { formatarNumeroBR, moeda } from '../formato.js';
 import { apurarBienal, marcoQuinquenal, descreverPrescricao } from '../prescricao.js';
 
 /** Divisor mensal padrão (44h semanais). */
@@ -40,18 +40,33 @@ export const valorHoraNormal = (baseMensal, divisor) =>
 /**
  * Adicional de risco que integra a base de cálculo. Insalubridade e
  * periculosidade não se acumulam (art. 193, §2º, da CLT).
+ *
+ * A insalubridade sobre o salário mínimo usa o mínimo **de cada mês** do
+ * período (art. 192): um pedido de 2021 a 2024 atravessa quatro valores, e o
+ * de hoje não serve a nenhum deles. Como o adicional é proporcional ao
+ * mínimo, a média ponderada dos meses, vezes os meses, dá o mesmo total que a
+ * soma mês a mês.
+ *
+ * @param {object} dados campos da tela
+ * @param {{inicio: Date, fim: Date}} [periodo] período calculado (sem ele, o mínimo de hoje)
  */
-export function calcularAdicionalRisco(dados) {
+export function calcularAdicionalRisco(dados, periodo = {}) {
   const salarioBase = num(dados.salarioBase);
 
   if (dados.risco === 'insalubridade') {
     const grau = num(dados.grauInsalubridade) / 100;
+    const minimo = salarioMinimoMedio(periodo.inicio, periodo.fim);
     const base =
       dados.baseInsalubridade === 'salario_base'
         ? salarioBase
         : dados.baseInsalubridade === 'valor_informado'
           ? num(dados.baseInsalubridadeValor)
-          : SALARIO_MINIMO;
+          : minimo.media;
+    const sobreMinimo = dados.baseInsalubridade !== 'salario_base' && dados.baseInsalubridade !== 'valor_informado';
+    const descricaoMinimo = minimo.valores.length > 1
+      ? `o salário mínimo de cada mês (${minimo.valores.map((v) => moeda.format(v)).join(', ')}; `
+        + `média de ${moeda.format(minimo.media)} no período)`
+      : `o salário mínimo de ${moeda.format(minimo.media)}`;
     return {
       nome: `Adicional de insalubridade (${num(dados.grauInsalubridade)}%)`,
       detalhe: `${(grau * 100).toFixed(0)}% sobre ${
@@ -59,9 +74,11 @@ export function calcularAdicionalRisco(dados) {
           ? 'o salário base'
           : dados.baseInsalubridade === 'valor_informado'
             ? 'a base informada'
-            : 'o salário mínimo'
+            : descricaoMinimo
       }`,
       valor: arredondar(base * grau),
+      minimo: sobreMinimo ? minimo : null,
+      minimoAntesDaSerie: sobreMinimo && antesDaSerieDoMinimo(periodo.inicio),
     };
   }
 
@@ -75,6 +92,10 @@ export function calcularAdicionalRisco(dados) {
 
   return { nome: null, detalhe: null, valor: 0 };
 }
+
+/** Aviso para quando o período começa antes da série de salários mínimos. */
+export const AVISO_MINIMO_ANTIGO = 'O período começa antes de maio de 2005, fora da série de salários mínimos '
+  + 'cadastrada: os meses anteriores foram calculados com o mínimo de R$ 300,00. Confira esse trecho à parte.';
 
 /**
  * Prescrição trabalhista (art. 7º, XXIX, da CF), nos dois prazos que a norma
@@ -258,7 +279,7 @@ export function reflexosMensais(base, dados) {
  */
 export function fecharResultado({
   mensais, meses, mesesFracionados, diasPeriodo, contexto, dados, alertas = [],
-  prescricao = null, baseAviso = 0, chavesFgts = [],
+  prescricao = null, baseAviso = 0, chavesFgts = [], proporcao = meses,
 }) {
   const recorte = prescricao?.recorte ?? null;
   if (prescricao?.alerta) alertas = [prescricao.alerta, ...alertas];
@@ -266,7 +287,9 @@ export function fecharResultado({
   // Uma verba pode trazer o seu total do período já apurado (`valorPeriodo`),
   // quando o período tem trechos com regras diferentes — o DSR majorado antes
   // e depois de 20/03/2023, por exemplo. As demais são o mensal vezes os meses.
-  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * meses) }));
+  // Multiplica pela fração exata dos meses (`proporcao`); o `meses` de duas
+  // casas é só para mostrar.
+  const periodo = mensais.map((m) => ({ ...m, valor: m.valorPeriodo ?? arredondar(m.valor * proporcao) }));
 
   const diasAviso = dados.reflexoAviso && baseAviso > 0 ? num(dados.diasAviso) || 30 : 0;
   const valorAviso = diasAviso ? arredondar((baseAviso / 30) * diasAviso) : 0;
@@ -301,7 +324,7 @@ export function fecharResultado({
   const ajustada = (m) => m.fgtsPeriodo !== undefined || m.valorPeriodo !== undefined;
   const mensalSemAjuste = arredondar(parcelasFgts.filter((m) => !ajustada(m)).reduce((soma, m) => soma + m.valor, 0));
   const periodoAjustado = parcelasFgts.filter(ajustada).reduce((soma, m) => soma + (m.fgtsPeriodo ?? m.valorPeriodo), 0);
-  const basePeriodo = arredondar(arredondar(mensalSemAjuste * meses) + periodoAjustado);
+  const basePeriodo = arredondar(arredondar(mensalSemAjuste * proporcao) + periodoAjustado);
   const querFgts = dados.reflexoFGTS !== false && basePeriodo > 0;
   const base = querFgts ? arredondar(basePeriodo + valorAviso) : 0;
   const fgtsDevido = arredondar(base * FGTS.aliquotaDeposito);

@@ -8,7 +8,7 @@ import { moeda, formatarQuantidade } from '../formato.js';
 import {
   MARCO_OJ_394, SEMANAS_POR_MES, arredondar, num, valorHoraNormal, calcularAdicionalRisco,
   apurarPrescricao, conferirDatas, contarPeriodo, reflexosMensais, fecharResultado, resultadoComErros,
-  resultadoImpedido, validarPeriodo,
+  resultadoImpedido, validarPeriodo, AVISO_MINIMO_ANTIGO,
 } from './comum.js';
 
 export function calcularHorasExtras(dados) {
@@ -30,7 +30,8 @@ export function calcularHorasExtras(dados) {
   const { inicioCalculo } = prescricao;
 
   const alertas = conferirDatas(inicio, fim, dados);
-  const risco = calcularAdicionalRisco(dados);
+  const risco = calcularAdicionalRisco(dados, { inicio: inicioCalculo, fim });
+  if (risco.minimoAntesDaSerie) alertas.push(AVISO_MINIMO_ANTIGO);
   const baseCalculo = arredondar(salarioBase + risco.valor + num(dados.outrasParcelas));
   const horaNormal = valorHoraNormal(baseCalculo, divisor);
   const percentual = num(dados.adicionalHoraExtra) || 50;
@@ -38,7 +39,7 @@ export function calcularHorasExtras(dados) {
 
   const horasMes =
     dados.modoQuantidade === 'semana' ? horasInformadas * SEMANAS_POR_MES : horasInformadas;
-  const { meses, mesesFracionados, diasPeriodo } = contarPeriodo(inicioCalculo, fim);
+  const { meses, mesesFracionados, diasPeriodo, proporcao } = contarPeriodo(inicioCalculo, fim);
 
   const diasUteis = num(dados.diasUteis) || 25;
   const diasRepouso = num(dados.diasRepouso) || 5;
@@ -72,12 +73,13 @@ export function calcularHorasExtras(dados) {
   // regra: nada de aplicar a nova a meses que ela não alcança.
   const marcoOJ394 = parseData(MARCO_OJ_394);
   const pediuDsrMajorado = querDSR && dados.dsrNosReflexos !== false;
+  // As frações de mês entram exatas na conta; arredondadas, só no texto.
   const mesesDesdeOMarco = fim >= marcoOJ394
-    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).meses
+    ? contarPeriodo(inicioCalculo > marcoOJ394 ? inicioCalculo : marcoOJ394, fim).proporcao
     : 0;
-  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, meses) : 0;
-  const mesesSemMajoracao = arredondar(meses - mesesMajorados);
-  const partido = mesesMajorados > 0 && mesesSemMajoracao > 0;
+  const mesesMajorados = pediuDsrMajorado ? Math.min(mesesDesdeOMarco, proporcao) : 0;
+  const mesesSemMajoracao = Math.max(0, proporcao - mesesMajorados);
+  const partido = mesesMajorados > 0 && mesesSemMajoracao > 1e-9;
 
   if (pediuDsrMajorado && mesesMajorados === 0) {
     alertas.push(
@@ -88,15 +90,15 @@ export function calcularHorasExtras(dados) {
   } else if (partido) {
     alertas.push(
       `O período cruza ${formatarData(marcoOJ394)}, e o cálculo o separou. Nos `
-        + `${formatarQuantidade(mesesSemMajoracao)} meses anteriores, o DSR majorado não repercute em férias, `
-        + '13º, aviso nem FGTS (OJ 394, redação original); nos '
-        + `${formatarQuantidade(mesesMajorados)} meses seguintes, repercute (OJ 394, II).`,
+        + `${formatarQuantidade(arredondar(mesesSemMajoracao))} meses anteriores, o DSR majorado não repercute em `
+        + 'férias, 13º, aviso nem FGTS (OJ 394, redação original); nos '
+        + `${formatarQuantidade(arredondar(mesesMajorados))} meses seguintes, repercute (OJ 394, II).`,
     );
   }
 
   // O DSR é pago no período todo; o FGTS sobre ele, só nos meses majorados.
   const dsr = mensais.find((m) => m.chave === 'dsr');
-  if (dsr && mesesMajorados < meses) {
+  if (dsr && mesesMajorados < proporcao - 1e-9) {
     dsr.fgtsPeriodo = arredondar(dsrMes * mesesMajorados);
     if (partido) dsr.nomeCurto = `DSR (desde ${formatarData(marcoOJ394)})`;
   }
@@ -121,6 +123,7 @@ export function calcularHorasExtras(dados) {
   return fecharResultado({
     mensais,
     meses,
+    proporcao,
     mesesFracionados,
     diasPeriodo,
     dados,

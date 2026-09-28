@@ -124,6 +124,7 @@ código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 | `tests/*.test.mjs` | Testes dos motores de cálculo e dos formatos |
 | `tests/revisao.test.mjs` | Testes da revisão de fórmulas: cada um fixa uma regra legal conferida |
 | `tests/prescricao.test.mjs` | Prescrição nas três telas: rescisão, pedidos com período e multas |
+| `tests/conferencia.test.mjs` | Rescisões e pedidos conferidos por um cálculo independente, feito à parte a partir das regras (`conferencia.json`) |
 | `tests/acidente.test.mjs` | Indenização acidentária: tabela DPVAT, CIF, valor presente, art. 223-G e prescrição da ciência |
 | `tests/varredura.test.mjs` | 10 mil combinações de entrada conferidas por invariantes: líquido nunca negativo, teto do §5º, totais que fecham, desconto da parcela única que nunca aumenta o valor |
 | `tests/consistencia.test.mjs` | Consistência entre catálogo, HTML e módulos: ids repetidos, campo que o código lê e a tela não tem, limites invertidos |
@@ -161,7 +162,8 @@ Verbas e descontos:
   mês cheio (30/30) quando o mês foi trabalhado por inteiro, inclusive em
   fevereiro — sobre o salário base e os adicionais, sem as médias de variáveis;
 - aviso prévio proporcional (30 dias + 3 por ano, máx. 90 — Lei 12.506/2011),
-  indenizado, trabalhado, pela metade (comum acordo) ou descontado (pedido de
+  indenizado, trabalhado, pela metade exata no comum acordo (33 dias rendem
+  16,5 dias de salário, art. 484-A, I, "a") ou descontado (pedido de
   demissão não cumprido), com projeção do contrato quando indenizado. A
   proporcionalidade existe em favor do empregado: **ele só pode ser obrigado a
   cumprir 30 dias em serviço**, e o que passar disso é lançado como indenizado
@@ -172,10 +174,12 @@ Verbas e descontos:
   divididos pelo divisor, Súmula 264 do TST) acrescida do adicional — 50% por
   padrão, editável;
 - adicionais legais escolhidos por marcação, cada um com percentual e base
-  próprios: insalubridade de 10%, 20% ou 40% sobre o salário mínimo,
+  próprios: insalubridade de 10%, 20% ou 40% sobre o salário mínimo **do mês
+  da saída** (uma rescisão de 2024 usa o mínimo de 2024, e não o de hoje),
   periculosidade de 30% e transferência de 25% sobre o salário base, e
-  adicional noturno de 20% sobre as horas noturnas informadas — insalubridade
-  e periculosidade se excluem (art. 193, §2º);
+  adicional noturno de 20% sobre as horas noturnas informadas, com a **hora
+  noturna reduzida de 52min30s** (art. 73, §1º) quando elas são de relógio —
+  insalubridade e periculosidade se excluem (art. 193, §2º);
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas e proporcionais, ambas + 1/3, com redução por faltas
   injustificadas (art. 130). Os períodos vencidos são informados por quem
@@ -259,7 +263,8 @@ O que é comum a todos eles:
 
 - **hora normal** — base de cálculo dividida pelo divisor da jornada (220 para
   44h semanais, 200 para 40h e assim por diante, conforme a Súmula 431 do TST;
-  o campo é editável para categorias com divisor próprio, como a bancária);
+  o campo é editável para categorias com divisor próprio — o bancário usa 180
+  na jornada de 6 horas e 220 na de 8, pela Súmula 124 do TST);
 - **base de cálculo** integrando as parcelas de natureza salarial (Súmula 264
   do TST), entre elas o **adicional de insalubridade** (10%, 20% ou 40%, sobre
   o salário mínimo, sobre o salário base ou sobre a base que a norma coletiva
@@ -334,8 +339,9 @@ precisam ser calculados em separado.
 
 O adicional como pedido autônomo, e não como integrante de outra verba.
 Insalubridade em grau mínimo (10%), médio (20%) ou máximo (40%), sobre o
-salário mínimo (art. 192, redação da CLT), sobre o salário base ou sobre a base
-que a norma coletiva fixar; periculosidade de 30% sobre o salário base
+salário mínimo **de cada mês** (art. 192 da CLT) — a série oficial desde 2005
+está em `src/tabelas.js`, com as trocas no meio do ano de 2011, 2020 e 2023 —,
+sobre o salário base ou sobre a base que a norma coletiva fixar; periculosidade de 30% sobre o salário base
 (art. 193, §1º). Gera reflexos em 13º, férias + 1/3 e FGTS (Súmulas 132 e 139
 do TST). Não há DSR: o adicional é mensal e já remunera os repousos (OJ 103 da
 SDI-1).
@@ -514,6 +520,8 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Redução dos dias de férias por faltas injustificadas | art. 130 da CLT | `diasDeFeriasPorFaltas` |
 | Justa causa perde 13º e férias proporcionais | art. 3º da Lei 4.090/62 e Súmula 171 do TST | `tipos.js` |
 | Comum acordo: aviso e multa do FGTS pela metade, sem seguro-desemprego | art. 484-A da CLT | `tipos.js` |
+| Metade do aviso no comum acordo é metade exata (16,5 dias num aviso de 33) | art. 484-A, I, "a", da CLT | `diasAvisoDevidos` |
+| Rescisão antecipada pelo empregador dá seguro-desemprego, se cumpridos os requisitos | Lei 7.998/90, art. 3º | `tipos.js` |
 | Rescisão antecipada pelo empregador: metade do que faltava | art. 479 da CLT | `indenizacaoAntecipada` |
 | Saída antecipada do empregado: só o prejuízo comprovado, até o teto do art. 479 | art. 480, caput e §1º, da CLT | `tetoArt480` |
 | Compensações no acerto limitadas a um mês de remuneração | art. 477, §5º, da CLT; SDI-1 do TST | `limitarDescontos` |
@@ -522,7 +530,7 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Cláusula assecuratória afasta os arts. 479/480 e traz o aviso prévio | art. 481 da CLT | `clausulaAtiva` |
 | Hora normal integrada pelas parcelas salariais | Súmula 264 do TST | `valorHoraNormal` |
 | Divisor mensal conforme a jornada contratada | Súmula 431 do TST | `JORNADAS` |
-| Hora noturna reduzida a 52min30s | art. 73, §1º, da CLT | `FATOR_HORA_NOTURNA` |
+| Hora noturna reduzida a 52min30s, nos pedidos e na rescisão | art. 73, §1º, da CLT | `FATOR_HORA_NOTURNA` |
 | Adicional noturno integra o salário e incide sobre a hora já integrada | Súmulas 60, I, e 264 do TST | `noturno.js` |
 | DSR sobre as verbas variáveis: variáveis ÷ dias úteis × repousos | Lei 605/49 e Súmula 172 do TST | `dsrMes` |
 | Sábado é dia útil não trabalhado para o DSR | Súmula 113 do TST | dica do campo |
@@ -533,6 +541,10 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Intervalo suprimido até 10/11/2017: período integral, natureza salarial | Súmula 437, I e III, do TST | `intervalo.js` |
 | Intervalo a partir de 11/11/2017: só o suprimido, natureza indenizatória | art. 71, §4º, da CLT (Lei 13.467/2017) | `MARCO_REFORMA` |
 | Insalubridade sobre o salário mínimo, salvo base maior em norma coletiva | art. 192 da CLT; Súmula 228 suspensa (Rcl 6.266 do STF) | `calcularAdicionalRisco` |
+| O mínimo é o de cada mês do período, e o do mês da saída na rescisão | art. 192 da CLT | `salarioMinimoMedio` |
+| Divisor do bancário: 180 (6 horas) e 220 (8 horas) | Súmula 124 do TST (2017) | dica do campo |
+| Pensão alimentícia fora das verbas rescisórias indenizatórias | jurisprudência do STJ | `calcularRescisao` |
+| Meses fracionados entram exatos na conta dos pedidos | — | `contarPeriodo` |
 | Periculosidade de 30% sobre o salário base, sem gratificações e prêmios | art. 193, §1º, da CLT | `calcularAdicionalRisco` |
 | Insalubridade e periculosidade não se acumulam | art. 193, §2º, da CLT | `aplicarExclusoes` |
 | Adicional de risco repercute em 13º, férias e FGTS | Súmulas 132 e 139 do TST | `insalubridade.js` |
@@ -589,18 +601,15 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   `calcularRedutorIRRF`, caso a sua leitura seja outra.
 - As faltas injustificadas reduzem todos os períodos de férias informados, e
   não apenas o período aquisitivo em que ocorreram.
-- Na aba de rescisão, a insalubridade é calculada sobre o salário mínimo
-  (art. 192 da CLT); norma coletiva que fixe outra base precisa ser ajustada em
-  `src/adicionais.js`.
+- Na aba de rescisão, a insalubridade é calculada sobre o salário mínimo do
+  mês da saída (art. 192 da CLT); norma coletiva que fixe outra base precisa
+  ser ajustada em `src/adicionais.js`.
 - A média de comissões, gorjetas e prêmios integra aviso, 13º e férias, mas não
   o saldo de salário: é média para indenização, não o que o último mês pagou.
 - As horas extras informadas são as do mês da rescisão e formam verba própria;
   elas entram nas bases de INSS, IRRF e FGTS do mês, mas não integram aviso,
   13º e férias. Horas extras habituais que devam repercutir nessas verbas ainda
   não têm campo próprio — o módulo de pedidos calcula esses reflexos.
-- Na aba de **rescisão**, o adicional noturno não aplica a hora noturna
-  reduzida de 52min30s (art. 73, §1º) — o pedido autônomo de adicional noturno,
-  na outra aba, aplica.
 - A prescrição só é afirmada com a data do ajuizamento; sem ela, a tela diz até
   quando se pode ajuizar e avisa se esse prazo já passou. Nos pedidos, o
   biênio depende também da data de extinção do contrato.
@@ -636,8 +645,10 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   informada vale para todos os meses.
 - O reflexo no aviso prévio indenizado, nos pedidos, não gera avos próprios de
   13º e de férias sobre o período projetado.
-- A pensão alimentícia é aplicada como percentual único sobre o total das
-  verbas; casos reais dependem do que consta na decisão judicial.
+- A pensão alimentícia é um percentual sobre o valor bruto das verbas
+  salariais (saldo, horas extras e 13º) — as indenizatórias ficam fora, como
+  decide o STJ, salvo se marcadas, quando a decisão ou o acordo as incluir.
+  Decisão que fixe a pensão sobre o líquido pede ajuste do percentual.
 
 Os valores são estimativas e não substituem a homologação nem a orientação de
 um profissional.

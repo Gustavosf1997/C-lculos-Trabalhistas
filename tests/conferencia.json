@@ -1,0 +1,725 @@
+{
+ "rescisoes": [
+  {
+   "dados": {
+    "tipo": "determinado_antecipada_empregador",
+    "tipoAviso": null,
+    "dataAdmissao": "2016-09-03",
+    "dataAviso": "2016-09-17",
+    "salarioBase": 4800,
+    "adicionais": [
+     "insalubridade_20"
+    ],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 0,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28",
+    "dataTermoFinal": "2016-12-01"
+   },
+   "proventos": {
+    "saldo_salario": 2488.0,
+    "indenizacao_art_479": 6658.13,
+    "decimo_terceiro": 443.88,
+    "ferias_proporcionais": 443.88,
+    "terco_proporcionais": 147.96
+   },
+   "descontos": {
+    "inss_salario": 199.61,
+    "inss_13": 33.29
+   },
+   "fgts": {
+    "rescisao": 234.55,
+    "multa": 93.82
+   },
+   "liquido": 9948.95
+  },
+  {
+   "dados": {
+    "tipo": "justa_causa",
+    "tipoAviso": null,
+    "dataAdmissao": "2017-07-19",
+    "dataAviso": "2024-08-22",
+    "salarioBase": 9100,
+    "adicionais": [
+     "insalubridade_20"
+    ],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 1,
+    "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 6880.43,
+    "ferias_vencidas": 9382.4,
+    "terco_vencidas": 3127.47
+   },
+   "descontos": {
+    "inss_salario": 764.77,
+    "irrf_salario": 606.28
+   },
+   "fgts": {
+    "rescisao": 550.43,
+    "multa": 0.0
+   },
+   "liquido": 18019.25
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2014-09-14",
+    "dataAviso": "2022-02-27",
+    "salarioBase": 2750.35,
+    "adicionais": [],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 0,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 2658.67,
+    "decimo_terceiro": 687.59,
+    "ferias_proporcionais": 1604.37,
+    "terco_proporcionais": 534.79
+   },
+   "descontos": {
+    "inss_salario": 214.97,
+    "inss_13": 51.57
+   },
+   "fgts": {
+    "rescisao": 267.7,
+    "multa": 0.0
+   },
+   "liquido": 5218.88
+  },
+  {
+   "dados": {
+    "tipo": "determinado_termo_final",
+    "tipoAviso": null,
+    "dataAdmissao": "2029-02-27",
+    "dataAviso": "",
+    "salarioBase": 1621,
+    "adicionais": [],
+    "horasNoturnas": 21,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 0,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28",
+    "dataTermoFinal": "2029-05-27"
+   },
+   "proventos": {
+    "saldo_salario": 1458.9,
+    "decimo_terceiro": 405.25,
+    "ferias_proporcionais": 405.25,
+    "terco_proporcionais": 135.08
+   },
+   "descontos": {
+    "inss_salario": 109.42,
+    "inss_13": 30.39
+   },
+   "fgts": {
+    "rescisao": 149.13,
+    "multa": 0.0
+   },
+   "liquido": 2264.67
+  },
+  {
+   "dados": {
+    "tipo": "sem_justa_causa",
+    "tipoAviso": "indenizado",
+    "dataAdmissao": "2018-02-24",
+    "dataAviso": "2024-10-16",
+    "salarioBase": 1621,
+    "adicionais": [],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 0,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 864.53,
+    "aviso_previo": 2593.6,
+    "decimo_terceiro": 1485.92,
+    "ferias_proporcionais": 1215.75,
+    "terco_proporcionais": 405.25
+   },
+   "descontos": {
+    "inss_salario": 64.84,
+    "inss_13": 111.44
+   },
+   "fgts": {
+    "rescisao": 395.52,
+    "multa": 5096.48
+   },
+   "liquido": 6388.77
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "nao_cumprido",
+    "dataAdmissao": "2015-01-18",
+    "dataAviso": "2015-03-04",
+    "salarioBase": 4800,
+    "adicionais": [],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 0,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 640.0,
+    "decimo_terceiro": 400.0,
+    "ferias_proporcionais": 800.0,
+    "terco_proporcionais": 266.67
+   },
+   "descontos": {
+    "inss_salario": 48.0,
+    "inss_13": 30.0,
+    "aviso_nao_cumprido": 2028.67
+   },
+   "fgts": {
+    "rescisao": 83.2,
+    "multa": 0.0
+   },
+   "liquido": 0.0
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "indenizado_metade",
+    "dataAdmissao": "2018-01-13",
+    "dataAviso": "2019-09-07",
+    "salarioBase": 4800,
+    "adicionais": [],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 1,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 1120.0,
+    "aviso_previo": 2640.0,
+    "decimo_terceiro": 3600.0,
+    "ferias_vencidas": 4800.0,
+    "terco_vencidas": 1600.0,
+    "ferias_proporcionais": 3200.0,
+    "terco_proporcionais": 1066.67
+   },
+   "descontos": {
+    "inss_salario": 84.0,
+    "inss_13": 320.6
+   },
+   "fgts": {
+    "rescisao": 588.8,
+    "multa": 117.76
+   },
+   "liquido": 17622.07
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2018-02-15",
+    "dataAviso": "2024-03-20",
+    "salarioBase": 4800,
+    "adicionais": [
+     "insalubridade_40",
+     "noturno_20"
+    ],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 2,
+    "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 3583.04,
+    "aviso_previo": 3604.76,
+    "decimo_terceiro": 2002.64,
+    "ferias_vencidas": 18023.79,
+    "terco_vencidas": 6007.93,
+    "ferias_proporcionais": 1501.98,
+    "terco_proporcionais": 500.66
+   },
+   "descontos": {
+    "inss_salario": 318.56,
+    "inss_13": 155.92
+   },
+   "fgts": {
+    "rescisao": 735.24,
+    "multa": 2616.18
+   },
+   "liquido": 34750.32
+  },
+  {
+   "dados": {
+    "tipo": "sem_justa_causa",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2023-03-20",
+    "dataAviso": "2032-08-11",
+    "salarioBase": 2750.35,
+    "adicionais": [],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 2,
+    "saldoFgts": 0,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 916.78,
+    "aviso_previo": 2475.32,
+    "decimo_terceiro": 2062.76,
+    "ferias_vencidas": 8251.05,
+    "terco_vencidas": 2750.35,
+    "ferias_proporcionais": 1604.37,
+    "terco_proporcionais": 534.79
+   },
+   "descontos": {
+    "inss_salario": 68.76,
+    "inss_13": 161.33
+   },
+   "fgts": {
+    "rescisao": 436.39,
+    "multa": 174.56
+   },
+   "liquido": 18365.33
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "dispensado",
+    "dataAdmissao": "2020-10-09",
+    "dataAviso": "2020-12-24",
+    "salarioBase": 4800,
+    "adicionais": [],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 2,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 3840.0,
+    "decimo_terceiro": 1200.0,
+    "ferias_proporcionais": 1200.0,
+    "terco_proporcionais": 400.0
+   },
+   "descontos": {
+    "inss_salario": 349.4,
+    "inss_13": 90.0
+   },
+   "fgts": {
+    "rescisao": 403.2,
+    "multa": 0.0
+   },
+   "liquido": 6200.6
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "dispensado",
+    "dataAdmissao": "2020-06-26",
+    "dataAviso": "2026-09-05",
+    "salarioBase": 1621,
+    "adicionais": [
+     "periculosidade_30"
+    ],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 2,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 351.22,
+    "decimo_terceiro": 1404.87,
+    "ferias_vencidas": 6321.9,
+    "terco_vencidas": 2107.3,
+    "ferias_proporcionais": 351.22,
+    "terco_proporcionais": 117.07
+   },
+   "descontos": {
+    "inss_salario": 26.34,
+    "inss_13": 105.37
+   },
+   "fgts": {
+    "rescisao": 140.49,
+    "multa": 2497.23
+   },
+   "liquido": 10521.87
+  }
+ ],
+ "pedidos": [
+  {
+   "qual": "he",
+   "dados": {
+    "dataInicio": "2023-04-14",
+    "dataFim": "2025-05-27",
+    "dataAjuizamento": "2025-07-27",
+    "salarioBase": 2200,
+    "divisor": 220,
+    "outrasParcelas": 0,
+    "risco": "insalubridade",
+    "grauInsalubridade": 10,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": false,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": true,
+    "reflexoAviso": true,
+    "diasAviso": 45,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "horas_extras": 2938.05,
+    "dsr": 587.61,
+    "reflexo_13": 244.96,
+    "reflexo_ferias": 326.36,
+    "reflexo_aviso": 173.25
+   },
+   "fgts": 294.61,
+   "multa": 117.84,
+   "total": 4682.68
+  },
+  {
+   "qual": "noturno",
+   "dados": {
+    "dataInicio": "2021-03-16",
+    "dataFim": "2024-06-08",
+    "dataAjuizamento": "",
+    "salarioBase": 1621,
+    "divisor": 220,
+    "outrasParcelas": 0,
+    "risco": "periculosidade",
+    "grauInsalubridade": 20,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 70,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": true,
+    "reflexoAviso": false,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "adicional_noturno": 5943.85,
+    "dsr": 1188.69,
+    "reflexo_13": 594.54,
+    "reflexo_ferias": 792.33
+   },
+   "fgts": 681.55,
+   "multa": 272.62,
+   "total": 9473.58
+  },
+  {
+   "qual": "he",
+   "dados": {
+    "dataInicio": "2022-11-14",
+    "dataFim": "2023-07-24",
+    "dataAjuizamento": "2024-04-02",
+    "salarioBase": 3871.4,
+    "divisor": 180,
+    "outrasParcelas": 0,
+    "risco": "insalubridade",
+    "grauInsalubridade": 40,
+    "baseInsalubridade": "salario_minimo",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "semana",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": true,
+    "reflexoAviso": true,
+    "diasAviso": 45,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "horas_extras": 9251.27,
+    "dsr": 1850.25,
+    "reflexo_13": 847.89,
+    "reflexo_ferias": 1130.5,
+    "reflexo_aviso": 1996.47
+   },
+   "fgts": 1131.94,
+   "multa": 452.78,
+   "total": 16661.1
+  },
+  {
+   "qual": "insal",
+   "dados": {
+    "dataInicio": "2023-04-21",
+    "dataFim": "2024-09-15",
+    "dataAjuizamento": "",
+    "salarioBase": 2200,
+    "divisor": 180,
+    "outrasParcelas": 312.2,
+    "risco": "insalubridade",
+    "grauInsalubridade": 40,
+    "baseInsalubridade": "salario_minimo",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "semana",
+    "adicionalHoraExtra": 100,
+    "horasNoturnas": 70,
+    "horaReduzida": true,
+    "adicionalNoturno": 25,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": false,
+    "reflexo13": false,
+    "reflexoFerias": false,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": false,
+    "reflexoAviso": true,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "adicional_risco": 9198.41,
+    "reflexo_aviso": 564.8
+   },
+   "fgts": 781.06,
+   "multa": 0,
+   "total": 10544.27
+  },
+  {
+   "qual": "noturno",
+   "dados": {
+    "dataInicio": "2023-07-28",
+    "dataFim": "2026-09-03",
+    "dataAjuizamento": "",
+    "salarioBase": 2200,
+    "divisor": 220,
+    "outrasParcelas": 0,
+    "risco": "insalubridade",
+    "grauInsalubridade": 20,
+    "baseInsalubridade": "salario_minimo",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": false,
+    "reflexoAviso": true,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "adicional_noturno": 2027.12,
+    "dsr": 405.42,
+    "reflexo_13": 202.9,
+    "reflexo_ferias": 270.28,
+    "reflexo_aviso": 65.34
+   },
+   "fgts": 237.69,
+   "multa": 0,
+   "total": 3208.75
+  },
+  {
+   "qual": "he",
+   "dados": {
+    "dataInicio": "2024-11-22",
+    "dataFim": "2026-10-23",
+    "dataAjuizamento": "",
+    "salarioBase": 3871.4,
+    "divisor": 180,
+    "outrasParcelas": 312.2,
+    "risco": "nenhum",
+    "grauInsalubridade": 10,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "semana",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 70,
+    "horaReduzida": true,
+    "adicionalNoturno": 25,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": false,
+    "reflexoAviso": true,
+    "diasAviso": 45,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "horas_extras": 24367.31,
+    "dsr": 4873.37,
+    "reflexo_13": 2436.68,
+    "reflexo_ferias": 3248.91,
+    "reflexo_aviso": 1903.53
+   },
+   "fgts": 2946.38,
+   "multa": 0,
+   "total": 39776.18
+  },
+  {
+   "qual": "he",
+   "dados": {
+    "dataInicio": "2021-11-29",
+    "dataFim": "2024-07-13",
+    "dataAjuizamento": "2024-09-09",
+    "salarioBase": 3871.4,
+    "divisor": 180,
+    "outrasParcelas": 312.2,
+    "risco": "periculosidade",
+    "grauInsalubridade": 10,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 25,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": true,
+    "reflexoAviso": true,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "horas_extras": 9817.03,
+    "dsr": 1963.47,
+    "reflexo_13": 900.2,
+    "reflexo_ferias": 1200.21,
+    "reflexo_aviso": 374.15
+   },
+   "fgts": 1062.18,
+   "multa": 424.87,
+   "total": 15742.11
+  },
+  {
+   "qual": "noturno",
+   "dados": {
+    "dataInicio": "2024-07-08",
+    "dataFim": "2025-05-24",
+    "dataAjuizamento": "",
+    "salarioBase": 1621,
+    "divisor": 180,
+    "outrasParcelas": 312.2,
+    "risco": "insalubridade",
+    "grauInsalubridade": 40,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 30,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 100,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 25,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": false,
+    "reflexoAviso": true,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28"
+   },
+   "itens": {
+    "adicional_noturno": 907.69,
+    "dsr": 181.54,
+    "reflexo_13": 90.72,
+    "reflexo_ferias": 120.99,
+    "reflexo_aviso": 103.26
+   },
+   "fgts": 112.34,
+   "multa": 0,
+   "total": 1516.54
+  }
+ ]
+}
