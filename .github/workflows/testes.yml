@@ -1,0 +1,62 @@
+# Verificação automática: roda todos os testes a cada pull request e a cada
+# envio para a main. Com a regra "Require status checks to pass" ligada no
+# GitHub (passo a passo no README), nada entra na main — e, portanto, nada
+# chega ao endereço publicado no Cloudflare Pages — sem passar por aqui.
+name: Testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Um envio novo na mesma branch cancela a verificação anterior, já superada.
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixa o código
+        uses: actions/checkout@v5
+
+      - name: Prepara o Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Cálculos (rescisão, pedidos, prescrição, acidente e conferência independente)
+        run: node --test tests/*.test.mjs
+
+      # O projeto não tem dependências nem package.json — e não deve ter, para
+      # o Cloudflare publicar os arquivos como estão. O Playwright entra só
+      # aqui, dentro da pasta do projeto e sem gravar nada no repositório.
+      - name: Instala o navegador de teste
+        run: |
+          npm install --no-save --no-package-lock --no-audit --no-fund --prefix . playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Sobe o site num servidor local
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 > /dev/null 2>&1 &
+          for tentativa in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/index.html > /dev/null && exit 0
+            sleep 1
+          done
+          echo "O servidor local não respondeu." && exit 1
+
+      - name: Tela (máscaras, campos e cálculos nas duas abas)
+        run: node tests/interface.mjs
+
+      - name: Robustez (uso adverso, lixo nos campos, PDF)
+        run: node tests/robustez.mjs
+
+      - name: Versão portátil (arquivo em dia com o código e mesmos valores)
+        run: node tests/portatil.mjs

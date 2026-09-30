@@ -1,5 +1,7 @@
 # Cálculos Trabalhistas
 
+[![Testes](https://github.com/Gustavosf1997/C-lculos-Trabalhistas/actions/workflows/testes.yml/badge.svg)](https://github.com/Gustavosf1997/C-lculos-Trabalhistas/actions/workflows/testes.yml)
+
 Ferramenta web para cálculos trabalhistas, em duas abas:
 
 - **Verbas rescisórias** (`index.html`) — o acerto da rescisão;
@@ -50,6 +52,10 @@ A versão portátil tem a sua própria verificação, que não precisa de servid
 node tests/portatil.mjs
 ```
 
+Tudo isso roda sozinho no GitHub a cada pull request e a cada envio para a
+`main` (`.github/workflows/testes.yml`) — veja como isso segura as versões com
+erro fora do ar em [Só a versão testada vai ao ar](#só-a-versão-testada-vai-ao-ar).
+
 `robustez.mjs` não confere valores — confere que a ferramenta não quebra.
 Dirige o formulário como um usuário apressado (troca de modalidade no meio do
 preenchimento, digita letras, estoura limites, limpa, marca e desmarca tudo) e
@@ -93,11 +99,107 @@ O arquivo gerado é versionado no repositório, para que se possa baixá-lo sem
 ter Node instalado. `tests/portatil.mjs` confere que ele ainda corresponde ao
 código-fonte — se alguém mexer em um sem regerar o outro, o teste acusa.
 
+## Publicação no Cloudflare Pages
+
+O site é só HTML, CSS e JavaScript, sem servidor, banco de dados nem etapa de
+compilação: o Cloudflare Pages publica os arquivos do repositório como estão,
+de graça, e republica sozinho a cada mudança na `main`.
+
+### Criar o site (uma vez)
+
+1. Crie uma conta gratuita em <https://dash.cloudflare.com>, se ainda não
+   tiver.
+2. No menu lateral, abra **Workers & Pages** e clique em **Create
+   application** (ou **Create**).
+3. Escolha a aba **Pages** — se aparecer só a tela do Workers, procure o link
+   *"Looking to deploy Pages? Get started"* — e depois **Import an existing Git
+   repository** (ou **Connect to Git**).
+4. Autorize o app da Cloudflare no GitHub. Quando ele perguntar a quais
+   repositórios pode ter acesso, marque só **Gustavosf1997/C-lculos-Trabalhistas**.
+   Selecione o repositório e clique em **Begin setup**.
+5. Preencha assim:
+
+   | Campo | Valor |
+   | --- | --- |
+   | Project name | `calculos-trabalhistas` — vira o endereço |
+   | Production branch | `main` |
+   | Framework preset | **None** |
+   | Build command | em branco (se o campo exigir algo, `exit 0`) |
+   | Build output directory | em branco (se o campo exigir algo, `/`) |
+   | Root directory | em branco |
+
+   Não há build: os arquivos do repositório já são o site. Por isso o projeto
+   não tem `package.json` — e não deve ter, ou o Cloudflare passaria a instalar
+   dependências a cada publicação.
+6. Clique em **Save and Deploy**. Em cerca de um minuto o site está em
+   **https://calculos-trabalhistas.pages.dev**.
+
+### Só a versão testada vai ao ar
+
+O Cloudflare publica o que estiver na `main`. Para que só entre na `main` o
+que passou em todos os testes, há duas peças:
+
+- **a verificação automática** (`.github/workflows/testes.yml`), que já está no
+  repositório: a cada pull request, o GitHub roda os testes dos cálculos, os
+  da tela, os de robustez e os da versão portátil — os mesmos descritos em
+  [Testes](#testes). Leva uns 3 minutos, e o resultado aparece na própria PR
+  como **Testes** ✓ ou ✗;
+- **a regra que exige a verificação**, ligada uma vez no GitHub:
+
+  1. No repositório, abra **Settings → Rules → Rulesets** e clique em
+     **New ruleset → New branch ruleset**.
+  2. **Ruleset name:** `main protegida`. **Enforcement status:** **Active**.
+  3. Em **Target branches**, clique em **Add target → Include default branch**.
+  4. Em **Rules**, marque:
+     - **Restrict deletions** e **Block force pushes** (já vêm marcados);
+     - **Require a pull request before merging** (aprovações exigidas: `0`);
+     - **Require status checks to pass** e, dentro dela, **Require branches
+       to be up to date before merging**. Clique em **Add checks**, digite
+       `Testes` e escolha a verificação que aparecer. Ela só aparece depois de
+       ter rodado ao menos uma vez — a própria PR que trouxe este arquivo já a
+       rodou.
+  5. Deixe a **Bypass list** vazia, para que ninguém — nem o dono do
+     repositório — pule a verificação, e clique em **Create**.
+
+Com as duas no lugar, o caminho de toda mudança fica assim:
+
+1. a mudança chega numa pull request;
+2. o GitHub roda os testes. Enquanto rodam, e se algum falhar, o botão de
+   merge fica bloqueado;
+3. enquanto isso, o Cloudflare publica uma **prévia** da branch, num endereço
+   próprio, para quem quiser conferir a mudança no navegador — o endereço
+   oficial não muda;
+4. tudo verde, o merge é liberado. A `main` recebe a versão testada e o
+   Cloudflare a publica em **calculos-trabalhistas.pages.dev** em cerca de um
+   minuto.
+
+Uma versão com teste falhando não entra na `main` e, portanto, nunca chega ao
+endereço oficial. O rodapé da ferramenta mostra a data da versão no ar — é a
+de `src/versao.js`.
+
+### Voltar uma versão
+
+No Cloudflare, em **Workers & Pages → calculos-trabalhistas → Deployments**,
+qualquer publicação anterior volta ao ar com **Rollback to this deployment**,
+na hora. Para desfazer de vez, reverta o merge no GitHub: a reversão também
+passa pelos testes.
+
+### Domínio próprio e acesso restrito
+
+- **Domínio próprio:** em **Custom domains**, dá para usar um endereço como
+  `calculos.seuescritorio.com.br`, com HTTPS automático. Se o domínio já está no
+  Cloudflare, a configuração é automática; se não, ele mostra o registro DNS a
+  criar no seu provedor.
+- **Acesso restrito:** para que a ferramenta não fique aberta ao público, o
+  **Cloudflare Access** (Zero Trust) põe um login por e-mail na frente do site,
+  de graça para até 50 usuários.
+
 ## Estrutura
 
 | Arquivo | Papel |
 | --- | --- |
 | `index.html` | Aba de verbas rescisórias: tipo de rescisão + formulário + resultado |
+| `.github/workflows/testes.yml` | Verificação automática: roda todos os testes a cada pull request e a cada envio para a `main` |
 | `pedidos.html` | Aba de pedidos da reclamatória |
 | `assets/estilos.css` | Estilos das duas páginas (paleta em `:root`, marca `#ffc600`) |
 | `src/tipos.js` | Catálogo dos tipos de rescisão: verbas devidas, opções de aviso, campos exibidos e regras de FGTS |
