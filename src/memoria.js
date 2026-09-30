@@ -74,8 +74,11 @@ export function coletarDadosInformados(formulario) {
  * @param {HTMLElement} secoes.formulario
  * @param {HTMLElement} secoes.resultado painel já renderizado
  * @param {string} secoes.rodape aviso legal
+ * @param {string} [secoes.vigencia] tabelas aplicadas no cálculo; por omissão, as de hoje
  */
-export function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape }) {
+export function montarMemoria({
+  titulo, subtitulo, formulario, resultado, rodape, vigencia = VIGENCIA_DETALHE,
+}) {
   const alvo = document.getElementById('memoria');
   if (!alvo) return;
 
@@ -102,7 +105,7 @@ export function montarMemoria({ titulo, subtitulo, formulario, resultado, rodape
     </section>
 
     <footer class="memoria__rodape">
-      <p>${VIGENCIA_DETALHE}</p>
+      <p>${vigencia}</p>
       <p>Gerada pela ferramenta de cálculos trabalhistas — ${CARIMBO}</p>
       <p>${rodape}</p>
     </footer>`;

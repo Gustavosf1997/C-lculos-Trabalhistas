@@ -315,6 +315,9 @@ function renderResultado(resultado) {
     ['Férias vencidas', c.periodosVencidos
       ? `${c.periodosVencidos} período(s)${c.periodosEmDobro ? `, ${c.periodosEmDobro} em dobro` : ''}`
       : 'nenhum computado'],
+    ...(c.periodosNaProjecao
+      ? [['Período completado no aviso', `${c.periodosNaProjecao}, pago por inteiro`]]
+      : []),
     ['Prescrição', c.prescricao],
   );
 
@@ -411,7 +414,10 @@ function aplicarVisibilidadeMarcacoes() {
 /** A contagem de períodos vem do cálculo, para não divergir dele. */
 function atualizarDicaPeriodos(contexto) {
   $('#dica-periodos').textContent = contexto
-    ? `Períodos aquisitivos completos no contrato: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados — a dobra do art. 137 é aplicada sozinha a cada um com o concessivo vencido.`
+    ? `Períodos aquisitivos completos até o último dia trabalhado: ${contexto.periodosCompletosCalculados}. Informe quantos não foram gozados — a dobra do art. 137 é aplicada sozinha a cada um com o concessivo vencido.`
+      + (contexto.periodosNaProjecao
+        ? ' O período que se completa na projeção do aviso não entra aqui: é pago à parte, por inteiro.'
+        : '')
     : 'Preencha as datas para ver os períodos aquisitivos completos.';
 }
 
@@ -444,10 +450,13 @@ function atualizar() {
   if (dados.errosDeCampo.length) {
     $('#resultado').innerHTML = `<div class="aviso-erro"><b>Corrija os campos destacados:</b>
       <ul>${dados.errosDeCampo.map((e) => `<li>${e}</li>`).join('')}</ul></div>`;
+    $('#rodape-vigencia').textContent = VIGENCIA_DETALHE;
     bloquearEntrada(false);
   } else {
     const resultado = calcularRescisao(dados);
     renderResultado(resultado);
+    // O rodapé diz as tabelas da época da saída, que foram as usadas.
+    $('#rodape-vigencia').textContent = resultado.contexto?.vigencia ?? VIGENCIA_DETALHE;
     // Com o cálculo feito, a nota da remuneração segue exatamente as datas dele.
     if (resultado.contexto?.ultimoDiaTrabalhado) atualizarDicas(dados, resultado.contexto);
     bloquearEntrada(Boolean(resultado.impedimento));
@@ -464,6 +473,7 @@ function gerarPdf() {
     formulario: $('#formulario'),
     resultado: $('#resultado'),
     rodape: 'Uso orientativo. Os valores são estimativas e não substituem o TRCT homologado nem a análise de convenção coletiva, acordo individual ou decisão judicial.',
+    vigencia: $('#rodape-vigencia').textContent,
   });
   imprimir(`Memoria de calculo - ${tipo.nome}`);
 }

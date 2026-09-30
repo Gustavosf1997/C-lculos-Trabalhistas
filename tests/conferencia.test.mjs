@@ -4,11 +4,15 @@
  * Os valores de `conferencia.json` não saíram deste código: foram calculados
  * por um programa à parte, escrito em Python a partir das regras — CLT, Lei
  * 12.506/2011, Lei 4.090/62, Súmulas e OJs do TST, Lei 8.036/90, as tabelas
- * de INSS (Portaria MPS/MF 13/2026) e IRRF (Lei 15.270/2025) e a série oficial
- * do salário mínimo. Na revisão, 4.000 rescisões e 3.000 pedidos sorteados
- * bateram centavo a centavo (63.125 valores); um caso de cada combinação de
- * tipo de rescisão e aviso, e de cada pedido, fica aqui para que uma mudança
- * que os altere apareça.
+ * de INSS (Portarias MPS/MF 2/2024, 6/2025 e 13/2026) e IRRF (Leis
+ * 14.848/2024, 15.191/2025 e 15.270/2025), cada uma pela data da saída, e a
+ * série oficial do salário mínimo. Na revisão, 4.000 rescisões — metade com
+ * saída entre 2023 e 2026 — e 3.000 pedidos sorteados bateram centavo a
+ * centavo (64.752 valores); um caso de cada combinação de tipo de rescisão e
+ * aviso, e de cada pedido, fica aqui para que uma mudança que os altere
+ * apareça. Os casos de rescisão foram escolhidos entre os que atravessam as
+ * tabelas de 2024 a 2026 e pagam o período de férias completado na projeção
+ * do aviso.
  */
 
 import test from 'node:test';
