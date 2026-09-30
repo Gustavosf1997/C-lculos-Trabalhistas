@@ -3,7 +3,7 @@
 // Um projeto do Cloudflare Pages ignora este arquivo.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "calculostrabalhistas",
+  "name": "calculos",
   "compatibility_date": "2026-01-01",
   "assets": {
     // A raiz do repositório é o site; o que não deve ir ao ar está em .assetsignore.
