@@ -236,6 +236,7 @@ passa pelos testes.
 | `src/pedidos/horas-extras.js` | Horas extras, DSR e reflexos (módulo puro) |
 | `src/pedidos/noturno.js` | Adicional noturno, com a hora reduzida do art. 73, §1º |
 | `src/pedidos/intervalo.js` | Intervalo intrajornada nos dois regimes do art. 71, §4º |
+| `src/pedidos/interjornada.js` | Intervalo interjornadas (art. 66) e descanso de 35 horas (Súmula 110), nos dois regimes |
 | `src/pedidos/insalubridade.js` | Insalubridade e periculosidade como pedido autônomo |
 | `src/pedidos/multas.js` | Multas dos arts. 467 e 477, §8º, da CLT |
 | `src/pedidos/acidente.js` | Indenização acidentária: pensão do art. 950 do CC, danos do art. 223-G e prescrição da ciência |
@@ -399,7 +400,7 @@ e `src/campos.js` cuida do resto.
 
 ## Módulo de pedidos
 
-Seis pedidos, escolhidos no cartão do topo. Cada um monta o seu próprio
+Sete pedidos, escolhidos no cartão do topo. Cada um monta o seu próprio
 formulário a partir de `src/pedidos/catalogo.js` e mostra, ao ser escolhido, o
 que entra e o que não entra na conta.
 
@@ -478,6 +479,39 @@ Dois regimes, escolhidos na tela, porque a Lei 13.467/2017 mudou a regra:
 
 Quando o período pedido cruza o marco, a tela avisa que os dois trechos
 precisam ser calculados em separado.
+
+### Intervalo interjornadas (art. 66 da CLT)
+
+Entre duas jornadas, 11 horas consecutivas de descanso. Paga-se **o que faltou
+para completar as 11 horas** — saída às 23h e volta às 7h dão 8 horas de
+descanso e 3 horas suprimidas —, vezes as jornadas do mês (ou da semana, na
+média de 52/12 semanas por mês), pela hora normal (Súmula 264) acrescida do
+adicional:
+
+    valor mensal = (11 − descanso) × jornadas no mês × hora normal × (1 + adicional)
+
+Emendado ao repouso semanal de 24 horas (art. 67), o descanso é de **35
+horas** (Súmula 110 do TST), e o que faltou delas entra em linha própria.
+Abaixo de 24 horas, o que falta é do próprio repouso semanal — pago em dobro,
+em pedido próprio (art. 9º da Lei 605/49 e Súmula 146) —, e aqui entram só as
+11 horas do intervalo emendado a ele.
+
+Dois regimes, escolhidos na tela, como no intrajornada:
+
+- **até 10/11/2017** — OJ 355 da SDI-1: as horas subtraídas são **horas
+  extras**, de natureza salarial. Geram DSR (Súmula 172), com a OJ 394 na
+  redação original (o DSR não repercute), e reflexos em 13º, férias + 1/3,
+  aviso e FGTS;
+- **a partir de 11/11/2017** — a OJ 355 aplicava por analogia o art. 71, §4º,
+  e a Lei 13.467/2017 deu a ele nova redação: só o período suprimido, com 50%,
+  de natureza **indenizatória**, sem reflexos. O TST cancelou a OJ 355 por
+  perda de eficácia desde a reforma (Resolução 225/2025, de 30/06/2025). Há
+  Turmas que ainda veem natureza salarial depois da reforma: para essa tese,
+  use o regime anterior.
+
+O pagamento soma-se ao das **horas extras pela jornada excedida**: os fatos
+geradores são distintos, e não há bis in idem (TST; Tese Jurídica
+Prevalecente 11 do TRT-3).
 
 ### Insalubridade / periculosidade (arts. 192 e 193 da CLT)
 
@@ -686,6 +720,12 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Intervalo do regime salarial gera DSR | Súmula 437, III, do TST e Lei 605/49 | `intervalo.js` |
 | Indenização do art. 479 fora da base do FGTS | art. 15, §6º, da Lei 8.036/90 c/c art. 28, §9º, "e", 3, da Lei 8.212/91 | `baseFgtsRescisao` |
 | Intervalo suprimido até 10/11/2017: período integral, natureza salarial | Súmula 437, I e III, do TST | `intervalo.js` |
+| Descanso mínimo de 11 horas consecutivas entre duas jornadas | art. 66 da CLT | `INTERVALO_INTERJORNADAS` |
+| Repouso semanal emendado ao intervalo: 35 horas | Súmula 110 do TST; arts. 66 e 67 da CLT | `DESCANSO_SEMANAL` |
+| Interjornadas até 10/11/2017: horas subtraídas como extras, com reflexos | OJ 355 da SDI-1 (cancelada pela Res. 225/2025 do TST, com efeito a partir de 11/11/2017) | `interjornada.js` |
+| Interjornadas a partir de 11/11/2017: só o suprimido + 50%, indenizatório | art. 71, §4º, da CLT, por analogia (Lei 13.467/2017) | `interjornada.js` |
+| Horas extras da jornada e do intervalo interjornadas se somam | TST; TJP 11 do TRT-3 | `interjornada.js` |
+| Centavo mais próximo, meio centavo para cima, sobre o valor exato | — | `arredondar` |
 | Intervalo a partir de 11/11/2017: só o suprimido, natureza indenizatória | art. 71, §4º, da CLT (Lei 13.467/2017) | `MARCO_REFORMA` |
 | Insalubridade sobre o salário mínimo, salvo base maior em norma coletiva | art. 192 da CLT; Súmula 228 suspensa (Rcl 6.266 do STF) | `calcularAdicionalRisco` |
 | O mínimo é o de cada mês do período, e o do mês da saída na rescisão | art. 192 da CLT | `salarioMinimoMedio` |
@@ -769,8 +809,13 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   por conta de quem calcula.
 - A insalubridade da aba de **rescisão** tem base fixa no salário mínimo; o
   pedido autônomo, na outra aba, aceita as três bases.
-- O pedido de intervalo intrajornada calcula um regime por vez: período que
-  cruze 11/11/2017 precisa ser dividido em dois cálculos, e a tela avisa disso.
+- Os pedidos de intervalo intrajornada e interjornadas calculam um regime por
+  vez: período que cruze 11/11/2017 precisa ser dividido em dois cálculos, e a
+  tela avisa disso.
+- O interjornadas trabalha com médias — horas de descanso e jornadas por mês —,
+  e não com o cartão de ponto dia a dia. O fracionamento das 11 horas do
+  motorista profissional (art. 235-C, §3º, da CLT) e os regimes de escala
+  previstos em norma coletiva ficam por conta de quem calcula.
 - As multas dos arts. 467 e 477 não apuram a data em que o empregado
   compareceu à audiência nem o que de fato foi pago: o valor incontroverso é
   informado por quem calcula. A remuneração que serve de base à multa do

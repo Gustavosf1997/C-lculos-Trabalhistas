@@ -12,7 +12,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PEDIDOS, JORNADAS } from '../src/pedidos/catalogo.js';
 import { TIPOS, ORDEM_TIPOS, ORDEM_GRUPOS, GRUPOS } from '../src/tipos.js';
-import { ADICIONAIS, SEM_ADICIONAIS } from '../src/adicionais.js';
+import { ADICIONAIS, SEM_ADICIONAIS, calcularAdicionais } from '../src/adicionais.js';
+import { arredondar } from '../src/pedidos/comum.js';
+import { calcularRescisao } from '../src/calculo.js';
 import { DESCONTOS, SEM_DESCONTOS } from '../src/descontos.js';
 
 const html = (arquivo) => readFileSync(new URL(`../${arquivo}`, import.meta.url), 'utf8');
@@ -109,6 +111,7 @@ test('o resumo de cada pedido sobrevive a um contexto mínimo', () => {
       : {
         dataInicio: '2024-01-01', dataFim: '2024-12-31', salarioBase: 2200, divisor: 220,
         quantidadeHoras: 10, horasNoturnas: 10, minutosSuprimidos: 30, risco: 'periculosidade',
+        descansoEfetivo: 9, jornadasComSupressao: 10,
       });
     const r = pedido.calcular(dados);
     assert.deepEqual(r.erros, [], `${pedido.id}: ${r.erros.join('; ')}`);
@@ -250,4 +253,23 @@ test('as duas páginas carregam o seu próprio módulo e o bloco de memória', (
     assert.ok(pagina.includes('id="gerar-pdf"'), 'sem botão de PDF');
     assert.ok(pagina.includes('lang="pt-BR"'), 'sem idioma declarado');
   }
+});
+
+test('meio centavo sobe mesmo quando o ponto flutuante o guarda abaixo', () => {
+  // Empates que o oráculo independente achou: a conta exata termina em 5 na
+  // terceira casa, e a binária em ...4999.
+  assert.equal(arredondar(7 * ((2409 / 220) * 1.5)), 114.98); // 114,975 (hora extra)
+  assert.equal(arredondar(3078.7 * 0.15 - 394.16), 67.65); // 67,645 (IRRF do 13º)
+  assert.equal(arredondar(2750.35 * 0.3), 825.11); // 825,105 (periculosidade)
+  // E o que está de fato abaixo do meio centavo continua abaixo.
+  assert.equal(arredondar(1234567.894999), 1234567.89);
+  assert.equal(arredondar(0.004999), 0);
+  // Os três arredondamentos da ferramenta seguem a mesma regra.
+  const periculosidade = calcularAdicionais({ selecionados: ['periculosidade_30'], salarioBase: 2750.35 });
+  assert.equal(periculosidade.total, 825.11);
+  const r = calcularRescisao({
+    tipo: 'sem_justa_causa', tipoAviso: 'indenizado', dataAdmissao: '2020-01-10', dataAviso: '2025-06-30',
+    salarioBase: 2750.35, adicionais: ['periculosidade_30'],
+  });
+  assert.equal(r.contexto.remuneracao, 3575.46);
 });

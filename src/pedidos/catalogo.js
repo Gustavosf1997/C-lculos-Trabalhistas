@@ -13,6 +13,7 @@
 import { calcularHorasExtras } from './horas-extras.js';
 import { calcularAdicionalNoturno } from './noturno.js';
 import { calcularIntervalo } from './intervalo.js';
+import { calcularInterjornada } from './interjornada.js';
 import { calcularAdicionalRiscoPedido } from './insalubridade.js';
 import { calcularMultas } from './multas.js';
 import {
@@ -531,6 +532,81 @@ export const PEDIDOS = [
       {
         ...grupoReflexos({ dsrMajorado: false }),
         aparece: (d) => d.regimeIntervalo === 'anterior_reforma',
+      },
+    ],
+  },
+
+  {
+    id: 'interjornada',
+    nome: 'Intervalo interjornadas',
+    tag: 'Art. 66 da CLT',
+    icone: '🛏️',
+    descricao: 'Descanso menor que 11 horas entre duas jornadas: as horas que faltaram, com acréscimo sobre a hora normal.',
+    itens: [
+      { label: 'Horas suprimidas + 50% (a partir de 11/11/2017)', devida: true, nota: 'art. 71, §4º, por analogia' },
+      { label: 'Horas extras com DSR e reflexos (até 10/11/2017)', devida: true, nota: 'OJ 355 da SDI-1' },
+      { label: 'Descanso de 35 horas em torno da folga semanal', devida: true, nota: 'Súmula 110 do TST' },
+      { label: 'Soma-se às horas extras da jornada excedida', devida: true, nota: 'fatos geradores distintos' },
+      { label: 'Reflexos no regime indenizatório', devida: false },
+    ],
+    calcular: calcularInterjornada,
+    resumo: (c) => [
+      ...resumoDoPeriodo(c),
+      ['Regime', c.indenizatorio ? 'Indenizatório (art. 71, §4º, por analogia)' : 'Salarial (OJ 355)'],
+      ['Base de cálculo', moeda.format(c.baseCalculo)],
+      ['Valor da hora', moeda.format(c.valorHora)],
+      [`Hora devida (+${formatarQuantidade(c.percentualAdicional)}%)`, moeda.format(c.valorHoraDevida)],
+      ['Descanso entre jornadas', `${formatarQuantidade(c.descanso)} h — faltaram ${formatarQuantidade(c.horasPorJornada)} h`],
+      ...(c.intersemanal
+        ? [['Descanso em torno da folga', `${formatarQuantidade(c.descansoSemanal)} h — faltaram ${formatarQuantidade(c.horasPorFolga)} h`]]
+        : []),
+      ['Horas suprimidas por mês', formatarQuantidade(c.horasMes)],
+    ],
+    grupos: [
+      grupoPeriodo,
+      { titulo: 'Remuneração e jornada', campos: camposRemuneracao },
+      { titulo: 'Adicional de insalubridade ou periculosidade', campos: camposRisco },
+      {
+        titulo: 'Intervalo entre jornadas',
+        campos: [
+          { id: 'regimeInterjornada', rotulo: 'Regime aplicável', tipo: 'radios', valor: 'reforma', largo: true,
+            opcoes: [
+              { valor: 'reforma', label: 'A partir de 11/11/2017 — só o suprimido + 50%, indenizatório' },
+              { valor: 'anterior_reforma', label: 'Até 10/11/2017 — horas extras, salarial, com reflexos' },
+            ],
+            dica: 'O TST cancelou a OJ 355 (Resolução 225/2025) por perda de eficácia desde a Lei 13.467/2017, que '
+              + 'deu natureza indenizatória ao art. 71, §4º, aplicado aqui por analogia. Há Turmas que ainda '
+              + 'reconhecem natureza salarial depois da reforma: nesse caso, use o regime anterior.' },
+          { id: 'descansoEfetivo', rotulo: 'Descanso entre as jornadas (horas)', tipo: 'decimal', obrigatorio: true,
+            min: 0, max: 11,
+            dica: 'Do fim de uma jornada ao início da seguinte. Saída às 23h e volta às 7h = 8 horas; 8h30 = 8,5. '
+              + 'Motorista profissional pode fracionar as 11 horas (art. 235-C, §3º).' },
+          { id: 'modoOcorrencias', rotulo: 'Como informar as ocorrências', tipo: 'radios', valor: 'mes', largo: true,
+            opcoes: [
+              { valor: 'mes', label: 'Por mês' },
+              { valor: 'semana', label: 'Por semana' },
+            ] },
+          { id: 'jornadasComSupressao', rotulo: 'Jornadas com descanso menor que 11 horas', tipo: 'decimal',
+            obrigatorio: true, min: 0, max: 31,
+            dica: 'Média do período. Não conte a volta da folga semanal: ela entra no descanso de 35 horas.' },
+          { id: 'intersemanal', rotulo: 'A folga semanal também ficou sem as 35 horas (24h de repouso + 11h — '
+            + 'Súmula 110 do TST)', tipo: 'checkbox', valor: false, largo: true },
+          { id: 'descansoSemanal', rotulo: 'Descanso em torno da folga (horas)', tipo: 'decimal', min: 0, max: 35,
+            aparece: (d) => d.intersemanal,
+            dica: 'Do fim da última jornada antes da folga ao início da primeira depois dela.' },
+          { id: 'folgasComSupressao', rotulo: 'Folgas com descanso menor que 35 horas, por mês', tipo: 'decimal',
+            valor: 4, min: 0, max: 6, aparece: (d) => d.intersemanal },
+          { id: 'adicionalInterjornada', rotulo: 'Acréscimo', tipo: 'percentual', valor: 50, min: 0, max: 200,
+            dica: 'Mínimo de 50% (art. 7º, XVI, da CF). No regime anterior, o adicional de horas extras da '
+              + 'categoria, se maior.' },
+          // No regime salarial as horas subtraídas são horas extras habituais:
+          // geram DSR como qualquer verba variável (Súmula 172).
+          ...camposDSR.map((campo) => ({ ...campo, aparece: (d) => d.regimeInterjornada === 'anterior_reforma' })),
+        ],
+      },
+      {
+        ...grupoReflexos({ dsrMajorado: false }),
+        aparece: (d) => d.regimeInterjornada === 'anterior_reforma',
       },
     ],
   },

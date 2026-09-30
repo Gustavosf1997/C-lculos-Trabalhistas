@@ -7,10 +7,11 @@
  * de INSS (Portarias MPS/MF 2/2024, 6/2025 e 13/2026) e IRRF (Leis
  * 14.848/2024, 15.191/2025 e 15.270/2025), cada uma pela data da saída, e a
  * série oficial do salário mínimo. Na revisão, 4.000 rescisões — metade com
- * saída entre 2023 e 2026 — e 3.000 pedidos sorteados bateram centavo a
- * centavo (64.752 valores); um caso de cada combinação de tipo de rescisão e
- * aviso, e de cada pedido, fica aqui para que uma mudança que os altere
- * apareça. Os casos de rescisão foram escolhidos entre os que atravessam as
+ * saída entre 2023 e 2026 — e 5.000 pedidos sorteados, 2.070 deles de
+ * intervalo interjornadas nos dois regimes, bateram centavo a centavo (76.409
+ * valores), com o meio centavo arredondado para cima sobre o valor exato; um
+ * caso de cada combinação de tipo de rescisão e aviso, e de cada pedido, fica
+ * aqui para que uma mudança que os altere apareça. Os casos de rescisão foram escolhidos entre os que atravessam as
  * tabelas de 2024 a 2026 e pagam o período de férias completado na projeção
  * do aviso.
  */
@@ -22,6 +23,7 @@ import { calcularRescisao } from '../src/calculo.js';
 import { calcularHorasExtras } from '../src/pedidos/horas-extras.js';
 import { calcularAdicionalRiscoPedido } from '../src/pedidos/insalubridade.js';
 import { calcularAdicionalNoturno } from '../src/pedidos/noturno.js';
+import { calcularInterjornada } from '../src/pedidos/interjornada.js';
 
 const CONFERIDOS = JSON.parse(readFileSync(new URL('./conferencia.json', import.meta.url), 'utf8'));
 const porChave = (lista) => Object.fromEntries(lista.map((i) => [i.chave, i.valor]));
@@ -41,7 +43,10 @@ test('rescisões batem com o cálculo independente, centavo a centavo', () => {
 });
 
 test('pedidos batem com o cálculo independente, centavo a centavo', () => {
-  const motores = { he: calcularHorasExtras, insal: calcularAdicionalRiscoPedido, noturno: calcularAdicionalNoturno };
+  const motores = {
+    he: calcularHorasExtras, insal: calcularAdicionalRiscoPedido, noturno: calcularAdicionalNoturno,
+    inter: calcularInterjornada,
+  };
   for (const caso of CONFERIDOS.pedidos) {
     const r = motores[caso.qual](caso.dados);
     const nome = `${caso.qual}/${caso.dados.risco}`;

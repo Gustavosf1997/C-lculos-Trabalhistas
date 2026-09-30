@@ -30,7 +30,15 @@ export const VESPERA_REFORMA = '2017-11-10';
 /** Hora noturna reduzida: 52min30s (art. 73, §1º, da CLT). */
 export const FATOR_HORA_NOTURNA = 60 / 52.5;
 
-export const arredondar = (valor) => Math.round((valor + Number.EPSILON) * 100) / 100;
+/**
+ * Centavo mais próximo, meio centavo para cima. A conta em ponto flutuante
+ * guarda 7 x 16,425 como 114,97499999999998, e o arredondamento direto daria
+ * 114,97 onde a conta exata dá 114,975 — e o centavo é 114,98. Cortar o ruído
+ * na sexta casa depois do centavo devolve à conta o valor que ela tem: o
+ * ruído fica muito abaixo dela, e um valor de fato abaixo do meio centavo
+ * (1.234.567,894999) continua abaixo, em qualquer ordem de grandeza.
+ */
+export const arredondar = (valor) => Math.round(Number((valor * 100).toFixed(6))) / 100;
 export const num = (valor) => (Number.isFinite(Number(valor)) ? Number(valor) : 0);
 
 /** Hora normal: base mensal dividida pelo divisor da jornada (art. 64 da CLT). */

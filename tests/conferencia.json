@@ -210,24 +210,24 @@
     "dataReferencia": "2026-09-28"
    },
    "proventos": {
-    "saldo_salario": 3575.45,
+    "saldo_salario": 3575.46,
     "decimo_terceiro": 1962.98,
-    "ferias_vencidas": 19629.75,
-    "terco_vencidas": 6543.25,
-    "ferias_proporcionais": 3271.62,
+    "ferias_vencidas": 19629.8,
+    "terco_vencidas": 6543.27,
+    "ferias_proporcionais": 3271.63,
     "terco_proporcionais": 1090.54
    },
    "descontos": {
     "inss_salario": 322.47,
     "inss_13": 153.9,
     "irrf_salario": 36.91,
-    "aviso_nao_cumprido": 3925.95
+    "aviso_nao_cumprido": 3925.96
    },
    "fgts": {
-    "rescisao": 443.07,
+    "rescisao": 443.08,
     "multa": 0.0
    },
-   "liquido": 31634.36
+   "liquido": 31634.44
   },
   {
    "dados": {
@@ -748,13 +748,111 @@
    "itens": {
     "adicional_noturno": 907.69,
     "dsr": 181.54,
-    "reflexo_13": 90.72,
+    "reflexo_13": 90.82,
     "reflexo_ferias": 120.99,
     "reflexo_aviso": 103.26
    },
    "fgts": 112.34,
    "multa": 0,
-   "total": 1516.54
+   "total": 1516.64
+  },
+  {
+   "qual": "inter",
+   "dados": {
+    "dataInicio": "2019-12-26",
+    "dataFim": "2020-12-27",
+    "dataAjuizamento": "",
+    "salarioBase": 1621,
+    "divisor": 180,
+    "outrasParcelas": 312.2,
+    "risco": "nenhum",
+    "grauInsalubridade": 20,
+    "baseInsalubridade": "salario_base",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "semana",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 70,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": true,
+    "multaFGTS": false,
+    "reflexoAviso": true,
+    "diasAviso": 45,
+    "dataReferencia": "2026-09-28",
+    "regimeInterjornada": "reforma",
+    "descansoEfetivo": 9.5,
+    "modoOcorrencias": "semana",
+    "jornadasComSupressao": 12.5,
+    "intersemanal": true,
+    "descansoSemanal": 30,
+    "folgasComSupressao": 4,
+    "adicionalInterjornada": 50
+   },
+   "itens": {
+    "interjornada": 15791.73,
+    "intersemanal": 3887.19
+   },
+   "fgts": 0.0,
+   "multa": 0,
+   "total": 19678.92
+  },
+  {
+   "qual": "inter",
+   "dados": {
+    "dataInicio": "2015-07-11",
+    "dataFim": "2017-11-10",
+    "dataAjuizamento": "",
+    "salarioBase": 3871.4,
+    "divisor": 220,
+    "outrasParcelas": 0,
+    "risco": "nenhum",
+    "grauInsalubridade": 40,
+    "baseInsalubridade": "salario_minimo",
+    "quantidadeHoras": 7,
+    "modoQuantidade": "mes",
+    "adicionalHoraExtra": 50,
+    "horasNoturnas": 21,
+    "horaReduzida": true,
+    "adicionalNoturno": 20,
+    "diasUteis": 25,
+    "diasRepouso": 5,
+    "reflexoDSR": true,
+    "dsrNosReflexos": true,
+    "reflexo13": true,
+    "reflexoFerias": true,
+    "reflexoFGTS": true,
+    "fgtsSobreFerias": false,
+    "multaFGTS": true,
+    "reflexoAviso": true,
+    "diasAviso": 30,
+    "dataReferencia": "2026-09-28",
+    "regimeInterjornada": "anterior_reforma",
+    "descansoEfetivo": 8,
+    "modoOcorrencias": "semana",
+    "jornadasComSupressao": 22,
+    "intersemanal": true,
+    "descansoSemanal": 30,
+    "folgasComSupressao": 2,
+    "adicionalInterjornada": 60
+   },
+   "itens": {
+    "interjornada": 225556.87,
+    "intersemanal": 7886.71,
+    "dsr": 46688.6,
+    "reflexo_13": 19453.75,
+    "reflexo_ferias": 25938.24,
+    "reflexo_aviso": 8334.07
+   },
+   "fgts": 20898.51,
+   "multa": 8359.4,
+   "total": 363116.15
   }
  ]
 }

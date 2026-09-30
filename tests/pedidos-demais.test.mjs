@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calcularAdicionalNoturno } from '../src/pedidos/noturno.js';
 import { calcularIntervalo } from '../src/pedidos/intervalo.js';
+import { calcularInterjornada } from '../src/pedidos/interjornada.js';
 import { calcularAdicionalRiscoPedido } from '../src/pedidos/insalubridade.js';
 import { calcularMultas } from '../src/pedidos/multas.js';
 import { SALARIO_MINIMO } from '../src/tabelas.js';
@@ -189,6 +190,76 @@ test('o intervalo indenizatório segue sem DSR e sem reflexos', () => {
   const r = calcularIntervalo({ ...periodo, ...jornada, minutosSuprimidos: 30 });
   assert.equal(verba(r, 'dsr'), 0);
   assert.equal(r.mensais.length, 1);
+});
+
+/* ------------------------------------------ intervalo interjornadas ------ */
+
+// Hora normal de R$ 10,00; com 50%, R$ 15,00.
+const interjornada = (extra = {}) => calcularInterjornada({
+  ...periodo, ...jornada, descansoEfetivo: 8, jornadasComSupressao: 22, ...extra,
+});
+
+test('interjornadas pós-reforma paga as horas que faltaram das 11, sem reflexos', () => {
+  const r = interjornada();
+  // 11 − 8 = 3 h por jornada; 3 x 22 = 66 h; 66 x 15,00 = 990,00
+  assert.equal(verba(r, 'interjornada'), 990);
+  assert.equal(r.contexto.horasPorJornada, 3);
+  assert.equal(r.mensais.length, 1); // sem DSR e sem reflexos
+  assert.equal(r.fgts.valor, 0); // natureza indenizatória
+  assert.equal(r.totais.periodo, 11880); // 12 meses
+});
+
+test('interjornadas informado por semana vira média mensal de 52/12 semanas', () => {
+  const r = interjornada({ descansoEfetivo: 9, jornadasComSupressao: 5, modoOcorrencias: 'semana' });
+  // 2 h x 5 x 52/12 = 43,33 h; x 15,00 = 650,00
+  assert.equal(verba(r, 'interjornada'), 650);
+});
+
+test('o adicional e a base integrada mudam a hora devida', () => {
+  assert.equal(verba(interjornada({ adicionalInterjornada: 100 }), 'interjornada'), 1320); // 66 x 20,00
+  // Periculosidade integra a hora (Súmula 264): 2.860 / 220 = 13,00; + 50% = 19,50
+  assert.equal(verba(interjornada({ risco: 'periculosidade' }), 'interjornada'), 1287);
+});
+
+test('descanso de 35 horas em torno da folga semanal (Súmula 110)', () => {
+  const r = interjornada({ intersemanal: true, descansoSemanal: 30, folgasComSupressao: 4 });
+  // 35 − 30 = 5 h por folga; 5 x 4 x 15,00 = 300,00
+  assert.equal(verba(r, 'intersemanal'), 300);
+  assert.equal(r.totais.mensal, 1290);
+  assert.equal(r.alertas.length, 0);
+});
+
+test('abaixo de 24 horas, o que falta do repouso semanal fica de fora', () => {
+  const r = interjornada({ intersemanal: true, descansoSemanal: 20, folgasComSupressao: 4 });
+  // Só as 11 horas do intervalo emendado; as 4 do repouso são outro pedido (em dobro)
+  assert.equal(r.contexto.horasPorFolga, 11);
+  assert.equal(verba(r, 'intersemanal'), 660);
+  assert.ok(r.alertas.some((a) => a.includes('Súmula 146')));
+});
+
+test('interjornadas anterior à reforma é hora extra: DSR, reflexos e FGTS (OJ 355)', () => {
+  const r = interjornada({ regimeInterjornada: 'anterior_reforma', dataInicio: '2015-01-01', dataFim: '2016-12-31' });
+  assert.equal(verba(r, 'interjornada'), 990);
+  assert.equal(verba(r, 'dsr'), 198); // 990 / 25 x 5
+  assert.equal(verba(r, 'reflexo_13'), 82.5); // sobre as horas, não sobre o DSR (OJ 394 original)
+  assert.equal(verba(r, 'reflexo_ferias'), 110);
+  assert.equal(r.fgts.detalhe, '8% sobre intervalo interjornadas, 13º e férias + 1/3');
+  assert.equal(r.fgts.valor, 2270.4); // (990 + 82,50 + 110) x 24 x 8%
+});
+
+test('interjornadas recusa descanso que não viola o art. 66 e campo vazio', () => {
+  assert.ok(interjornada({ descansoEfetivo: 11 }).erros.some((e) => e.includes('11 horas ou mais')));
+  assert.ok(interjornada({ descansoEfetivo: 0 }).erros.some((e) => e.includes('horas de descanso')));
+  assert.ok(interjornada({ jornadasComSupressao: 0 }).erros.length > 0);
+  const semanal = interjornada({ intersemanal: true, descansoSemanal: 35, folgasComSupressao: 4 });
+  assert.ok(semanal.erros.some((e) => e.includes('Súmula 110')));
+});
+
+test('regime do interjornadas fora da sua janela temporal gera alerta', () => {
+  const antigoEm2024 = interjornada({ regimeInterjornada: 'anterior_reforma' });
+  assert.ok(antigoEm2024.alertas.some((a) => a.includes('10/11/2017')));
+  const novoEm2016 = interjornada({ dataInicio: '2016-01-01', dataFim: '2016-12-31' });
+  assert.ok(novoEm2016.alertas.some((a) => a.includes('11/11/2017') && a.includes('OJ 355')));
 });
 
 /* ------------------------------- salário mínimo de cada competência ------ */

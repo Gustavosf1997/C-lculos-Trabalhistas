@@ -313,7 +313,7 @@ const dadosBase = async () => {
   await page.fill('#salarioBase', '2.200,00'); // divisor 220 -> hora de R$ 10,00
 };
 
-checar('catálogo traz os seis pedidos', await page.locator('#pedidos .tipo').count() === 6,
+checar('catálogo traz os sete pedidos', await page.locator('#pedidos .tipo').count() === 7,
   await page.locator('#pedidos .tipo').count());
 
 // adicional noturno: hora ficta de 52min30s (art. 73, §1º)
@@ -358,6 +358,33 @@ checar('intervalo integral revelado no regime antigo', await page.locator('#inte
 checar('Súmula 437 paga a hora cheia', anterior.includes('R$ 330,00'), null); // 60min x 22 x R$ 15,00
 checar('Súmula 437 gera reflexos', anterior.includes('Reflexo no 13º'), null);
 checar('regime antigo avisa o descompasso de período', (await page.locator('#resultado .alerta').count()) > 0, null);
+
+// intervalo interjornadas: as horas que faltaram das 11 (art. 66), a Súmula 110 e os dois regimes
+await page.click('[data-pedido="interjornada"]');
+checar('interjornadas fica logo à direita do intrajornada', await page.evaluate(() => {
+  const cards = [...document.querySelectorAll('#pedidos .tipo')].map((b) => b.dataset.pedido);
+  return cards.indexOf('interjornada') === cards.indexOf('intervalo') + 1;
+}), null);
+await dadosBase();
+await page.fill('#descansoEfetivo', '8');
+await page.fill('#jornadasComSupressao', '22');
+await page.waitForTimeout(350);
+const inter = await texto();
+checar('interjornadas paga as horas que faltaram das 11', inter.includes('R$ 990,00'), null); // 3 h x 22 x R$ 15,00
+checar('interjornadas pós-reforma sem reflexos nem FGTS', !inter.includes('Reflexo no 13º') && !inter.includes('FGTS'), null);
+checar('descanso de 35 horas escondido até ser marcado', await page.locator('#descansoSemanal').isHidden(), null);
+await page.check('#intersemanal');
+await page.fill('#descansoSemanal', '30');
+await page.waitForTimeout(350);
+checar('Súmula 110 paga o que faltou das 35 horas', (await texto()).includes('R$ 300,00'), null); // 5 h x 4 x R$ 15,00
+await page.check('input[name="regimeInterjornada"][value="anterior_reforma"]');
+await page.waitForTimeout(350);
+const interAntigo = await texto();
+checar('OJ 355 paga como hora extra, com DSR e reflexos',
+  interAntigo.includes('DSR sobre as horas do intervalo') && interAntigo.includes('Reflexo no 13º'), null);
+await page.fill('#descansoEfetivo', '11');
+await page.waitForTimeout(350);
+checar('11 horas de descanso não violam o art. 66', (await texto()).includes('11 horas ou mais'), null);
 
 // insalubridade sobre o salário mínimo de cada mês (art. 192): o período é 2024
 await page.click('[data-pedido="adicional_risco"]');
@@ -595,7 +622,7 @@ await page.fill('#dataExtincao', '');
 await page.waitForTimeout(300);
 checar('só datas: quinquênio total acusado sem a extinção', (await vermelho()).includes('integralmente'), await vermelho());
 
-for (const pedido of ['adicional_noturno', 'intervalo', 'adicional_risco']) {
+for (const pedido of ['adicional_noturno', 'intervalo', 'interjornada', 'adicional_risco']) {
   await page.click(`[data-pedido="${pedido}"]`);
   await page.waitForTimeout(250);
   await digitar('dataInicio', '01/01/2000');
