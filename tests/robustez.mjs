@@ -222,7 +222,7 @@ checar('31/02 é recusado', (await page.locator('.campo:has(#dataAdmissao) .camp
 await page.goto(`${BASE}/pedidos.html`, { waitUntil: 'networkidle' });
 
 const pedidos = await page.locator('#pedidos .tipo').evaluateAll((bs) => bs.map((b) => b.dataset.pedido));
-checar('seis pedidos no catálogo', pedidos.length === 6, pedidos.length);
+checar('sete pedidos no catálogo', pedidos.length === 7, pedidos.length);
 
 for (const [i, pedido] of pedidos.entries()) {
   await page.click(`[data-pedido="${pedido}"]`);

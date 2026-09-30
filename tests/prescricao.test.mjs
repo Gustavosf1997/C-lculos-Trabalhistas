@@ -15,6 +15,7 @@ import { calcularRescisao } from '../src/calculo.js';
 import { calcularHorasExtras } from '../src/pedidos/horas-extras.js';
 import { calcularAdicionalNoturno } from '../src/pedidos/noturno.js';
 import { calcularIntervalo } from '../src/pedidos/intervalo.js';
+import { calcularInterjornada } from '../src/pedidos/interjornada.js';
 import { calcularAdicionalRiscoPedido } from '../src/pedidos/insalubridade.js';
 import { calcularMultas } from '../src/pedidos/multas.js';
 import { hojeISO } from '../src/formato.js';
@@ -206,6 +207,7 @@ const PEDIDOS_COM_PERIODO = [
   ['horas extras', calcularHorasExtras],
   ['adicional noturno', calcularAdicionalNoturno],
   ['intervalo', calcularIntervalo],
+  ['intervalo interjornadas', calcularInterjornada],
   ['insalubridade/periculosidade', calcularAdicionalRiscoPedido],
 ];
 

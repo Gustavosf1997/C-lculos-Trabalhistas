@@ -91,7 +91,7 @@ checar('data inexistente é recusada',
 /* --- troca de aba --- */
 await page.click('[data-pagina="pedidos"]');
 await page.waitForTimeout(350);
-checar('a aba de pedidos abre', (await page.locator('#pedidos .tipo').count()) === 6, null);
+checar('a aba de pedidos abre', (await page.locator('#pedidos .tipo').count()) === 7, null);
 checar('a aba anterior sai do documento', (await page.locator('#tipos').count()) === 0, null);
 checar('o título acompanha a aba', (await page.title()).includes('Pedidos'), await page.title());
 
@@ -162,7 +162,7 @@ checar('a tela volta em branco', (await page.inputValue('#salarioBase')) === '',
 /* --- botão de voltar do navegador --- */
 await page.goBack();
 await page.waitForTimeout(350);
-checar('o botão voltar troca de aba', (await page.locator('#pedidos .tipo').count()) === 6, null);
+checar('o botão voltar troca de aba', (await page.locator('#pedidos .tipo').count()) === 7, null);
 await page.goForward();
 await page.waitForTimeout(350);
 checar('o botão avançar também', (await page.locator('#tipos .tipo').count()) === 7, null);
@@ -260,7 +260,7 @@ await page.fill('#dataExtincao', '');
 await page.waitForTimeout(300);
 checar('só datas: quinquênio total acusado sem a extinção', (await vermelho()).includes('integralmente'), await vermelho());
 
-for (const pedido of ['adicional_noturno', 'intervalo', 'adicional_risco']) {
+for (const pedido of ['adicional_noturno', 'intervalo', 'interjornada', 'adicional_risco']) {
   await page.click(`[data-pedido="${pedido}"]`);
   await page.waitForTimeout(250);
   await digitar('dataInicio', '01/01/2000');

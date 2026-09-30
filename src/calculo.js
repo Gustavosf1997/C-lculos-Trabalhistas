@@ -224,8 +224,9 @@ export function calcularIRRF(rendimento, {
 
 /* ---------------------------------------------------------------- cálculo */
 
+/** Centavo mais próximo, sem o ruído do ponto flutuante (ver `arredondar` de pedidos/comum.js). */
 function arredondar(valor) {
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
+  return Math.round(Number((valor * 100).toFixed(6))) / 100;
 }
 
 function num(valor) {
