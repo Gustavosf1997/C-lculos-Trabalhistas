@@ -9,6 +9,9 @@ Ferramenta web para cálculos trabalhistas, em duas abas:
 
 Esboço (v0.1): sem dependências, sem build. É HTML + CSS + JavaScript (ES modules).
 
+No ar em **https://calculos.calculostrabalhistas.workers.dev**, sempre na última versão
+que passou nos testes (veja [Publicação no Cloudflare Pages](#publicação-no-cloudflare-pages)).
+
 ## Como executar
 
 ```bash
@@ -127,13 +130,19 @@ fora o que não é site: testes, ferramentas, README e configurações.
 
    | Campo | Valor |
    | --- | --- |
-   | Project name | `calculostrabalhistas` — o mesmo `name` do `wrangler.jsonc`; se escolher outro, troque lá também |
+   | Project name | `calculos` — o mesmo `name` do `wrangler.jsonc`; se escolher outro, troque lá também |
    | Build command | em branco |
    | Deploy command | `npx wrangler deploy` |
    | Non-production branch deploy command | `npx wrangler preview` — o painel já o preenche; em painéis mais antigos aparece `npx wrangler versions upload`, que também funciona |
    | Path | em branco (a raiz) |
 
-   O endereço fica em **https://calculostrabalhistas.&lt;sua-conta&gt;.workers.dev**.
+   O endereço fica em **https://calculos.&lt;subdomínio-da-conta&gt;.workers.dev**: o nome do
+   projeto seguido do subdomínio da conta, que se troca em **Workers & Pages →** quadro
+   **Account details → Subdomain → Change**.
+
+   Para renomear o projeto depois, os dois nomes precisam andar juntos: renomeie o Worker
+   no painel (**Settings → General → Name**) e o `name` do `wrangler.jsonc`. Com os nomes
+   diferentes, o build do Cloudflare falha e o site segue na versão anterior.
 
    **Pages** (tela "Set up builds and deployments", com *Build output
    directory*) — se o painel só mostrar o Workers, o link *"Looking to deploy
