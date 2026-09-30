@@ -4,359 +4,9 @@
    "dados": {
     "tipo": "determinado_antecipada_empregador",
     "tipoAviso": null,
-    "dataAdmissao": "2016-09-03",
-    "dataAviso": "2016-09-17",
-    "salarioBase": 4800,
-    "adicionais": [
-     "insalubridade_20"
-    ],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 350.5,
-    "periodosFeriasVencidas": 0,
-    "saldoFgts": 0,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28",
-    "dataTermoFinal": "2016-12-01"
-   },
-   "proventos": {
-    "saldo_salario": 2488.0,
-    "indenizacao_art_479": 6658.13,
-    "decimo_terceiro": 443.88,
-    "ferias_proporcionais": 443.88,
-    "terco_proporcionais": 147.96
-   },
-   "descontos": {
-    "inss_salario": 199.61,
-    "inss_13": 33.29
-   },
-   "fgts": {
-    "rescisao": 234.55,
-    "multa": 93.82
-   },
-   "liquido": 9948.95
-  },
-  {
-   "dados": {
-    "tipo": "justa_causa",
-    "tipoAviso": null,
-    "dataAdmissao": "2017-07-19",
-    "dataAviso": "2024-08-22",
+    "dataAdmissao": "2025-05-24",
+    "dataAviso": "2025-07-13",
     "salarioBase": 9100,
-    "adicionais": [
-     "insalubridade_20"
-    ],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 1,
-    "saldoFgts": 12345.67,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 6880.43,
-    "ferias_vencidas": 9382.4,
-    "terco_vencidas": 3127.47
-   },
-   "descontos": {
-    "inss_salario": 764.77,
-    "irrf_salario": 606.28
-   },
-   "fgts": {
-    "rescisao": 550.43,
-    "multa": 0.0
-   },
-   "liquido": 18019.25
-  },
-  {
-   "dados": {
-    "tipo": "pedido_demissao",
-    "tipoAviso": "trabalhado",
-    "dataAdmissao": "2014-09-14",
-    "dataAviso": "2022-02-27",
-    "salarioBase": 2750.35,
-    "adicionais": [],
-    "horasNoturnas": 52.5,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 0,
-    "saldoFgts": 0,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 2658.67,
-    "decimo_terceiro": 687.59,
-    "ferias_proporcionais": 1604.37,
-    "terco_proporcionais": 534.79
-   },
-   "descontos": {
-    "inss_salario": 214.97,
-    "inss_13": 51.57
-   },
-   "fgts": {
-    "rescisao": 267.7,
-    "multa": 0.0
-   },
-   "liquido": 5218.88
-  },
-  {
-   "dados": {
-    "tipo": "determinado_termo_final",
-    "tipoAviso": null,
-    "dataAdmissao": "2029-02-27",
-    "dataAviso": "",
-    "salarioBase": 1621,
-    "adicionais": [],
-    "horasNoturnas": 21,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 0,
-    "saldoFgts": 12345.67,
-    "dependentes": 0,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28",
-    "dataTermoFinal": "2029-05-27"
-   },
-   "proventos": {
-    "saldo_salario": 1458.9,
-    "decimo_terceiro": 405.25,
-    "ferias_proporcionais": 405.25,
-    "terco_proporcionais": 135.08
-   },
-   "descontos": {
-    "inss_salario": 109.42,
-    "inss_13": 30.39
-   },
-   "fgts": {
-    "rescisao": 149.13,
-    "multa": 0.0
-   },
-   "liquido": 2264.67
-  },
-  {
-   "dados": {
-    "tipo": "sem_justa_causa",
-    "tipoAviso": "indenizado",
-    "dataAdmissao": "2018-02-24",
-    "dataAviso": "2024-10-16",
-    "salarioBase": 1621,
-    "adicionais": [],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 0,
-    "saldoFgts": 12345.67,
-    "dependentes": 0,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 864.53,
-    "aviso_previo": 2593.6,
-    "decimo_terceiro": 1485.92,
-    "ferias_proporcionais": 1215.75,
-    "terco_proporcionais": 405.25
-   },
-   "descontos": {
-    "inss_salario": 64.84,
-    "inss_13": 111.44
-   },
-   "fgts": {
-    "rescisao": 395.52,
-    "multa": 5096.48
-   },
-   "liquido": 6388.77
-  },
-  {
-   "dados": {
-    "tipo": "pedido_demissao",
-    "tipoAviso": "nao_cumprido",
-    "dataAdmissao": "2015-01-18",
-    "dataAviso": "2015-03-04",
-    "salarioBase": 4800,
-    "adicionais": [],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": false,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 0,
-    "saldoFgts": 0,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 640.0,
-    "decimo_terceiro": 400.0,
-    "ferias_proporcionais": 800.0,
-    "terco_proporcionais": 266.67
-   },
-   "descontos": {
-    "inss_salario": 48.0,
-    "inss_13": 30.0,
-    "aviso_nao_cumprido": 2028.67
-   },
-   "fgts": {
-    "rescisao": 83.2,
-    "multa": 0.0
-   },
-   "liquido": 0.0
-  },
-  {
-   "dados": {
-    "tipo": "comum_acordo",
-    "tipoAviso": "indenizado_metade",
-    "dataAdmissao": "2018-01-13",
-    "dataAviso": "2019-09-07",
-    "salarioBase": 4800,
-    "adicionais": [],
-    "horasNoturnas": 52.5,
-    "horaNoturnaReduzida": false,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 1,
-    "saldoFgts": 0,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 1120.0,
-    "aviso_previo": 2640.0,
-    "decimo_terceiro": 3600.0,
-    "ferias_vencidas": 4800.0,
-    "terco_vencidas": 1600.0,
-    "ferias_proporcionais": 3200.0,
-    "terco_proporcionais": 1066.67
-   },
-   "descontos": {
-    "inss_salario": 84.0,
-    "inss_13": 320.6
-   },
-   "fgts": {
-    "rescisao": 588.8,
-    "multa": 117.76
-   },
-   "liquido": 17622.07
-  },
-  {
-   "dados": {
-    "tipo": "comum_acordo",
-    "tipoAviso": "trabalhado",
-    "dataAdmissao": "2018-02-15",
-    "dataAviso": "2024-03-20",
-    "salarioBase": 4800,
-    "adicionais": [
-     "insalubridade_40",
-     "noturno_20"
-    ],
-    "horasNoturnas": 52.5,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 350.5,
-    "periodosFeriasVencidas": 2,
-    "saldoFgts": 12345.67,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 3583.04,
-    "aviso_previo": 3604.76,
-    "decimo_terceiro": 2002.64,
-    "ferias_vencidas": 18023.79,
-    "terco_vencidas": 6007.93,
-    "ferias_proporcionais": 1501.98,
-    "terco_proporcionais": 500.66
-   },
-   "descontos": {
-    "inss_salario": 318.56,
-    "inss_13": 155.92
-   },
-   "fgts": {
-    "rescisao": 735.24,
-    "multa": 2616.18
-   },
-   "liquido": 34750.32
-  },
-  {
-   "dados": {
-    "tipo": "sem_justa_causa",
-    "tipoAviso": "trabalhado",
-    "dataAdmissao": "2023-03-20",
-    "dataAviso": "2032-08-11",
-    "salarioBase": 2750.35,
-    "adicionais": [],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": true,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 2,
-    "saldoFgts": 0,
-    "dependentes": 0,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 916.78,
-    "aviso_previo": 2475.32,
-    "decimo_terceiro": 2062.76,
-    "ferias_vencidas": 8251.05,
-    "terco_vencidas": 2750.35,
-    "ferias_proporcionais": 1604.37,
-    "terco_proporcionais": 534.79
-   },
-   "descontos": {
-    "inss_salario": 68.76,
-    "inss_13": 161.33
-   },
-   "fgts": {
-    "rescisao": 436.39,
-    "multa": 174.56
-   },
-   "liquido": 18365.33
-  },
-  {
-   "dados": {
-    "tipo": "pedido_demissao",
-    "tipoAviso": "dispensado",
-    "dataAdmissao": "2020-10-09",
-    "dataAviso": "2020-12-24",
-    "salarioBase": 4800,
-    "adicionais": [],
-    "horasNoturnas": 0,
-    "horaNoturnaReduzida": false,
-    "mediaComissoes": 0,
-    "periodosFeriasVencidas": 2,
-    "saldoFgts": 0,
-    "dependentes": 2,
-    "divisor": 220,
-    "dataReferencia": "2026-09-28"
-   },
-   "proventos": {
-    "saldo_salario": 3840.0,
-    "decimo_terceiro": 1200.0,
-    "ferias_proporcionais": 1200.0,
-    "terco_proporcionais": 400.0
-   },
-   "descontos": {
-    "inss_salario": 349.4,
-    "inss_13": 90.0
-   },
-   "fgts": {
-    "rescisao": 403.2,
-    "multa": 0.0
-   },
-   "liquido": 6200.6
-  },
-  {
-   "dados": {
-    "tipo": "comum_acordo",
-    "tipoAviso": "dispensado",
-    "dataAdmissao": "2020-06-26",
-    "dataAviso": "2026-09-05",
-    "salarioBase": 1621,
     "adicionais": [
      "periculosidade_30"
     ],
@@ -365,27 +15,412 @@
     "mediaComissoes": 0,
     "periodosFeriasVencidas": 2,
     "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28",
+    "dataTermoFinal": "2025-08-21"
+   },
+   "proventos": {
+    "saldo_salario": 5126.33,
+    "indenizacao_art_479": 7689.5,
+    "decimo_terceiro": 985.83,
+    "ferias_proporcionais": 1971.67,
+    "terco_proporcionais": 657.22
+   },
+   "descontos": {
+    "inss_salario": 527.28,
+    "inss_13": 73.94,
+    "irrf_salario": 273.98
+   },
+   "fgts": {
+    "rescisao": 488.97,
+    "multa": 5133.86
+   },
+   "liquido": 15555.35
+  },
+  {
+   "dados": {
+    "tipo": "justa_causa",
+    "tipoAviso": null,
+    "dataAdmissao": "2015-04-10",
+    "dataAviso": "2025-11-24",
+    "salarioBase": 4800,
+    "adicionais": [
+     "noturno_20"
+    ],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 1,
+    "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 3840.0,
+    "ferias_vencidas": 4800.0,
+    "terco_vencidas": 1600.0
+   },
+   "descontos": {
+    "inss_salario": 354.21,
+    "irrf_salario": 71.83
+   },
+   "fgts": {
+    "rescisao": 307.2,
+    "multa": 0.0
+   },
+   "liquido": 9813.96
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2016-06-22",
+    "dataAviso": "2025-11-16",
+    "salarioBase": 9100,
+    "adicionais": [
+     "insalubridade_20"
+    ],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 5015.25,
+    "decimo_terceiro": 9403.6,
+    "ferias_vencidas": 47018.0,
+    "terco_vencidas": 15672.67,
+    "ferias_proporcionais": 4701.8,
+    "terco_proporcionais": 1567.27
+   },
+   "descontos": {
+    "inss_salario": 511.73,
+    "inss_13": 951.63,
+    "irrf_salario": 252.49,
+    "irrf_13": 1311.29
+   },
+   "fgts": {
+    "rescisao": 1153.51,
+    "multa": 0.0
+   },
+   "liquido": 80351.45
+  },
+  {
+   "dados": {
+    "tipo": "determinado_termo_final",
+    "tipoAviso": null,
+    "dataAdmissao": "2025-09-25",
+    "dataAviso": "",
+    "salarioBase": 9100,
+    "adicionais": [
+     "insalubridade_40",
+     "noturno_20"
+    ],
+    "horasNoturnas": 0,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 1,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28",
+    "dataTermoFinal": "2025-12-23"
+   },
+   "proventos": {
+    "saldo_salario": 7442.19,
+    "decimo_terceiro": 2426.8,
+    "ferias_proporcionais": 2426.8,
+    "terco_proporcionais": 808.93
+   },
+   "descontos": {
+    "inss_salario": 851.5,
+    "inss_13": 195.64,
+    "irrf_salario": 799.44
+   },
+   "fgts": {
+    "rescisao": 789.52,
+    "multa": 0.0
+   },
+   "liquido": 11258.14
+  },
+  {
+   "dados": {
+    "tipo": "sem_justa_causa",
+    "tipoAviso": "indenizado",
+    "dataAdmissao": "2020-01-06",
+    "dataAviso": "2025-12-23",
+    "salarioBase": 9100,
+    "adicionais": [],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
     "dependentes": 0,
     "divisor": 220,
     "dataReferencia": "2026-09-28"
    },
    "proventos": {
-    "saldo_salario": 351.22,
-    "decimo_terceiro": 1404.87,
-    "ferias_vencidas": 6321.9,
-    "terco_vencidas": 2107.3,
-    "ferias_proporcionais": 351.22,
-    "terco_proporcionais": 117.07
+    "saldo_salario": 6976.67,
+    "aviso_previo": 14175.75,
+    "decimo_terceiro": 9450.5,
+    "decimo_terceiro_ano_seguinte": 787.54,
+    "ferias_vencidas": 47252.5,
+    "terco_vencidas": 15750.83,
+    "ferias_projecao": 9450.5,
+    "terco_projecao": 3150.17,
+    "ferias_proporcionais": 787.54,
+    "terco_proporcionais": 262.51
    },
    "descontos": {
-    "inss_salario": 26.34,
-    "inss_13": 105.37
+    "inss_salario": 786.33,
+    "inss_13": 1010.7,
+    "irrf_salario": 793.61,
+    "irrf_13": 1428.46
    },
    "fgts": {
-    "rescisao": 140.49,
-    "multa": 2497.23
+    "rescisao": 2511.24,
+    "multa": 5942.76
    },
-   "liquido": 10521.87
+   "liquido": 104025.41
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "nao_cumprido",
+    "dataAdmissao": "2014-08-21",
+    "dataAviso": "2025-06-30",
+    "salarioBase": 2750.35,
+    "adicionais": [
+     "periculosidade_30"
+    ],
+    "horasNoturnas": 21,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 3575.45,
+    "decimo_terceiro": 1962.98,
+    "ferias_vencidas": 19629.75,
+    "terco_vencidas": 6543.25,
+    "ferias_proporcionais": 3271.62,
+    "terco_proporcionais": 1090.54
+   },
+   "descontos": {
+    "inss_salario": 322.47,
+    "inss_13": 153.9,
+    "irrf_salario": 36.91,
+    "aviso_nao_cumprido": 3925.95
+   },
+   "fgts": {
+    "rescisao": 443.07,
+    "multa": 0.0
+   },
+   "liquido": 31634.36
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "indenizado_metade",
+    "dataAdmissao": "2013-10-19",
+    "dataAviso": "2024-10-05",
+    "salarioBase": 3000,
+    "adicionais": [
+     "insalubridade_20"
+    ],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 547.07,
+    "aviso_previo": 3632.9,
+    "decimo_terceiro": 3027.42,
+    "ferias_vencidas": 18164.5,
+    "terco_vencidas": 6054.83,
+    "ferias_projecao": 3632.9,
+    "terco_projecao": 1210.97,
+    "ferias_proporcionais": 302.74,
+    "terco_proporcionais": 100.91
+   },
+   "descontos": {
+    "inss_salario": 41.03,
+    "inss_13": 262.11,
+    "irrf_13": 15.26
+   },
+   "fgts": {
+    "rescisao": 576.59,
+    "multa": 2584.45
+   },
+   "liquido": 36355.84
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2013-02-15",
+    "dataAviso": "2024-12-30",
+    "salarioBase": 2750.35,
+    "adicionais": [],
+    "horasNoturnas": 21,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 0,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 2658.67,
+    "aviso_previo": 3410.94,
+    "decimo_terceiro": 516.81,
+    "ferias_vencidas": 15504.25,
+    "terco_vencidas": 5168.08,
+    "ferias_projecao": 3100.85,
+    "terco_projecao": 1033.62,
+    "ferias_proporcionais": 258.4,
+    "terco_proporcionais": 86.13
+   },
+   "descontos": {
+    "inss_salario": 216.51,
+    "inss_13": 38.76
+   },
+   "fgts": {
+    "rescisao": 526.91,
+    "multa": 105.38
+   },
+   "liquido": 31482.48
+  },
+  {
+   "dados": {
+    "tipo": "sem_justa_causa",
+    "tipoAviso": "trabalhado",
+    "dataAdmissao": "2021-02-23",
+    "dataAviso": "2027-01-17",
+    "salarioBase": 3000,
+    "adicionais": [
+     "periculosidade_30"
+    ],
+    "horasNoturnas": 21,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 2080.0,
+    "aviso_previo": 1950.0,
+    "decimo_terceiro": 650.0,
+    "ferias_vencidas": 19500.0,
+    "terco_vencidas": 6500.0,
+    "ferias_projecao": 3900.0,
+    "terco_projecao": 1300.0
+   },
+   "descontos": {
+    "inss_salario": 162.89,
+    "inss_13": 48.75
+   },
+   "fgts": {
+    "rescisao": 374.4,
+    "multa": 5088.03
+   },
+   "liquido": 35668.36
+  },
+  {
+   "dados": {
+    "tipo": "pedido_demissao",
+    "tipoAviso": "dispensado",
+    "dataAdmissao": "2015-12-09",
+    "dataAviso": "2025-07-20",
+    "salarioBase": 4800,
+    "adicionais": [
+     "periculosidade_30"
+    ],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": true,
+    "mediaComissoes": 0,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
+    "dependentes": 2,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 4160.0,
+    "decimo_terceiro": 3640.0,
+    "ferias_vencidas": 31200.0,
+    "terco_vencidas": 10400.0,
+    "ferias_proporcionais": 3640.0,
+    "terco_proporcionais": 1213.33
+   },
+   "descontos": {
+    "inss_salario": 392.61,
+    "inss_13": 330.21,
+    "irrf_salario": 114.07,
+    "irrf_13": 45.43
+   },
+   "fgts": {
+    "rescisao": 624.0,
+    "multa": 0.0
+   },
+   "liquido": 53371.01
+  },
+  {
+   "dados": {
+    "tipo": "comum_acordo",
+    "tipoAviso": "dispensado",
+    "dataAdmissao": "2013-06-13",
+    "dataAviso": "2025-09-30",
+    "salarioBase": 9100,
+    "adicionais": [],
+    "horasNoturnas": 52.5,
+    "horaNoturnaReduzida": false,
+    "mediaComissoes": 350.5,
+    "periodosFeriasVencidas": 3,
+    "saldoFgts": 12345.67,
+    "dependentes": 0,
+    "divisor": 220,
+    "dataReferencia": "2026-09-28"
+   },
+   "proventos": {
+    "saldo_salario": 9100.0,
+    "decimo_terceiro": 7087.88,
+    "ferias_vencidas": 47252.5,
+    "terco_vencidas": 15750.83,
+    "ferias_proporcionais": 3150.17,
+    "terco_proporcionais": 1050.06
+   },
+   "descontos": {
+    "inss_salario": 951.63,
+    "inss_13": 801.9,
+    "irrf_salario": 1332.07,
+    "irrf_13": 819.91
+   },
+   "fgts": {
+    "rescisao": 1295.03,
+    "multa": 2728.14
+   },
+   "liquido": 79485.93
   }
  ],
  "pedidos": [

@@ -108,44 +108,113 @@ export function salarioMinimoMedio(inicio, fim) {
   return { media: Math.round((soma / peso) * 10000) / 10000, valores: [...valores] };
 }
 
-/**
- * Faixas progressivas do INSS do segurado empregado, vigentes desde a
- * competência de janeiro de 2026 (Portaria Interministerial MPS/MF nº 13,
- * de 09/01/2026). Teto do salário de contribuição: R$ 8.475,55.
- */
-export const INSS = {
-  faixas: [
-    { limite: 1621.0, aliquota: 0.075 },
-    { limite: 2902.84, aliquota: 0.09 },
-    { limite: 4354.27, aliquota: 0.12 },
-    { limite: 8475.55, aliquota: 0.14 },
-  ],
-};
+/** Faixas do INSS do empregado: 7,5%, 9%, 12% e 14% até o teto. */
+const faixasInss = (l1, l2, l3, teto) => [
+  { limite: l1, aliquota: 0.075 },
+  { limite: l2, aliquota: 0.09 },
+  { limite: l3, aliquota: 0.12 },
+  { limite: teto, aliquota: 0.14 },
+];
 
 /**
- * Tabela progressiva mensal do IRRF vigente em 2026. As faixas em si não
- * mudaram na virada do ano: o que entrou foi o redutor da Lei 15.270/2025,
+ * Tabelas do INSS do segurado empregado, com a competência em que cada uma
+ * passou a valer. A rescisão usa a da competência em que o contrato termina:
+ * uma saída de 2025 tem as faixas de 2025, e não as de hoje.
+ */
+export const TABELAS_INSS = [
+  {
+    desde: '2024-01-01',
+    fonte: 'Portaria Interministerial MPS/MF nº 2, de 11/01/2024',
+    faixas: faixasInss(1412.0, 2666.68, 4000.03, 7786.02),
+  },
+  {
+    desde: '2025-01-01',
+    fonte: 'Portaria Interministerial MPS/MF nº 6, de 10/01/2025',
+    faixas: faixasInss(1518.0, 2793.88, 4190.83, 8157.41),
+  },
+  {
+    desde: '2026-01-01',
+    fonte: 'Portaria Interministerial MPS/MF nº 13, de 09/01/2026',
+    faixas: faixasInss(1621.0, 2902.84, 4354.27, 8475.55),
+  },
+];
+
+/** Tabela do INSS em vigor hoje (teto de R$ 8.475,55). */
+export const INSS = TABELAS_INSS.at(-1);
+
+/** Faixas mensais do IRRF a partir de maio de 2025 (Lei 15.191/2025). */
+const FAIXAS_IRRF_2025 = [
+  { limite: 2428.8, aliquota: 0, deducao: 0 },
+  { limite: 2826.65, aliquota: 0.075, deducao: 182.16 },
+  { limite: 3751.05, aliquota: 0.15, deducao: 394.16 },
+  { limite: 4664.68, aliquota: 0.225, deducao: 675.49 },
+  { limite: Infinity, aliquota: 0.275, deducao: 908.73 },
+];
+
+/**
+ * Tabelas mensais do IRRF, pela data em que cada uma passou a valer. Em 2026
+ * as faixas ficaram as mesmas: o que entrou foi o redutor da Lei 15.270/2025,
  * que zera o imposto até R$ 5.000,00 de rendimento mensal e decresce
  * linearmente até se anular em R$ 7.350,00.
  */
-export const IRRF = {
-  faixas: [
-    { limite: 2428.8, aliquota: 0, deducao: 0 },
-    { limite: 2826.65, aliquota: 0.075, deducao: 182.16 },
-    { limite: 3751.05, aliquota: 0.15, deducao: 394.16 },
-    { limite: 4664.68, aliquota: 0.225, deducao: 675.49 },
-    { limite: Infinity, aliquota: 0.275, deducao: 908.73 },
-  ],
-  deducaoPorDependente: 189.59,
-  descontoSimplificado: 607.2,
-  /** Redutor da Lei 15.270/2025, aplicado sobre o imposto apurado. */
-  redutor: {
-    isencaoAte: 5000.0,
-    limite: 7350.0,
-    constante: 978.62,
-    fator: 0.133145,
+export const TABELAS_IRRF = [
+  {
+    desde: '2024-02-01',
+    fonte: 'tabela da Lei 14.848/2024',
+    faixas: [
+      { limite: 2259.2, aliquota: 0, deducao: 0 },
+      { limite: 2826.65, aliquota: 0.075, deducao: 169.44 },
+      { limite: 3751.05, aliquota: 0.15, deducao: 381.44 },
+      { limite: 4664.68, aliquota: 0.225, deducao: 662.77 },
+      { limite: Infinity, aliquota: 0.275, deducao: 896.0 },
+    ],
+    deducaoPorDependente: 189.59,
+    descontoSimplificado: 564.8,
+    redutor: null,
   },
-};
+  {
+    desde: '2025-05-01',
+    fonte: 'tabela da Lei 15.191/2025',
+    faixas: FAIXAS_IRRF_2025,
+    deducaoPorDependente: 189.59,
+    descontoSimplificado: 607.2,
+    redutor: null,
+  },
+  {
+    desde: '2026-01-01',
+    fonte: 'tabela progressiva com o redutor da Lei 15.270/2025',
+    faixas: FAIXAS_IRRF_2025,
+    deducaoPorDependente: 189.59,
+    descontoSimplificado: 607.2,
+    /** Redutor da Lei 15.270/2025, aplicado sobre o imposto apurado. */
+    redutor: {
+      isencaoAte: 5000.0,
+      limite: 7350.0,
+      constante: 978.62,
+      fator: 0.133145,
+    },
+  },
+];
+
+/** Tabela do IRRF em vigor hoje. */
+export const IRRF = TABELAS_IRRF.at(-1);
+
+/**
+ * Tabela em vigor numa data. Antes da primeira cadastrada, devolve a primeira
+ * com `anteriorASerie`, para o cálculo avisar que a tabela da época não está
+ * na ferramenta.
+ */
+function tabelaEm(tabelas, data) {
+  const iso = isoDe(data);
+  let atual = null;
+  for (const tabela of tabelas) {
+    if (tabela.desde <= iso) atual = tabela;
+  }
+  return atual ? { ...atual, anteriorASerie: false } : { ...tabelas[0], anteriorASerie: true };
+}
+
+export const inssEm = (data) => tabelaEm(TABELAS_INSS, data);
+export const irrfEm = (data) => tabelaEm(TABELAS_IRRF, data);
 
 export const FGTS = {
   aliquotaDeposito: 0.08,

@@ -6,7 +6,9 @@
  * acordo individual e jurisprudência local podem alterar o resultado.
  */
 
-import { INSS, IRRF, FGTS, salarioMinimoEm } from './tabelas.js';
+import {
+  INSS, IRRF, FGTS, salarioMinimoEm, inssEm, irrfEm,
+} from './tabelas.js';
 import { TIPOS } from './tipos.js';
 import { calcularAdicionais, DIVISOR_PADRAO } from './adicionais.js';
 import { salarioHora } from './descontos.js';
@@ -166,11 +168,12 @@ export function diasDeFeriasPorFaltas(faltas = 0) {
 
 /* ------------------------------------------------------------- tributação */
 
-export function calcularINSS(base) {
+/** @param {object} [tabela] tabela da competência (`inssEm`); por omissão, a de hoje */
+export function calcularINSS(base, tabela = INSS) {
   if (base <= 0) return 0;
   let contribuicao = 0;
   let anterior = 0;
-  for (const faixa of INSS.faixas) {
+  for (const faixa of tabela.faixas) {
     if (base > anterior) {
       const parcela = Math.min(base, faixa.limite) - anterior;
       contribuicao += parcela * faixa.aliquota;
@@ -180,20 +183,23 @@ export function calcularINSS(base) {
   return arredondar(contribuicao);
 }
 
-function impostoPelaTabela(base) {
-  const faixa = IRRF.faixas.find((f) => base <= f.limite) ?? IRRF.faixas.at(-1);
+function impostoPelaTabela(base, tabela) {
+  const faixa = tabela.faixas.find((f) => base <= f.limite) ?? tabela.faixas.at(-1);
   return Math.max(0, base * faixa.aliquota - faixa.deducao);
 }
 
 /**
  * Redutor da Lei 15.270/2025: zera o imposto até R$ 5.000,00 de rendimento
- * mensal e decresce linearmente até se anular em R$ 7.350,00.
+ * mensal e decresce linearmente até se anular em R$ 7.350,00. Tabelas
+ * anteriores a 2026 não têm redutor.
  *
  * @param {number} rendimento rendimento tributável bruto do mês
  * @param {number} imposto imposto apurado pela tabela
+ * @param {object|null} [redutor] o da tabela do pagamento; por omissão, o de hoje
  */
-export function calcularRedutorIRRF(rendimento, imposto) {
-  const { isencaoAte, limite, constante, fator } = IRRF.redutor;
+export function calcularRedutorIRRF(rendimento, imposto, redutor = IRRF.redutor) {
+  if (!redutor) return 0;
+  const { isencaoAte, limite, constante, fator } = redutor;
   if (rendimento <= isencaoAte) return imposto; // isenção integral
   if (rendimento > limite) return 0;
   return Math.max(0, constante - fator * rendimento);
@@ -201,15 +207,19 @@ export function calcularRedutorIRRF(rendimento, imposto) {
 
 /**
  * IRRF pelo modelo mais favorável — deduções legais x desconto simplificado —,
- * já descontado o redutor da Lei 15.270/2025.
+ * já descontado o redutor da Lei 15.270/2025 quando a tabela o tem.
+ *
+ * @param {object} [opcoes.tabela] tabela da data do pagamento (`irrfEm`); por omissão, a de hoje
  */
-export function calcularIRRF(rendimento, { inss = 0, dependentes = 0, pensao = 0 } = {}) {
+export function calcularIRRF(rendimento, {
+  inss = 0, dependentes = 0, pensao = 0, tabela = IRRF,
+} = {}) {
   if (rendimento <= 0) return 0;
-  const baseLegal = rendimento - inss - dependentes * IRRF.deducaoPorDependente - pensao;
+  const baseLegal = rendimento - inss - dependentes * tabela.deducaoPorDependente - pensao;
   // O desconto simplificado é valor fixo e substitui todas as deduções legais.
-  const baseSimplificada = rendimento - IRRF.descontoSimplificado;
-  const imposto = Math.min(impostoPelaTabela(baseLegal), impostoPelaTabela(baseSimplificada));
-  return arredondar(Math.max(0, imposto - calcularRedutorIRRF(rendimento, imposto)));
+  const baseSimplificada = rendimento - tabela.descontoSimplificado;
+  const imposto = Math.min(impostoPelaTabela(baseLegal, tabela), impostoPelaTabela(baseSimplificada, tabela));
+  return arredondar(Math.max(0, imposto - calcularRedutorIRRF(rendimento, imposto, tabela.redutor)));
 }
 
 /* ---------------------------------------------------------------- cálculo */
@@ -413,6 +423,19 @@ export function calcularRescisao(dados) {
   const medias = num(dados.mediaComissoes);
   const remuneracao = arredondar(remuneracaoFixa + medias);
 
+  // Tese divergente, só avisada: há quem conte o ano que se completa dentro
+  // da projeção e some mais 3 dias. O cálculo fica com os anos completos até
+  // a data do aviso — a Lei 12.506/2011 fala em ano de serviço prestado, e a
+  // projeção é efeito do próprio aviso, não tempo que o origina.
+  if (avisoAplicavel && !tipo.aviso.diasFixos && diasAvisoLegais < 90
+    && anosCompletos(admissao, dataProjetada) > anos) {
+    alertas.push(
+      `Com a projeção do aviso, o contrato completa ${anos + 1} ano(s) em `
+        + `${formatarData(addAnos(admissao, anos + 1))}. Parte das calculadoras e das decisões conta esse ano `
+        + `e soma mais 3 dias ao aviso (${diasAvisoLegais + 3} dias); aqui valem os anos completos até a data `
+        + 'do aviso, porque a Lei 12.506/2011 fala em ano de serviço prestado.',
+    );
+  }
   if (excedenteTrabalhado > 0) {
     alertas.push(
       `O aviso proporcional é de ${diasAvisoLegais} dias, mas o empregado só pode ser obrigado a `
@@ -563,32 +586,40 @@ export function calcularRescisao(dados) {
   /* --- férias --- */
   const diasFerias = diasDeFeriasPorFaltas(num(dados.faltasInjustificadas));
   const fatorFaltas = diasFerias / 30;
+  // Só pode ter ficado sem gozo o período completo até o último dia
+  // trabalhado: é entre eles que o campo conta os vencidos. O período que se
+  // completa na projeção do aviso indenizado (art. 487, §1º) não teve como ser
+  // gozado, e é devido por inteiro, sem depender do campo.
+  const { completos: completosNaSaida } = periodosAquisitivos(admissao, ultimoDiaTrabalhado);
   const { completos, inicioPeriodoAtual } = periodosAquisitivos(admissao, dataProjetada);
+  const periodosNaProjecao = completos - completosNaSaida;
   const periodosInformados = num(dados.periodosFeriasVencidas);
-  const periodosNaoGozados = Math.min(periodosInformados, completos);
-  if (periodosInformados > completos) {
+  const periodosNaoGozados = Math.min(periodosInformados, completosNaSaida);
+  if (periodosInformados > completosNaSaida) {
     alertas.push(
       `Foram informados ${periodosInformados} períodos de férias vencidas, mas o contrato completou `
-        + `${completos}. O cálculo usou ${completos}.`,
+        + `${completosNaSaida} até o último dia trabalhado. O cálculo usou ${completosNaSaida}.`,
     );
   }
 
-  // Os não gozados são os últimos períodos completos, e cada um tem o seu
-  // destino, decidido pelo fim do próprio período concessivo:
+  // Os não gozados são os últimos períodos completos na saída, e cada um tem
+  // o seu destino, decidido pelo fim do próprio período concessivo:
   //  - prescreve, se o concessivo acabou antes do marco quinquenal contado do
   //    ajuizamento (art. 149 da CLT);
-  //  - é pago em dobro, se o concessivo acabou antes do fim do contrato — com
-  //    a projeção do aviso indenizado, que integra o tempo de serviço
-  //    (art. 487, §1º). A dobra é de cada período, não do conjunto (art. 137);
+  //  - é pago em dobro, se o concessivo acabou antes do último dia trabalhado.
+  //    A projeção do aviso indenizado não entra nessa conta: dispensado antes
+  //    de esgotado o concessivo, o empregado não teve as férias negadas no
+  //    prazo, e a projeção só completa o período seguinte (TST e TRT-3). A
+  //    dobra é de cada período, não do conjunto (art. 137);
   //  - é pago simples, se o concessivo ainda corria na saída.
   const marco = ajuizamento ? marcoQuinquenal(ajuizamento) : null;
   const prescritos = [];
   let periodosEmDobro = 0;
-  for (let k = completos - periodosNaoGozados + 1; k <= completos; k += 1) {
+  for (let k = completosNaSaida - periodosNaoGozados + 1; k <= completosNaSaida; k += 1) {
     const inicioAquisitivo = addAnos(admissao, k - 1);
     const fimConcessivo = fimDoConcessivo(inicioAquisitivo);
     if (marco && fimConcessivo < marco) prescritos.push({ inicioAquisitivo, fimConcessivo });
-    else if (fimConcessivo < dataProjetada) periodosEmDobro += 1;
+    else if (fimConcessivo < ultimoDiaTrabalhado) periodosEmDobro += 1;
   }
   const periodosVencidos = periodosNaoGozados - prescritos.length;
   const periodosSimples = periodosVencidos - periodosEmDobro;
@@ -611,7 +642,7 @@ export function calcularRescisao(dados) {
     : null;
 
   let feriasVencidas = 0;
-  if (periodosVencidos > 0 && fatorFaltas === 0) {
+  if (periodosVencidos + periodosNaProjecao > 0 && fatorFaltas === 0) {
     alertas.push(
       `Com ${num(dados.faltasInjustificadas)} faltas injustificadas o empregado perde o direito às `
         + 'férias do período (art. 130 da CLT), e por isso os períodos vencidos não foram pagos.',
@@ -634,6 +665,27 @@ export function calcularRescisao(dados) {
       label: '1/3 sobre férias vencidas',
       detalhe: 'art. 7º, XVII, da CF',
       valor: arredondar(feriasVencidas / 3),
+    });
+  }
+
+  // O aviso é de no máximo 90 dias: a projeção completa, quando muito, um
+  // período — o último antes do que corre na data projetada.
+  let feriasNaProjecao = 0;
+  if (periodosNaProjecao > 0 && fatorFaltas > 0) {
+    const inicioDoPeriodo = addAnos(admissao, completos - 1);
+    feriasNaProjecao = arredondar(remuneracao * fatorFaltas * periodosNaProjecao);
+    proventos.push({
+      chave: 'ferias_projecao',
+      label: 'Férias do período completado no aviso',
+      detalhe: `período ${formatarData(inicioDoPeriodo)} a ${formatarData(addDias(inicioPeriodoAtual, -1))}, `
+        + 'completado na projeção do aviso indenizado (art. 487, §1º) · simples',
+      valor: feriasNaProjecao,
+    });
+    proventos.push({
+      chave: 'terco_projecao',
+      label: '1/3 sobre férias do período completado no aviso',
+      detalhe: 'art. 7º, XVII, da CF',
+      valor: arredondar(feriasNaProjecao / 3),
     });
   }
 
@@ -661,23 +713,47 @@ export function calcularRescisao(dados) {
   /* --- descontos --- */
   const descontos = [...descontosAntecipados];
 
+  // As tabelas são as da época da saída, não as de hoje: o INSS segue a
+  // competência em que o contrato termina, e o IRRF, a data do pagamento —
+  // aproximada pelo mesmo dia, já que o prazo é de dez dias (art. 477, §6º).
+  const tabelaInss = inssEm(ultimoDiaTrabalhado);
+  const tabelaIrrf = irrfEm(ultimoDiaTrabalhado);
+  if (tabelaInss.anteriorASerie || tabelaIrrf.anteriorASerie) {
+    alertas.push(
+      'A ferramenta tem as tabelas de INSS desde janeiro de 2024 e as de IRRF desde fevereiro de 2024. '
+        + 'Para uma saída anterior, os descontos usaram as mais antigas cadastradas e podem diferir dos da época.',
+    );
+  }
+  const prazoPagamento = addDias(ultimoDiaTrabalhado, 10);
+  const tabelaIrrfNoPrazo = irrfEm(prazoPagamento);
+  if (tabelaIrrfNoPrazo.desde !== tabelaIrrf.desde) {
+    alertas.push(
+      `O prazo de pagamento vai até ${formatarData(prazoPagamento)} (art. 477, §6º), e em `
+        + `${formatarData(parseData(tabelaIrrfNoPrazo.desde))} entra outra tabela do IRRF (${tabelaIrrfNoPrazo.fonte}). `
+        + 'O imposto segue a data do pagamento: o cálculo usou a tabela do último dia do contrato, e o '
+        + 'IRRF muda se o acerto for pago já na vigência da nova.',
+    );
+  }
+
+  const anoInss = tabelaInss.desde.slice(0, 4);
+
   // O mês é tributado por inteiro: saldo somado às horas extras nele pagas.
   const baseMensal = arredondar(saldoSalario + valorHoras);
   const rotuloMensal = valorHoras > 0 ? 'saldo de salário e horas extras' : 'saldo de salário';
 
-  const inssSalario = calcularINSS(baseMensal);
+  const inssSalario = calcularINSS(baseMensal, tabelaInss);
   if (inssSalario > 0) {
     descontos.push({
-      chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: inssSalario,
+      chave: 'inss_salario', label: `INSS sobre ${rotuloMensal}`, natureza: 'legal', detalhe: `tabela progressiva de ${anoInss}`, valor: inssSalario,
     });
   }
-  const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor), 0));
+  const inss13 = arredondar(decimosPorAno.reduce((soma, valor) => soma + calcularINSS(valor, tabelaInss), 0));
   if (inss13 > 0) {
     descontos.push({
       chave: 'inss_13',
       label: 'INSS sobre 13º salário',
       natureza: 'legal',
-      detalhe: decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado',
+      detalhe: `${decimosPorAno.length > 1 ? 'cálculo em separado, ano a ano' : 'cálculo em separado'} · tabela de ${anoInss}`,
       valor: inss13,
     });
   }
@@ -706,25 +782,27 @@ export function calcularRescisao(dados) {
     inss: inssSalario,
     dependentes,
     pensao: baseMensal * fatorPensao,
+    tabela: tabelaIrrf,
   });
   if (irrfSalario > 0) {
     descontos.push({
-      chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, natureza: 'legal', detalhe: 'tabela progressiva', valor: irrfSalario,
+      chave: 'irrf_salario', label: `IRRF sobre ${rotuloMensal}`, natureza: 'legal', detalhe: tabelaIrrf.fonte, valor: irrfSalario,
     });
   }
   const irrf13 = arredondar(
     decimosPorAno.reduce(
       (soma, valor) => soma + calcularIRRF(valor, {
-        inss: calcularINSS(valor),
+        inss: calcularINSS(valor, tabelaInss),
         dependentes,
         pensao: valor * fatorPensao,
+        tabela: tabelaIrrf,
       }),
       0,
     ),
   );
   if (irrf13 > 0) {
     descontos.push({
-      chave: 'irrf_13', label: 'IRRF sobre 13º salário', natureza: 'legal', detalhe: 'tributação exclusiva', valor: irrf13,
+      chave: 'irrf_13', label: 'IRRF sobre 13º salário', natureza: 'legal', detalhe: `tributação exclusiva · ${tabelaIrrf.fonte}`, valor: irrf13,
     });
   }
 
@@ -855,9 +933,12 @@ export function calcularRescisao(dados) {
       periodosVencidos,
       periodosInformados,
       periodosEmDobro,
+      periodosNaProjecao,
+      vigencia: `INSS: ${tabelaInss.fonte} · IRRF: ${tabelaIrrf.fonte} · `
+        + `Salário mínimo: ${moeda.format(salarioMinimoEm(ultimoDiaTrabalhado))}`,
       tetoArt480,
       descontosNaoAbatidos: naoAbatido,
-      periodosCompletosCalculados: completos,
+      periodosCompletosCalculados: completosNaSaida,
       diasFerias,
       diasSaldo,
     },

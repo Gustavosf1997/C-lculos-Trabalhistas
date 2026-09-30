@@ -292,7 +292,10 @@ Verbas e descontos:
   proporcionalidade existe em favor do empregado: **ele só pode ser obrigado a
   cumprir 30 dias em serviço**, e o que passar disso é lançado como indenizado
   e projeta o contrato (Nota Técnica 184/2012 da SRT/MTE). Quem pede demissão
-  deve 30 dias, não o proporcional;
+  deve 30 dias, não o proporcional. Os anos que dão os 3 dias são os
+  completos até a data do aviso ("ano de serviço prestado"); quando a
+  projeção completa mais um ano, um alerta mostra o aviso com os 3 dias a
+  mais, porque parte das calculadoras e das decisões o conta;
 - horas extras do mês da rescisão informadas em quantidade, não em média:
   viram verba própria, calculadas pela hora normal (salário e adicionais
   divididos pelo divisor, Súmula 264 do TST) acrescida do adicional — 50% por
@@ -307,12 +310,18 @@ Verbas e descontos:
 - 13º proporcional em avos (fração de 15 dias ou mais);
 - férias vencidas e proporcionais, ambas + 1/3, com redução por faltas
   injustificadas (art. 130). Os períodos vencidos são informados por quem
-  calcula — a ferramenta não tem como saber quais férias foram gozadas —, e o
-  painel mostra quantos períodos entraram na conta. A **dobra do art. 137** é
-  aplicada sozinha, período a período: vai em dobro cada período cujo
-  concessivo venceu antes do fim do contrato (com a projeção do aviso
-  indenizado, art. 487, §1º); o mais recente, com o concessivo ainda em curso
-  na saída, é pago simples. O terço incide sobre a dobra também;
+  calcula — a ferramenta não tem como saber quais férias foram gozadas —,
+  contados entre os completos **até o último dia trabalhado**, e o painel
+  mostra quantos entraram na conta. A **dobra do art. 137** é aplicada
+  sozinha, período a período: vai em dobro cada período cujo concessivo
+  venceu antes do último dia trabalhado; o que ainda estava no concessivo na
+  saída é pago simples, mesmo que o concessivo acabe dentro da projeção do
+  aviso — dispensado antes, o empregado não teve as férias negadas no prazo
+  (TST e TRT-3). O terço incide sobre a dobra também;
+- **o período aquisitivo que se completa na projeção do aviso indenizado**
+  (art. 487, §1º) é pago por inteiro, simples e com o terço, em linha própria
+  e sem depender do campo de vencidas: ele fecha depois da saída, e não teve
+  como ser gozado;
 - as duas contagens de avos seguem regras diferentes, como na lei: os avos de
   **férias** correm em ciclos mensais a partir do dia da admissão, e o ciclo
   aberto na saída só vira avo com fração superior a 14 dias *dentro dele*
@@ -323,10 +332,18 @@ Verbas e descontos:
   (salário base ÷ divisor, multiplicado pelas horas), adiantamento de salário,
   adiantamento do 13º, pensão alimentícia e outros descontos — ou "não há
   descontos", que limpa a seleção;
-- INSS progressivo, com cálculo em separado sobre o 13º;
+- INSS progressivo, com cálculo em separado sobre o 13º — inclusive a parte
+  do 13º que vem da projeção do aviso (Tema 1.170 do STJ); o aviso prévio
+  indenizado não sofre INSS (Tema 478 do STJ);
 - IRRF pelo modelo mais favorável (deduções legais x desconto simplificado),
-  já com o redutor da Lei 15.270/2025: rendimento mensal de até R$ 5.000,00 não
-  paga imposto, e entre R$ 5.000,01 e R$ 7.350,00 o redutor decresce até zerar;
+  com o redutor da Lei 15.270/2025 nos pagamentos de 2026: rendimento mensal de
+  até R$ 5.000,00 não paga imposto, e entre R$ 5.000,01 e R$ 7.350,00 o redutor
+  decresce até zerar;
+- **tabelas da época da saída**: o INSS segue a tabela da competência em que
+  o contrato termina e o IRRF, a da data do pagamento, aproximada pelo último
+  dia do contrato. Estão cadastradas as de 2024, 2025 e 2026; quando o prazo
+  de dez dias para pagar alcança outra tabela do IRRF, um alerta avisa. O
+  rodapé e a memória de cálculo mostram as tabelas e o salário mínimo usados;
 - pensão alimentícia, adiantamentos e outros descontos;
 - **limite dos descontos**: pelo art. 477, §5º, as compensações no acerto não
   passam de um mês de remuneração — teto que a SDI-1 do TST aplica a toda
@@ -650,6 +667,9 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Saída antecipada do empregado: só o prejuízo comprovado, até o teto do art. 479 | art. 480, caput e §1º, da CLT | `tetoArt480` |
 | Compensações no acerto limitadas a um mês de remuneração | art. 477, §5º, da CLT; SDI-1 do TST | `limitarDescontos` |
 | Férias vencidas em dobro, período a período, pelo próprio concessivo | art. 137 da CLT | `periodosEmDobro` |
+| A projeção do aviso não põe em dobro as férias ainda no concessivo na saída | art. 137 da CLT; TST e TRT-3 | `periodosEmDobro` |
+| Período aquisitivo completado na projeção do aviso pago por inteiro | art. 487, §1º, e art. 146 da CLT | `ferias_projecao` |
+| Anos do aviso proporcional contados até a data do aviso | Lei 12.506/2011 ("ano de serviço prestado") | `anosCompletos` |
 | Terço constitucional sobre a dobra também | art. 7º, XVII, da CF | `terco_vencidas` |
 | Cláusula assecuratória afasta os arts. 479/480 e traz o aviso prévio | art. 481 da CLT | `clausulaAtiva` |
 | Hora normal integrada pelas parcelas salariais | Súmula 264 do TST | `valorHoraNormal` |
@@ -675,6 +695,7 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | FGTS sobre férias gozadas e o respectivo terço | art. 15 da Lei 8.036/90, sem exclusão legal | `fecharResultado` |
 | Aviso prévio indenizado e férias indenizadas não sofrem INSS nem IRRF | REsp repetitivo 1.230.957 do STJ e Súmula 386 do STJ | `calcularRescisao` |
 | 13º proporcional sofre INSS e IRRF, em cálculo separado | art. 7º da Lei 8.620/93 e tributação exclusiva na fonte | `calcularRescisao` |
+| 13º da projeção do aviso indenizado também sofre INSS | Tema 1.170 do STJ (REsp repetitivo) | `inss_13` |
 | Multa do art. 477: uma remuneração, e não o salário base | Tema 142 de repetitivos do TST | `multas.js` |
 | Prazo de 10 dias para pagar as verbas rescisórias | art. 477, §6º, da CLT | `PRAZO_477_DIAS` |
 | Multa afastada quando o empregado deu causa à mora | parte final do art. 477, §8º | `multas.js` |
@@ -698,9 +719,11 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Termo final da parcela única pela expectativa de sobrevida da tábua do IBGE, do sexo da vítima | Tema 155 do TST; Tábuas Completas de Mortalidade do IBGE (2024) | `tabua-ibge.js` |
 | Desconto da antecipação só sobre as vincendas | jurisprudência do TST | `apurarPensao` |
 | Indenização por acidente do trabalho isenta de IR | art. 6º, IV, da Lei 7.713/88 | nota do resultado |
-| INSS progressivo e teto de R$ 8.475,55 | Portaria Interministerial MPS/MF nº 13, de 09/01/2026 | `tabelas.js` |
+| INSS progressivo de 2024, 2025 e 2026 (teto atual de R$ 8.475,55) | Portarias Interministeriais MPS/MF nº 2/2024, nº 6/2025 e nº 13/2026 | `TABELAS_INSS` |
+| INSS da competência em que o contrato termina | Lei 8.212/91, art. 28, I (remuneração devida no mês) | `inssEm` |
+| IRRF pela data do pagamento: tabelas de fev/2024, mai/2025 e 2026 | Leis 14.848/2024, 15.191/2025 e 15.270/2025 | `TABELAS_IRRF` |
 | Desconto simplificado substitui as deduções legais quando for melhor | Lei 14.848/2024 | `calcularIRRF` |
-| Redutor mensal de R$ 978,62 − 0,133145 × rendimento | Lei 15.270/2025 | `calcularRedutorIRRF` |
+| Redutor mensal de R$ 978,62 − 0,133145 × rendimento, só em 2026 | Lei 15.270/2025 | `calcularRedutorIRRF` |
 
 ## Limitações conhecidas
 
@@ -715,11 +738,12 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
   reajustes futuros da pensão. A natureza da ofensa sugerida pela CIF é uma
   correlação de estimativa, não regra legal.
 
-- **As tabelas em `src/tabelas.js` são as de 2026** — INSS pela Portaria
-  Interministerial MPS/MF nº 13, de 09/01/2026 (salário mínimo de R$ 1.621,00,
-  teto de R$ 8.475,55) e IRRF com o redutor da Lei 15.270/2025. Confira-as
-  contra a fonte oficial antes de qualquer uso profissional, e reveja a cada
-  competência.
+- **As tabelas de INSS e IRRF em `src/tabelas.js` vão de 2024 a 2026** — INSS
+  pelas Portarias Interministeriais MPS/MF nº 2/2024, nº 6/2025 e nº 13/2026, e
+  IRRF pelas Leis 14.848/2024, 15.191/2025 e 15.270/2025. Uma saída anterior
+  usa as mais antigas cadastradas, com alerta — antes de 2020 o INSS nem era
+  progressivo. Confira-as contra a fonte oficial antes de qualquer uso
+  profissional, e acrescente a de cada novo ano.
 - O redutor da Lei 15.270/2025 é aplicado também ao 13º salário, tributado em
   separado — é o que orienta a Receita Federal. A regra está isolada em
   `calcularRedutorIRRF`, caso a sua leitura seja outra.

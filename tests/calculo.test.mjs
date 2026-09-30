@@ -4,6 +4,7 @@ import {
   calcularRescisao, calcularINSS, calcularIRRF, calcularRedutorIRRF, contarAvos,
   contarAvosFerias, periodosAquisitivos, parseData,
 } from '../src/calculo.js';
+import { inssEm, irrfEm } from '../src/tabelas.js';
 
 const base = {
   dataAdmissao: '2019-03-01',
@@ -607,4 +608,93 @@ test('pensão incide só nas verbas salariais, salvo decisão em contrário (STJ
   const pensaoTudo = tudo.descontos.find((d) => d.chave === 'pensao');
   assert.equal(pensaoTudo.valor, Math.round(tudo.totais.proventos * 0.2 * 100) / 100);
   assert.ok(pensaoTudo.valor > pensao.valor);
+});
+
+/* ------------- férias na projeção, dobra e tabelas da época da saída ------ */
+
+// Caso conferido com outra calculadora: admissão em 03/11/2010, aviso
+// indenizado em 05/10/2025, insalubridade de 40% e 10 horas extras no mês.
+const conferido = {
+  tipo: 'sem_justa_causa', tipoAviso: 'indenizado',
+  dataAdmissao: '2010-11-03', dataAviso: '2025-10-05', dataAjuizamento: '2026-01-01',
+  salarioBase: 3000, divisor: 220, horasExtras: 10, adicionalHoraExtra: 50,
+  adicionais: ['insalubridade_40'], periodosFeriasVencidas: 1, saldoFgts: 15000, dependentes: 0,
+};
+
+test('o período que se completa na projeção do aviso é pago por inteiro, fora do campo', () => {
+  const r = calcularRescisao(conferido);
+  // 72 dias projetam o contrato a 16/12/2025 e fecham o período 2024/2025.
+  // O vencido informado é o 2023/2024, completo na saída; o 2024/2025 vem à parte.
+  assert.equal(r.contexto.periodosCompletosCalculados, 14);
+  assert.equal(r.contexto.periodosNaProjecao, 1);
+  assert.equal(verba(r, 'ferias_vencidas'), 3607.2); // 3.000 + 40% de R$ 1.518,00
+  assert.equal(verba(r, 'ferias_projecao'), 3607.2);
+  assert.equal(verba(r, 'terco_projecao'), 1202.4);
+  assert.equal(verba(r, 'ferias_proporcionais'), 300.6); // 1/12: de 03/11 a 16/12/2025
+  assert.equal(r.totais.proventos, 23131.63);
+});
+
+test('sem aviso indenizado nenhum período se completa na projeção', () => {
+  const r = calcularRescisao({ ...conferido, tipo: 'justa_causa' });
+  assert.equal(r.contexto.periodosNaProjecao, 0);
+  assert.equal(verba(r, 'ferias_projecao'), 0);
+});
+
+test('a projeção do aviso não põe em dobro as férias ainda no concessivo na saída', () => {
+  // 2022/2023: concessivo até 02/11/2024, vencido na saída — dobro.
+  // 2023/2024: concessivo até 02/11/2025, depois da saída (05/10/2025) e antes
+  // da data projetada (16/12/2025) — simples, porque a dispensa veio antes.
+  const r = calcularRescisao({ ...conferido, periodosFeriasVencidas: 2 });
+  assert.equal(r.contexto.periodosEmDobro, 1);
+  assert.equal(verba(r, 'ferias_vencidas'), 10821.6); // (2 + 1) x 3.607,20
+});
+
+test('INSS e IRRF seguem as tabelas da época da saída', () => {
+  const r = calcularRescisao(conferido);
+  // Tabela de 2025: 1.518,00 x 7,5% + 1.275,88 x 9% + 813,32 x 12%
+  assert.equal(desconto(r, 'inss_13'), 326.28);
+  // 2025 não tem o redutor da Lei 15.270: desconto simplificado (3.607,20 −
+  // 607,20 = 3.000,00) x 15% − 394,16
+  assert.equal(desconto(r, 'irrf_13'), 55.84);
+  assert.ok(r.contexto.vigencia.includes('nº 6, de 10/01/2025'));
+  assert.ok(r.contexto.vigencia.includes('1.518,00'));
+});
+
+test('tabelas de INSS e IRRF por data', () => {
+  assert.equal(calcularINSS(3000, inssEm('2024-06-01')), 258.82);
+  assert.equal(calcularINSS(3000, inssEm('2025-06-01')), 253.41);
+  assert.equal(calcularINSS(3000, inssEm('2026-06-01')), 248.6);
+  const t25 = inssEm('2025-06-01');
+  assert.equal(calcularIRRF(5000, { inss: calcularINSS(5000, t25), tabela: irrfEm('2025-06-01') }), 312.89);
+  assert.equal(calcularIRRF(5000, { inss: calcularINSS(5000), tabela: irrfEm('2026-06-01') }), 0);
+  // De fevereiro de 2024 a abril de 2025: isenção até R$ 2.259,20
+  assert.equal(calcularIRRF(3000, { inss: 258.82, tabela: irrfEm('2024-06-01') }), 13.2);
+  assert.equal(irrfEm('2025-04-30').descontoSimplificado, 564.8);
+  assert.equal(irrfEm('2025-05-01').descontoSimplificado, 607.2);
+});
+
+test('saída anterior às tabelas cadastradas usa a mais antiga e avisa', () => {
+  assert.equal(inssEm('2016-09-17').anteriorASerie, true);
+  const r = calcularRescisao({
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', dataAdmissao: '2014-01-10', dataAviso: '2016-09-17',
+  });
+  assert.ok(r.alertas.some((a) => a.includes('desde janeiro de 2024')));
+});
+
+test('prazo de pagamento que alcança outra tabela do IRRF gera alerta', () => {
+  const r = calcularRescisao({
+    ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', dataAdmissao: '2020-02-10', dataAviso: '2025-12-28',
+  });
+  assert.ok(r.alertas.some((a) => a.includes('07/01/2026') && a.includes('Lei 15.270/2025')));
+  const antes = calcularRescisao({ ...base, tipo: 'sem_justa_causa', tipoAviso: 'indenizado', dataAviso: '2025-12-10' });
+  assert.ok(!antes.alertas.some((a) => a.includes('art. 477, §6º')));
+});
+
+test('ano completado na projeção do aviso é avisado, sem somar os 3 dias', () => {
+  const r = calcularRescisao(conferido);
+  assert.equal(r.contexto.diasAvisoLegais, 72);
+  assert.ok(r.alertas.some((a) => a.includes('15 ano(s) em 03/11/2025') && a.includes('75 dias')));
+  // Aniversário fora da projeção: nada a avisar.
+  const longe = calcularRescisao({ ...conferido, dataAviso: '2025-05-05' });
+  assert.ok(!longe.alertas.some((a) => a.includes('Lei 12.506/2011')));
 });
