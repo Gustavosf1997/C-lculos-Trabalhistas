@@ -107,17 +107,37 @@ de graça, e republica sozinho a cada mudança na `main`.
 
 ### Criar o site (uma vez)
 
+O painel da Cloudflare oferece dois caminhos, e o repositório serve aos dois:
+**Workers**, que é o padrão do painel hoje, e **Pages**. Para o Workers, o
+`wrangler.jsonc` na raiz declara o site como arquivos estáticos, e o
+`.assetsignore` deixa de fora o que não é site: testes, ferramentas, README e
+configurações.
+
 1. Crie uma conta gratuita em <https://dash.cloudflare.com>, se ainda não
    tiver.
 2. No menu lateral, abra **Workers & Pages** e clique em **Create
-   application** (ou **Create**).
-3. Escolha a aba **Pages** — se aparecer só a tela do Workers, procure o link
-   *"Looking to deploy Pages? Get started"* — e depois **Import an existing Git
-   repository** (ou **Connect to Git**).
-4. Autorize o app da Cloudflare no GitHub. Quando ele perguntar a quais
-   repositórios pode ter acesso, marque só **Gustavosf1997/C-lculos-Trabalhistas**.
-   Selecione o repositório e clique em **Begin setup**.
-5. Preencha assim:
+   application** (ou **Create**), e depois em **Import a repository** (ou
+   **Connect to Git**).
+3. Autorize o app da Cloudflare no GitHub. Quando ele perguntar a quais
+   repositórios pode ter acesso, marque só **Gustavosf1997/C-lculos-Trabalhistas**,
+   e selecione o repositório.
+4. Preencha conforme o caminho que o painel abrir:
+
+   **Workers** (tela "Set up your application", com *Deploy command*):
+
+   | Campo | Valor |
+   | --- | --- |
+   | Project name | `calculostrabalhistas` — o mesmo `name` do `wrangler.jsonc`; se escolher outro, troque lá também |
+   | Build command | em branco |
+   | Deploy command | `npx wrangler deploy` |
+   | Non-production branch deploy command | `npx wrangler versions upload` |
+   | Path | em branco (a raiz) |
+
+   O endereço fica em **https://calculostrabalhistas.&lt;sua-conta&gt;.workers.dev**.
+
+   **Pages** (tela "Set up builds and deployments", com *Build output
+   directory*) — se o painel só mostrar o Workers, o link *"Looking to deploy
+   Pages? Get started"* leva a ele:
 
    | Campo | Valor |
    | --- | --- |
@@ -128,11 +148,13 @@ de graça, e republica sozinho a cada mudança na `main`.
    | Build output directory | em branco (se o campo exigir algo, `/`) |
    | Root directory | em branco |
 
-   Não há build: os arquivos do repositório já são o site. Por isso o projeto
-   não tem `package.json` — e não deve ter, ou o Cloudflare passaria a instalar
-   dependências a cada publicação.
-6. Clique em **Save and Deploy**. Em cerca de um minuto o site está em
-   **https://calculos-trabalhistas.pages.dev**.
+   O endereço fica em **https://calculos-trabalhistas.pages.dev**.
+
+   Em nenhum dos dois há build: os arquivos do repositório já são o site. Por
+   isso o projeto não tem `package.json` — e não deve ter, ou a Cloudflare
+   passaria a instalar dependências a cada publicação.
+5. Clique em **Deploy** (ou **Save and Deploy**). Em cerca de um minuto o site
+   está no ar.
 
 ### Só a versão testada vai ao ar
 
@@ -157,7 +179,8 @@ que passou em todos os testes, há duas peças:
        to be up to date before merging**. Clique em **Add checks**, digite
        `Testes` e escolha a verificação que aparecer. Ela só aparece depois de
        ter rodado ao menos uma vez — a própria PR que trouxe este arquivo já a
-       rodou.
+       rodou. A verificação da Cloudflare (*Workers Builds* ou *Pages*) também
+       aparece na lista, mas não precisa ser exigida: ela só publica.
   5. Deixe a **Bypass list** vazia, para que ninguém — nem o dono do
      repositório — pule a verificação, e clique em **Create**.
 
@@ -170,8 +193,7 @@ Com as duas no lugar, o caminho de toda mudança fica assim:
    próprio, para quem quiser conferir a mudança no navegador — o endereço
    oficial não muda;
 4. tudo verde, o merge é liberado. A `main` recebe a versão testada e o
-   Cloudflare a publica em **calculos-trabalhistas.pages.dev** em cerca de um
-   minuto.
+   Cloudflare a publica no endereço oficial em cerca de um minuto.
 
 Uma versão com teste falhando não entra na `main` e, portanto, nunca chega ao
 endereço oficial. O rodapé da ferramenta mostra a data da versão no ar — é a
@@ -179,9 +201,8 @@ de `src/versao.js`.
 
 ### Voltar uma versão
 
-No Cloudflare, em **Workers & Pages → calculos-trabalhistas → Deployments**,
-qualquer publicação anterior volta ao ar com **Rollback to this deployment**,
-na hora. Para desfazer de vez, reverta o merge no GitHub: a reversão também
+No Cloudflare, em **Workers & Pages →** o projeto **→ Deployments**, qualquer
+publicação anterior volta ao ar com **Rollback**, na hora. Para desfazer de vez, reverta o merge no GitHub: a reversão também
 passa pelos testes.
 
 ### Domínio próprio e acesso restrito
@@ -200,6 +221,7 @@ passa pelos testes.
 | --- | --- |
 | `index.html` | Aba de verbas rescisórias: tipo de rescisão + formulário + resultado |
 | `.github/workflows/testes.yml` | Verificação automática: roda todos os testes a cada pull request e a cada envio para a `main` |
+| `wrangler.jsonc` e `.assetsignore` | Publicação no Cloudflare Workers: o site como arquivos estáticos, sem testes nem ferramentas |
 | `pedidos.html` | Aba de pedidos da reclamatória |
 | `assets/estilos.css` | Estilos das duas páginas (paleta em `:root`, marca `#ffc600`) |
 | `src/tipos.js` | Catálogo dos tipos de rescisão: verbas devidas, opções de aviso, campos exibidos e regras de FGTS |
