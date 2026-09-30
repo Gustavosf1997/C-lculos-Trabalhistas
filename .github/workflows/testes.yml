@@ -38,7 +38,11 @@ jobs:
       # O projeto não tem dependências nem package.json — e não deve ter, para
       # o Cloudflare publicar os arquivos como estão. O Playwright entra só
       # aqui, dentro da pasta do projeto e sem gravar nada no repositório.
+      # Leva menos de um minuto; o limite de 5 derruba logo a instalação que
+      # trava no espelho de pacotes do Ubuntu, em vez de prender a verificação
+      # até o limite de 20 do job.
       - name: Instala o navegador de teste
+        timeout-minutes: 5
         run: |
           npm install --no-save --no-package-lock --no-audit --no-fund --prefix . playwright@1.56.1
           npx playwright install --with-deps chromium
