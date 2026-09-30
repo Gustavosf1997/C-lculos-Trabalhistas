@@ -164,8 +164,11 @@ que passou em todos os testes, há duas peças:
 - **a verificação automática** (`.github/workflows/testes.yml`), que já está no
   repositório: a cada pull request, o GitHub roda os testes dos cálculos, os
   da tela, os de robustez e os da versão portátil — os mesmos descritos em
-  [Testes](#testes). Leva uns 3 minutos, e o resultado aparece na própria PR
-  como **Testes** ✓ ou ✗;
+  [Testes](#testes). Leva de 3 a 6 minutos, e o resultado aparece na própria
+  PR como **Testes** ✓ ou ✗. A instalação do navegador de teste tem limite de
+  5 minutos: se a máquina do GitHub travar ao baixar pacotes, a verificação
+  falha nessa etapa, antes dos testes de tela. É falha da máquina, não do
+  código — rode de novo em **Actions →** a execução **→ Re-run failed jobs**;
 - **a regra que exige a verificação**, ligada uma vez no GitHub:
 
   1. No repositório, abra **Settings → Rules → Rulesets** e clique em
