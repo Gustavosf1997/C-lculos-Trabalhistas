@@ -109,9 +109,9 @@ de graça, e republica sozinho a cada mudança na `main`.
 
 O painel da Cloudflare oferece dois caminhos, e o repositório serve aos dois:
 **Workers**, que é o padrão do painel hoje, e **Pages**. Para o Workers, o
-`wrangler.jsonc` na raiz declara o site como arquivos estáticos, e o
-`.assetsignore` deixa de fora o que não é site: testes, ferramentas, README e
-configurações.
+`wrangler.jsonc` na raiz declara o site como arquivos estáticos e traz o bloco
+`previews`, que o comando das prévias de PR exige; o `.assetsignore` deixa de
+fora o que não é site: testes, ferramentas, README e configurações.
 
 1. Crie uma conta gratuita em <https://dash.cloudflare.com>, se ainda não
    tiver.
@@ -130,7 +130,7 @@ configurações.
    | Project name | `calculostrabalhistas` — o mesmo `name` do `wrangler.jsonc`; se escolher outro, troque lá também |
    | Build command | em branco |
    | Deploy command | `npx wrangler deploy` |
-   | Non-production branch deploy command | `npx wrangler versions upload` |
+   | Non-production branch deploy command | `npx wrangler preview` — o painel já o preenche; em painéis mais antigos aparece `npx wrangler versions upload`, que também funciona |
    | Path | em branco (a raiz) |
 
    O endereço fica em **https://calculostrabalhistas.&lt;sua-conta&gt;.workers.dev**.
