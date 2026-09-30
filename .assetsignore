@@ -1,0 +1,12 @@
+# Fica fora do site publicado no Cloudflare Workers (mesmo formato do .gitignore).
+# O que é do site: index.html, pedidos.html, assets/, src/ e portatil/.
+.git
+.github
+.gitignore
+.assetsignore
+node_modules
+.wrangler
+tests
+ferramenta
+wrangler.jsonc
+README.md
