@@ -169,6 +169,8 @@ export const DESTINO = 'portatil/calculos-trabalhistas.html';
 /** Monta o arquivo portátil e devolve o seu conteúdo. */
 export async function gerar() {
   const { CARIMBO } = await import(new URL('../src/versao.js', import.meta.url));
+  // O ícone da aba é o da versão web, que já vem embutido como data URI.
+  const icone = ler(PAGINAS[0].arquivo).match(/<link rel="icon"[^>]*>/)?.[0] ?? '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -176,6 +178,7 @@ export async function gerar() {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Cálculos Trabalhistas</title>
+${icone}
 <!--
   Versão portátil — ${CARIMBO}
 

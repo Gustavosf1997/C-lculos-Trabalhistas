@@ -4,13 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Cálculo de Pedidos</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffc600'/%3E%3Cg transform='translate(3.2 3.2) scale(.8)' color='%231c1a17' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.99 5.12L15.16 3.56L16.84 3.56L17.01 5.12A4.5 4.5 0 0 1 18.38 5.68L19.61 4.71L20.79 5.89L19.82 7.12A4.5 4.5 0 0 1 20.38 8.49L21.94 8.66L21.94 10.34L20.38 10.51A4.5 4.5 0 0 1 19.82 11.88L20.79 13.11L19.61 14.29L18.38 13.32A4.5 4.5 0 0 1 17.01 13.88L16.84 15.44L15.16 15.44L14.99 13.88A4.5 4.5 0 0 1 13.62 13.32L12.39 14.29L11.21 13.11L12.18 11.88A4.5 4.5 0 0 1 11.62 10.51L10.06 10.34L10.06 8.66L11.62 8.49A4.5 4.5 0 0 1 12.18 7.12L11.21 5.89L12.39 4.71L13.62 5.68A4.5 4.5 0 0 1 14.99 5.12ZM17.9 9.5a1.9 1.9 0 1 0 -3.8 0a1.9 1.9 0 1 0 3.8 0Z' fill='currentColor' stroke='none' fill-rule='evenodd'/%3E%3Cpath d='M4.5 9.5H9.8M22.2 9.5H27.5M16 16V26.5M11 27.5H21M4.5 9.5 1.9 18.2M4.5 9.5 7.1 18.2M27.5 9.5 24.9 18.2M27.5 9.5 30.1 18.2M1.5 18.2H7.5a3 3 0 0 1-6 0ZM24.5 18.2H30.5a3 3 0 0 1-6 0Z'/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="stylesheet" href="assets/estilos.css" />
 </head>
 <body>
   <header class="topo">
     <div class="topo__conteudo">
       <div class="topo__marca">
-        <span class="topo__logo">§</span>
+        <span class="topo__logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+            <!-- balança da justiça com uma engrenagem no fiel: o direito e o trabalho -->
+            <path d="M14.99 5.12L15.16 3.56L16.84 3.56L17.01 5.12A4.5 4.5 0 0 1 18.38 5.68L19.61 4.71L20.79 5.89L19.82 7.12A4.5 4.5 0 0 1 20.38 8.49L21.94 8.66L21.94 10.34L20.38 10.51A4.5 4.5 0 0 1 19.82 11.88L20.79 13.11L19.61 14.29L18.38 13.32A4.5 4.5 0 0 1 17.01 13.88L16.84 15.44L15.16 15.44L14.99 13.88A4.5 4.5 0 0 1 13.62 13.32L12.39 14.29L11.21 13.11L12.18 11.88A4.5 4.5 0 0 1 11.62 10.51L10.06 10.34L10.06 8.66L11.62 8.49A4.5 4.5 0 0 1 12.18 7.12L11.21 5.89L12.39 4.71L13.62 5.68A4.5 4.5 0 0 1 14.99 5.12ZM17.9 9.5a1.9 1.9 0 1 0 -3.8 0a1.9 1.9 0 1 0 3.8 0Z" fill="currentColor" stroke="none" fill-rule="evenodd"/>
+            <path d="M4.5 9.5H9.8M22.2 9.5H27.5M16 16V26.5M11 27.5H21M4.5 9.5 1.9 18.2M4.5 9.5 7.1 18.2M27.5 9.5 24.9 18.2M27.5 9.5 30.1 18.2M1.5 18.2H7.5a3 3 0 0 1-6 0ZM24.5 18.2H30.5a3 3 0 0 1-6 0Z"/>
+          </svg>
+        </span>
         <div>
           <h1>Cálculos Trabalhistas</h1>
           <p id="versao">Ferramenta de cálculos trabalhistas</p>
