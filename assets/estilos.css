@@ -44,10 +44,11 @@ body {
 }
 .topo__marca { display: flex; align-items: center; gap: 14px; }
 .topo__logo {
-  width: 44px; height: 44px; border-radius: 12px;
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
   background: rgba(28,26,23,.1); border: 1px solid rgba(28,26,23,.18);
-  display: grid; place-items: center; font-size: 24px; font-weight: 700;
+  display: grid; place-items: center;
 }
+.topo__logo svg { width: 30px; height: 30px; display: block; }
 .topo h1 { margin: 0; font-size: 20px; letter-spacing: -.2px; }
 .topo p { margin: 2px 0 0; font-size: 13px; color: rgba(28,26,23,.66); }
 .abas {
