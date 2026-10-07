@@ -729,6 +729,9 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 | Intervalo do regime salarial gera DSR | Súmula 437, III, do TST e Lei 605/49 | `intervalo.js` |
 | Indenização do art. 479 fora da base do FGTS | art. 15, §6º, da Lei 8.036/90 c/c art. 28, §9º, "e", 3, da Lei 8.212/91 | `baseFgtsRescisao` |
 | Intervalo suprimido até 10/11/2017: período integral, natureza salarial | Súmula 437, I e III, do TST | `intervalo.js` |
+| Redução eventual de até 5 minutos do intervalo não gera o pagamento (alerta) | Tema 14 de recursos repetitivos do TST | `intervalo.js` |
+| Prêmios e abonos fora da remuneração; gorjetas fora do aviso e das horas extras | art. 457, §2º, da CLT (Lei 13.467/2017); Súmula 354 do TST | dicas dos campos |
+| Adicional noturno na base das horas extras noturnas | OJ 97 da SDI-1 | dica do campo |
 | Descanso mínimo de 11 horas consecutivas entre duas jornadas | art. 66 da CLT | `INTERVALO_INTERJORNADAS` |
 | Repouso semanal emendado ao intervalo: 35 horas | Súmula 110 do TST; arts. 66 e 67 da CLT | `DESCANSO_SEMANAL` |
 | Interjornadas até 10/11/2017: horas subtraídas como extras, com reflexos | OJ 355 da SDI-1 (cancelada pela Res. 225/2025 do TST, com efeito a partir de 11/11/2017) | `interjornada.js` |
@@ -804,8 +807,11 @@ a sustenta, e cada uma tem um teste que a fixa em `tests/revisao.test.mjs`.
 - Na aba de rescisão, a insalubridade é calculada sobre o salário mínimo do
   mês da saída (art. 192 da CLT); norma coletiva que fixe outra base precisa
   ser ajustada em `src/adicionais.js`.
-- A média de comissões, gorjetas e prêmios integra aviso, 13º e férias, mas não
+- A média de comissões e outras variáveis integra aviso, 13º e férias, mas não
   o saldo de salário: é média para indenização, não o que o último mês pagou.
+  Gorjetas ficam fora dela, porque não entram no aviso (Súmula 354 do TST), e
+  prêmios e abonos também, porque deixaram de integrar a remuneração com a
+  Lei 13.467/2017 (art. 457, §2º).
 - As horas extras informadas são as do mês da rescisão e formam verba própria;
   elas entram nas bases de INSS, IRRF e FGTS do mês, mas não integram aviso,
   13º e férias. Horas extras habituais que devam repercutir nessas verbas ainda

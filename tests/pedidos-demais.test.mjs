@@ -63,6 +63,13 @@ test('intervalo anterior à reforma paga o integral, com reflexos', () => {
   assert.ok(r.fgts.valor > 0);
 });
 
+test('redução de até 5 minutos do intervalo lembra a tese do Tema 14 do TST', () => {
+  const pouco = calcularIntervalo({ ...periodo, ...jornada, minutosSuprimidos: 5 });
+  assert.ok(pouco.alertas.some((a) => a.includes('Tema 14')));
+  const muito = calcularIntervalo({ ...periodo, ...jornada, minutosSuprimidos: 6 });
+  assert.ok(!muito.alertas.some((a) => a.includes('Tema 14')));
+});
+
 test('regime escolhido fora da sua janela temporal gera alerta', () => {
   const posteriorNoRegimeAntigo = calcularIntervalo({
     ...periodo, ...jornada, minutosSuprimidos: 30, regimeIntervalo: 'anterior_reforma',

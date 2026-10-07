@@ -6,7 +6,7 @@
 <title>Cálculos Trabalhistas</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffc600'/%3E%3Cg transform='translate(2.4 2.4) scale(.85)' color='%231c1a17' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.94 2.96L14.39 0.68L17.61 0.68L18.06 2.96A13.2 13.2 0 0 1 20.73 3.68L22.26 1.93L25.05 3.54L24.31 5.74A13.2 13.2 0 0 1 26.26 7.69L28.46 6.95L30.07 9.74L28.32 11.27A13.2 13.2 0 0 1 29.04 13.94L31.32 14.39L31.32 17.61L29.04 18.06A13.2 13.2 0 0 1 28.32 20.73L30.07 22.26L28.46 25.05L26.26 24.31A13.2 13.2 0 0 1 24.31 26.26L25.05 28.46L22.26 30.07L20.73 28.32A13.2 13.2 0 0 1 18.06 29.04L17.61 31.32L14.39 31.32L13.94 29.04A13.2 13.2 0 0 1 11.27 28.32L9.74 30.07L6.95 28.46L7.69 26.26A13.2 13.2 0 0 1 5.74 24.31L3.54 25.05L1.93 22.26L3.68 20.73A13.2 13.2 0 0 1 2.96 18.06L0.68 17.61L0.68 14.39L2.96 13.94A13.2 13.2 0 0 1 3.68 11.27L1.93 9.74L3.54 6.95L5.74 7.69A13.2 13.2 0 0 1 7.69 5.74L6.95 3.54L9.74 1.93L11.27 3.68A13.2 13.2 0 0 1 13.94 2.96ZM25.6 16a9.6 9.6 0 1 0 -19.2 0a9.6 9.6 0 1 0 19.2 0Z' fill='currentColor' fill-opacity='0.35' stroke='none' fill-rule='evenodd'/%3E%3Cpath d='M16 7.6V24M11.6 25.2H20.4M6.2 10H25.8M6.2 10 3.7 17.2M6.2 10 8.7 17.2M25.8 10 23.3 17.2M25.8 10 28.3 17.2M3.3 17.2H9.1a2.9 2.9 0 0 1-5.8 0ZM22.9 17.2H28.7a2.9 2.9 0 0 1-5.8 0Z'/%3E%3Ccircle cx='16' cy='7.2' r='1.6' fill='currentColor' stroke='none'/%3E%3C/g%3E%3C/svg%3E" />
 <!--
-  Versão portátil — esboço v0.1 · atualizada em 06/10/2026
+  Versão portátil — esboço v0.1 · atualizada em 07/10/2026
 
   Arquivo único: abra com dois cliques, em qualquer navegador. Não instala
   nada, não precisa de internet e não envia dado nenhum para servidor — todo
@@ -456,9 +456,9 @@ body {
                 <span class="campo__dica">Mínimo de 50% (art. 7º, XVI, da CF). A hora sai do divisor informado.</span>
               </label>
               <label class="campo">
-                <span class="campo__rotulo">Média de comissões, gorjetas e prêmios</span>
+                <span class="campo__rotulo">Média de comissões e outras variáveis</span>
                 <span class="campo__moeda"><i>R$</i><input type="text" inputmode="decimal" data-campo="moeda" data-min="0" id="mediaComissoes" placeholder="0,00" /></span>
-                <span class="campo__dica">Média que integra aviso, 13º e férias.</span>
+                <span class="campo__dica">Integra aviso, 13º e férias. Gorjetas ficam fora: não entram no aviso (Súmula 354 do TST). Prêmios e abonos também, desde a Lei 13.467/2017 (art. 457, §2º).</span>
               </label>
             </div>
             <div class="campos">
@@ -2625,7 +2625,7 @@ function calcularRescisao(dados) {
  */
 
 const VERSAO = '0.1';
-const ATUALIZADO_EM = '06/10/2026';
+const ATUALIZADO_EM = '07/10/2026';
 const CARIMBO = `esboço v${VERSAO} · atualizada em ${ATUALIZADO_EM}`;
 
     return { VERSAO, ATUALIZADO_EM, CARIMBO };
@@ -3646,6 +3646,16 @@ function calcularIntervalo(dados) {
     alertas.push(
       `O regime anterior à reforma vale para fatos até ${formatarData(parseData(VESPERA_REFORMA))}. `
         + 'Parte do período pedido é posterior: calcule os dois trechos em separado.',
+    );
+  }
+  // Tema 14 de recursos repetitivos do TST: a redução eventual e ínfima — até
+  // 5 minutos no total, por pequenas variações de marcação no ponto — não
+  // atrai o art. 71, §4º. A tela não sabe se a redução foi eventual; avisa.
+  if (minutosSuprimidos <= 5) {
+    alertas.push(
+      'Redução de até 5 minutos no total do intervalo, se eventual e fruto de pequenas variações de marcação '
+        + 'no ponto, não gera o pagamento do art. 71, §4º (Tema 14 de recursos repetitivos do TST). O valor '
+        + 'abaixo pressupõe redução habitual.',
     );
   }
   if (indenizatorio && inicioCalculo < parseData(MARCO_REFORMA)) {
@@ -5106,7 +5116,9 @@ const camposRemuneracao = [
     dica: 'Editável: o bancário de 6 horas usa 180, e o de 8 horas, 220 (Súmula 124 do TST); a norma coletiva '
       + 'pode fixar outro.' },
   { id: 'outrasParcelas', rotulo: 'Outras parcelas salariais habituais', tipo: 'moeda',
-    dica: 'Comissões, prêmios e adicionais que integram a hora (Súmula 264 do TST).' },
+    dica: 'Comissões, gratificações e adicionais habituais que integram a hora (Súmula 264 do TST) — nas '
+      + 'horas extras noturnas, o adicional noturno (OJ 97 da SDI-1). Prêmios e abonos não entram desde a '
+      + 'Lei 13.467/2017 (art. 457, §2º), nem as gorjetas (Súmula 354).' },
 ];
 
 const camposRisco = [
@@ -5466,7 +5478,8 @@ const PEDIDOS = [
           { id: 'quantidadeHoras', rotulo: 'Quantidade de horas extras', tipo: 'decimal', obrigatorio: true,
             min: 0, max: 400, dica: 'Média do período.' },
           { id: 'adicionalHoraExtra', rotulo: 'Adicional de hora extra', tipo: 'percentual', valor: 50,
-            min: 0, max: 300, dica: 'Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior.' },
+            min: 0, max: 300, dica: 'Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior. '
+              + 'Domingos e feriados trabalhados sem folga compensatória: 100% (Súmula 146 do TST).' },
           ...camposDSR,
         ],
       },

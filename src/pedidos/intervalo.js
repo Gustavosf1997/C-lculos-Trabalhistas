@@ -60,6 +60,16 @@ export function calcularIntervalo(dados) {
         + 'Parte do período pedido é posterior: calcule os dois trechos em separado.',
     );
   }
+  // Tema 14 de recursos repetitivos do TST: a redução eventual e ínfima — até
+  // 5 minutos no total, por pequenas variações de marcação no ponto — não
+  // atrai o art. 71, §4º. A tela não sabe se a redução foi eventual; avisa.
+  if (minutosSuprimidos <= 5) {
+    alertas.push(
+      'Redução de até 5 minutos no total do intervalo, se eventual e fruto de pequenas variações de marcação '
+        + 'no ponto, não gera o pagamento do art. 71, §4º (Tema 14 de recursos repetitivos do TST). O valor '
+        + 'abaixo pressupõe redução habitual.',
+    );
+  }
   if (indenizatorio && inicioCalculo < parseData(MARCO_REFORMA)) {
     alertas.push(
       `O regime indenizatório vale para fatos a partir de ${formatarData(parseData(MARCO_REFORMA))}. `

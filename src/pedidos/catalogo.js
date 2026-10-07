@@ -69,7 +69,9 @@ const camposRemuneracao = [
     dica: 'Editável: o bancário de 6 horas usa 180, e o de 8 horas, 220 (Súmula 124 do TST); a norma coletiva '
       + 'pode fixar outro.' },
   { id: 'outrasParcelas', rotulo: 'Outras parcelas salariais habituais', tipo: 'moeda',
-    dica: 'Comissões, prêmios e adicionais que integram a hora (Súmula 264 do TST).' },
+    dica: 'Comissões, gratificações e adicionais habituais que integram a hora (Súmula 264 do TST) — nas '
+      + 'horas extras noturnas, o adicional noturno (OJ 97 da SDI-1). Prêmios e abonos não entram desde a '
+      + 'Lei 13.467/2017 (art. 457, §2º), nem as gorjetas (Súmula 354).' },
 ];
 
 const camposRisco = [
@@ -429,7 +431,8 @@ export const PEDIDOS = [
           { id: 'quantidadeHoras', rotulo: 'Quantidade de horas extras', tipo: 'decimal', obrigatorio: true,
             min: 0, max: 400, dica: 'Média do período.' },
           { id: 'adicionalHoraExtra', rotulo: 'Adicional de hora extra', tipo: 'percentual', valor: 50,
-            min: 0, max: 300, dica: 'Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior.' },
+            min: 0, max: 300, dica: 'Mínimo de 50% (art. 7º, XVI, da CF); a norma coletiva pode ser maior. '
+              + 'Domingos e feriados trabalhados sem folga compensatória: 100% (Súmula 146 do TST).' },
           ...camposDSR,
         ],
       },
